@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-authors = [{ name = "Data Archiving and Networked Services (DANS)" }]
+authors = [
+    { name = "Data Archiving and Networked Services (DANS)" },
+    { name = "Laurens Tobias", email = "laurens.tobias@dans.knaw.nl" },
+]
 keywords = ["FAIR", "metadata", "JSON-LD", "research data"]
 classifiers = [
     "Development Status :: 3 - Alpha",

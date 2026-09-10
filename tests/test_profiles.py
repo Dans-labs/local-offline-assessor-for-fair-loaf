@@ -1,9 +1,18 @@
+import json
+from copy import deepcopy
+from hashlib import sha256
+
 import pytest
 from pydantic import ValidationError
 
+from fair_offline_assessor import list_profiles, load_profile
 from fair_offline_assessor.models import (
     Profile,
+    ProfileError,
+    ProfileInfo,
+    ResourceRecord,
 )
+from fair_offline_assessor.profiles import ProfileBundle
 
 
 def profile_data():
@@ -55,3 +64,127 @@ def test_profile_model_rejects_invalid_definitions(problem):
             data["metrics"] = []
     with pytest.raises(ValidationError):
         Profile.model_validate(data)
+
+
+class MemoryProvider:
+    def __init__(self, *profiles, resources=None, references=()):
+        self.profiles = [json.dumps(data).encode() for data in profiles]
+        self.resources = resources or {}
+        self.references = references
+
+    def list_profiles(self):
+        return tuple(
+            ProfileInfo(
+                **{
+                    key: json.loads(content)[key]
+                    for key in (
+                        "id",
+                        "version",
+                        "title",
+                        "engine_requires",
+                        "adapter",
+                        "adapter_version",
+                    )
+                },
+                digest=sha256(content).hexdigest(),
+            )
+            for content in self.profiles
+        )
+
+    def load(self, profile_id, version):
+        content = next(
+            content
+            for content in self.profiles
+            if (json.loads(content)["id"], json.loads(content)["version"])
+            == (profile_id, version)
+        )
+        return ProfileBundle(content, self.resources, self.references)
+
+
+@pytest.mark.parametrize("profile_id", ["example:metadata", "fusji-offline"])
+def test_exact_versions_select_the_requested_profile(profile_id):
+    first = profile_data()
+    first["id"] = profile_id
+    second = deepcopy(first)
+    second["version"] = "2.0.0"
+    second["adapter_version"] = "2.0.0"
+    reference = ResourceRecord(
+        id="reference",
+        version="1.0.0",
+        kind="reference",
+        digest=sha256(b"{}").hexdigest(),
+        path="reference.json",
+        license="MIT",
+        source={"url": "https://example.org/reference"},
+    )
+    first["resources"] = [{"id": "reference", "version": "1.0.0"}]
+    second["resources"] = [{"id": "reference", "version": "2.0.0"}]
+    provider = MemoryProvider(
+        first,
+        second,
+        resources={"reference": b"{}"},
+        references=(reference, reference.model_copy(update={"version": "2.0.0"})),
+    )
+    assert len(list_profiles(provider=provider)) == 2
+    for version in ("1.0.0", "2.0.0"):
+        result = load_profile(f"{profile_id}@{version}", provider=provider)
+        assert result.profile.version == version
+        assert result.profile.adapter == "example"
+        assert result.profile.adapter_version == version
+        assert result.references[0].version == version
+
+
+@pytest.mark.parametrize(
+    ("problem", "code"),
+    [
+        ("version", "profile_not_found"),
+        ("engine", "incompatible_engine"),
+        ("definition", "invalid_profile"),
+        ("conflict", "profile_conflict"),
+        ("resource", "resource_integrity"),
+        ("missing_resource", "resource_integrity"),
+        ("selection", "invalid_selection"),
+    ],
+)
+def test_loading_rejects_incompatible_or_corrupted_profiles(problem, code):
+    data = profile_data()
+    data["resources"] = [{"id": "reference", "version": "1"}]
+    references = (
+        ResourceRecord(
+            id="reference",
+            version="1",
+            kind="reference",
+            digest=sha256(b"{}").hexdigest(),
+            path="example.json",
+            license="MIT",
+            source={"url": "https://example.org/reference"},
+        ),
+    )
+    resources = {"reference": b"{}"}
+    selection = "example:metadata@1.0.0"
+    others = []
+    match problem:
+        case "version":
+            selection = "example:metadata@9.0.0"
+        case "engine":
+            data["engine_requires"] = ">=99"
+        case "definition":
+            data["schema_version"] = 2
+        case "conflict":
+            other = deepcopy(data)
+            other["title"] = "Different content with the same version"
+            others.append(other)
+        case "resource":
+            resources["reference"] = b"changed"
+        case "missing_resource":
+            resources.clear()
+        case "selection":
+            selection = "example:metadata@latest"
+    with pytest.raises(ProfileError) as error:
+        load_profile(
+            selection,
+            provider=MemoryProvider(
+                data, *others, resources=resources, references=references
+            ),
+        )
+    assert error.value.code == code
