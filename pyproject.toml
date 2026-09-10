@@ -29,6 +29,9 @@ dependencies = ["packaging>=25", "pydantic>=2.12,<3", "PyLD>=3.3,<4"]
 dev = ["mypy>=1.15", "pytest>=8", "pytest-socket>=0.7", "ruff>=0.12"]
 release = ["twine>=6", "cffconvert>=2", "PyYAML>=6"]
 
+[tool.uv.build-backend]
+source-include = ["scripts/**"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--disable-socket"
