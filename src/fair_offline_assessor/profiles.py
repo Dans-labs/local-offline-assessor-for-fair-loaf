@@ -2,11 +2,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from importlib.metadata import version as package_version
+from importlib.resources import files
 from typing import Protocol
 
 from packaging.specifiers import SpecifierSet
 from packaging.version import InvalidVersion, Version
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from fair_offline_assessor.models import (
     Profile,
@@ -53,8 +54,70 @@ def _read_profile(content: bytes, info: ProfileInfo) -> Profile:
         raise ProfileError("invalid_profile", str(exc)) from exc
 
 
-def list_profiles(*, provider: ProfileProvider) -> tuple[ProfileInfo, ...]:
+class BundledProfileProvider:
+    def __init__(self, package: str = "fair_offline_assessor") -> None:
+        """Use resources from the specified installed package."""
+        self._root = files(package).joinpath("resources")
+
+    def list_profiles(self) -> tuple[ProfileInfo, ...]:
+        """Read and validate the packaged profile catalogue."""
+        try:
+            content = self._root.joinpath("profiles.json").read_bytes()
+            return TypeAdapter(tuple[ProfileInfo, ...]).validate_json(content)
+        except (OSError, ValidationError) as exc:
+            raise ProfileError(
+                "invalid_catalogue", "Cannot read profile catalogue"
+            ) from exc
+
+    def load(self, profile_id: str, version: str) -> ProfileBundle:
+        """Read a pinned profile and its required resources."""
+        info = next(
+            (
+                item
+                for item in list_profiles(provider=self)
+                if (item.id, item.version) == (profile_id, version)
+            ),
+            None,
+        )
+        if info is None:
+            raise ProfileError(
+                "profile_not_found", f"Profile not found: {profile_id}@{version}"
+            )
+        try:
+            content = self._root.joinpath(
+                "profiles", *info.id.split(":"), f"{info.version}.json"
+            ).read_bytes()
+        except OSError as exc:
+            raise ProfileError("profile_integrity", "Missing profile file") from exc
+        profile = _read_profile(content, info)
+        try:
+            references = TypeAdapter(tuple[ResourceRecord, ...]).validate_json(
+                self._root.joinpath("resources.json").read_bytes()
+            )
+        except (OSError, ValidationError) as exc:
+            raise ProfileError(
+                "invalid_resources", "Cannot read resource index"
+            ) from exc
+        references = _select_resources(profile, references)
+        resources = {}
+        for reference in references:
+            try:
+                resources[reference.id] = self._root.joinpath(
+                    *reference.path.split("/")
+                ).read_bytes()
+            except OSError as exc:
+                raise ProfileError(
+                    "resource_integrity", f"Missing resource: {reference.id}"
+                ) from exc
+        return ProfileBundle(content, resources, references)
+
+
+def list_profiles(
+    *, provider: ProfileProvider | None = None
+) -> tuple[ProfileInfo, ...]:
     """List distinct profile versions, rejecting conflicting entries."""
+    if provider is None:
+        provider = BundledProfileProvider()
     profiles: dict[tuple[str, str], ProfileInfo] = {}
     for info in provider.list_profiles():
         key = (info.id, info.version)
@@ -65,7 +128,9 @@ def list_profiles(*, provider: ProfileProvider) -> tuple[ProfileInfo, ...]:
     return tuple(profiles[key] for key in sorted(profiles))
 
 
-def load_profile(selection: str, *, provider: ProfileProvider) -> LoadedProfile:
+def load_profile(
+    selection: str, *, provider: ProfileProvider | None = None
+) -> LoadedProfile:
     """Load ID@version and verify integrity and engine compatibility."""
     try:
         profile_id, selected_version = selection.rsplit("@", 1)
@@ -78,6 +143,8 @@ def load_profile(selection: str, *, provider: ProfileProvider) -> LoadedProfile:
     if not profile_id or normalized_version != selected_version:
         raise ProfileError("invalid_selection", "Use an exact profile ID@version")
 
+    if provider is None:
+        provider = BundledProfileProvider()
     info = next(
         (
             item

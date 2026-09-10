@@ -5,6 +5,7 @@ from fair_offline_assessor.models import (
     ProfileError,
 )
 from fair_offline_assessor.profiles import (
+    BundledProfileProvider,
     ProfileBundle,
     ProfileProvider,
     list_profiles,
@@ -14,6 +15,7 @@ from fair_offline_assessor.profiles import (
 __all__ = [
     "AssessmentInput",
     "AssessmentResult",
+    "BundledProfileProvider",
     "InputError",
     "ProfileBundle",
     "ProfileError",

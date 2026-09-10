@@ -1,11 +1,12 @@
 import json
 from copy import deepcopy
 from hashlib import sha256
+from zipfile import ZipFile
 
 import pytest
 from pydantic import ValidationError
 
-from fair_offline_assessor import list_profiles, load_profile
+from fair_offline_assessor import list_profiles, load_profile, profiles
 from fair_offline_assessor.models import (
     Profile,
     ProfileError,
@@ -188,3 +189,93 @@ def test_loading_rejects_incompatible_or_corrupted_profiles(problem, code):
             ),
         )
     assert error.value.code == code
+
+
+@pytest.mark.parametrize("storage", ["directory", "zip"])
+def test_packaged_profiles_use_the_same_validation(tmp_path, monkeypatch, storage):
+    data = profile_data()
+    digest = sha256(b"{}").hexdigest()
+    data["resources"] = [{"id": "reference", "version": "1"}]
+    second = deepcopy(data)
+    second["version"] = "2.0.0"
+    xml = b"<schema/>"
+    xml_digest = sha256(xml).hexdigest()
+    second["resources"] = [{"id": "schema", "version": "1"}]
+    references = (
+        ResourceRecord(
+            id="reference",
+            version="1",
+            kind="reference",
+            digest=digest,
+            path="reference.json",
+            license="MIT",
+            source={"url": "https://example.org/ref"},
+        ),
+        ResourceRecord(
+            id="schema",
+            version="1",
+            kind="reference",
+            digest=xml_digest,
+            format="xml",
+            path="schema.xml",
+            license="MIT",
+            source={"url": "https://example.org/schema"},
+        ),
+    )
+    memory = MemoryProvider(
+        data,
+        second,
+        resources={"reference": b"{}", "schema": xml},
+        references=references,
+    )
+    package = f"example_profiles_{storage}"
+    root = tmp_path / package / "resources"
+    (root / "profiles").mkdir(parents=True)
+    (root.parent / "__init__.py").touch()
+    catalogue = memory.list_profiles()
+    (root / "profiles.json").write_text(
+        json.dumps([info.model_dump() for info in catalogue])
+    )
+    for info, content in zip(catalogue, memory.profiles, strict=True):
+        path = root / "profiles" / info.id.replace(":", "/") / f"{info.version}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    (root / "resources.json").write_text(
+        json.dumps([ref.model_dump() for ref in references])
+    )
+    (root / "reference.json").write_bytes(b"{}")
+    (root / "schema.xml").write_bytes(xml)
+    if storage == "zip":
+        archive = tmp_path / "profiles.zip"
+        with ZipFile(archive, "w") as bundle:
+            for path in root.parent.rglob("*"):
+                if path.is_file():
+                    bundle.write(path, path.relative_to(tmp_path))
+        monkeypatch.syspath_prepend(str(archive))
+    else:
+        monkeypatch.syspath_prepend(str(tmp_path))
+
+    provider = profiles.BundledProfileProvider(package)
+    assert profiles.list_profiles(provider=provider) == catalogue
+    for version in ("1.0.0", "2.0.0"):
+        selection = f"example:metadata@{version}"
+        assert profiles.load_profile(
+            selection, provider=provider
+        ) == profiles.load_profile(selection, provider=memory)
+
+    if storage == "directory":
+        for path, code in (
+            (root / "profiles.json", "invalid_catalogue"),
+            (root / "profiles/example/metadata/1.0.0.json", "profile_integrity"),
+            (root / "reference.json", "resource_integrity"),
+        ):
+            original = path.read_bytes()
+            for replacement in (b"corrupted", None):
+                if replacement is None:
+                    path.unlink()
+                else:
+                    path.write_bytes(replacement)
+                with pytest.raises(profiles.ProfileError) as error:
+                    profiles.load_profile("example:metadata@1.0.0", provider=provider)
+                assert error.value.code == code
+            path.write_bytes(original)
