@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "id": "schemaorg:context",
+    "version": "30.0",
+    "kind": "context",
+    "format": "json",
+    "digest": "d8167890b056bc7c71eb39b30cbb4816490d5e671371ba50a5a633d1bc36961a",
+    "path": "metadata/schemaorg/30.0/schemaorgcontext.jsonld",
+    "license": "CC-BY-SA-3.0",
+    "source": {
+      "repository": "https://github.com/schemaorg/schemaorg",
+      "commit": "420231f6bfac8372fc564abb121fae57ccb36a0c",
+      "path": "data/releases/30.0/schemaorgcontext.jsonld"
+    },
+    "aliases": [
+      "http://schema.org",
+      "http://schema.org/",
+      "https://schema.org",
+      "https://schema.org/",
+      "https://schema.org/version/30.0/schemaorgcontext.jsonld"
+    ]
+  }
+]

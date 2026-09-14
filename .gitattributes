@@ -1,0 +1,5 @@
+# Preserve upstream file bytes.
+src/fair_offline_assessor/resources/**/*.jsonld -text -whitespace
+src/fair_offline_assessor/resources/**/*.rdf -text -whitespace
+src/fair_offline_assessor/resources/**/*.xsd -text -whitespace
+src/fair_offline_assessor/resources/**/*.yaml -text -whitespace
