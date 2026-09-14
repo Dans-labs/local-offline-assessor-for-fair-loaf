@@ -234,6 +234,23 @@
     "aliases": []
   },
   {
+    "id": "fuji:metrics",
+    "version": "3.5.1",
+    "kind": "reference",
+    "format": "yaml",
+    "digest": "99c65ad9202a1f1dc8178c3457347f1a533b78329d3b53814687382874fad18a",
+    "path": "assessors/fuji/3.5.1/metrics_v0.8.yaml",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/pangaea-data-publisher/fuji",
+      "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+      "version": "3.5.1",
+      "metric_version": "0.8",
+      "path": "fuji_server/yaml/metrics_v0.8.yaml"
+    },
+    "aliases": []
+  },
+  {
     "id": "schemaorg:context",
     "version": "30.0",
     "kind": "context",

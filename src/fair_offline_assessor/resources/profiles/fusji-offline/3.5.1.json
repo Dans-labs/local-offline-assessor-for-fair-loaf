@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "fusji-offline",
+  "version": "3.5.1",
+  "title": "F-UJI offline",
+  "adapter": "fuji",
+  "engine_requires": ">=0.1,<0.2",
+  "resources": [
+    {
+      "id": "fuji:metrics",
+      "version": "3.5.1"
+    },
+    {
+      "id": "schemaorg:context",
+      "version": "30.0"
+    }
+  ],
+  "limitations": [
+    "Assessment uses only supplied JSON-LD metadata and captured evidence.",
+    "Checks requiring unavailable evidence remain unevaluated."
+  ],
+  "adapter_version": "1.0.0"
+}

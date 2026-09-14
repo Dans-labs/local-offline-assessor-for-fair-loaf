@@ -3,10 +3,12 @@ from hashlib import sha256
 from importlib.resources import as_file, files
 
 import pytest
+import yaml
 from lxml import etree
 from pyld import jsonld
 from pyld.documentloader.frozen import FrozenDocumentLoader
 
+from fair_offline_assessor import list_profiles, load_profile
 from fair_offline_assessor.models import AssessmentResult, Profile
 
 
@@ -33,6 +35,36 @@ def read_resources():
         assert sha256(content).hexdigest() == resource["digest"]
         resources[resource["id"]] = resource, content
     return resources
+
+
+def test_bundled_fuji_profile_loads_pinned_definitions():
+    selection = "fusji-offline@3.5.1"
+    assert selection in {f"{info.id}@{info.version}" for info in list_profiles()}
+    loaded = load_profile(selection)
+    assert loaded.info in list_profiles()
+    assert loaded.profile.adapter == "fuji"
+    assert loaded.profile.adapter_version == "1.0.0"
+    resources = read_resources()
+    reference, content = resources["fuji:metrics"]
+    assert reference["format"] == "yaml"
+    assert reference["version"] == "3.5.1"
+    assert reference["source"]["metric_version"] == "0.8"
+    assert reference["source"]["commit"] == "9227fabb7f047475714f2e7622798b855c883f72"
+    assert loaded.resources["fuji:metrics"] == content
+    assert loaded.resources["schemaorg:context"] == resources["schemaorg:context"][1]
+    metrics = yaml.safe_load(content)["metrics"]
+    assert len({metric["metric_identifier"] for metric in metrics}) == 17
+    assert (
+        len(
+            {
+                test["metric_test_identifier"]
+                for metric in metrics
+                for test in metric["metric_tests"]
+            }
+        )
+        == 31
+    )
+    assert sum(metric["total_score"] for metric in metrics) == 26
 
 
 def test_bundled_context_expands_dataset_without_network():

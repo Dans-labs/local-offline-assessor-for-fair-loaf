@@ -3,6 +3,11 @@ Copyright 2026 Data Archiving and Networked Services (DANS)
 
 Library code is licensed under Apache-2.0.
 
+Includes the unmodified F-UJI 3.5.1 metric definitions (metrics 0.8).
+Copyright (c) 2020 PANGAEA (https://www.pangaea.de/).
+The MIT license is included in LICENSES/F-UJI-MIT.txt.
+Source: https://github.com/pangaea-data-publisher/fuji
+
 Includes the unmodified Schema.org 30.0 JSON-LD context, by the Schema.org
 contributors and sponsors (Google, Microsoft, Yahoo and Yandex), under
 CC-BY-SA-3.0: https://creativecommons.org/licenses/by-sa/3.0/

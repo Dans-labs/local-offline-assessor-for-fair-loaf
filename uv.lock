@@ -383,11 +383,11 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-socket" },
+    { name = "pyyaml" },
     { name = "ruff" },
 ]
 release = [
     { name = "cffconvert" },
-    { name = "pyyaml" },
     { name = "twine" },
 ]
 
@@ -404,11 +404,11 @@ dev = [
     { name = "mypy", specifier = ">=1.15" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-socket", specifier = ">=0.7" },
+    { name = "pyyaml", specifier = ">=6" },
     { name = "ruff", specifier = ">=0.12" },
 ]
 release = [
     { name = "cffconvert", specifier = ">=2" },
-    { name = "pyyaml", specifier = ">=6" },
     { name = "twine", specifier = ">=6" },
 ]
 

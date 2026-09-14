@@ -1,0 +1,21 @@
+{
+  "version": "3.5.1",
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/pangaea-data-publisher/fuji",
+    "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+    "version": "3.5.1",
+    "metric_version": "0.8"
+  },
+  "files": [
+    {
+      "id": "fuji:metrics",
+      "path": "metrics_v0.8.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/yaml/metrics_v0.8.yaml"
+      }
+    }
+  ]
+}

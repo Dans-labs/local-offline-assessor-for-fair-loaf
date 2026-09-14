@@ -1,20 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
+from fair_offline_assessor import load_profile
 from fair_offline_assessor.models import AssessmentResult, Score
 
 
 def result_data():
     return {
-        "profile": {
-            "id": "example:metadata",
-            "version": "1.0.0",
-            "title": "Metadata checks",
-            "adapter": "example",
-            "adapter_version": "1.0.0",
-            "engine_requires": ">=0.1,<0.2",
-            "digest": "0" * 64,
-        },
+        "profile": load_profile("fusji-offline@3.5.1").info.model_dump(),
         "provenance": {
             "engine_version": "0.1.0",
             "processor_version": "3.3",
