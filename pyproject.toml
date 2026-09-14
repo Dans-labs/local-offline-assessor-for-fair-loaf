@@ -40,7 +40,19 @@ addopts = "--disable-socket"
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+select = ["ALL"]
+ignore = [
+    # Ruff formatter conflicts.
+    "COM812", "COM819", "D203", "D206", "D300",
+    "E111", "E114", "E117", "Q000", "Q001", "Q002", "Q003", "Q004", "W191",
+    "D213",  # Use first-line docstring summaries (D212).
+    "D100", "D101", "D104", "D106",  # Require docstrings on functions and methods.
+    "CPY001",  # Attribution lives in LICENSE and NOTICE.
+    "EM101", "EM102", "TRY003",  # Keep validation messages inline.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "D1", "INP001", "PLR2004", "S101"]
 
 [tool.mypy]
 python_version = "3.12"
