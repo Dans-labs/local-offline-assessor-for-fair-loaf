@@ -1,0 +1,119 @@
+{
+  "version": "4.7",
+  "license": "CC-BY-4.0",
+  "source": {
+    "repository": "https://github.com/datacite/schema",
+    "commit": "591a9cc86eb7989782dde1b49bbc6f5531b71f34"
+  },
+  "files": [
+    {
+      "id": "datacite:include/datacite-contributorType-v4.xsd",
+      "path": "include/datacite-contributorType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-contributorType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-dateType-v4.xsd",
+      "path": "include/datacite-dateType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-dateType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-descriptionType-v4.xsd",
+      "path": "include/datacite-descriptionType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-descriptionType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-funderIdentifierType-v4.xsd",
+      "path": "include/datacite-funderIdentifierType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-funderIdentifierType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-nameType-v4.xsd",
+      "path": "include/datacite-nameType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-nameType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-numberType-v4.xsd",
+      "path": "include/datacite-numberType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-numberType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-relatedIdentifierType-v4.xsd",
+      "path": "include/datacite-relatedIdentifierType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-relatedIdentifierType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-relationType-v4.xsd",
+      "path": "include/datacite-relationType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-relationType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-resourceType-v4.xsd",
+      "path": "include/datacite-resourceType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-resourceType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/datacite-titleType-v4.xsd",
+      "path": "include/datacite-titleType-v4.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/datacite-titleType-v4.xsd"
+      }
+    },
+    {
+      "id": "datacite:include/xml.xsd",
+      "path": "include/xml.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/include/xml.xsd"
+      },
+      "license": "LicenseRef-W3C-2023"
+    },
+    {
+      "id": "datacite:metadata.xsd",
+      "path": "metadata.xsd",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "path": "source/meta/kernel-4.7/metadata.xsd"
+      }
+    }
+  ]
+}

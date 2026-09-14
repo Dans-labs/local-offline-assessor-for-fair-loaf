@@ -7,5 +7,20 @@ Includes the unmodified Schema.org 30.0 JSON-LD context, by the Schema.org
 contributors and sponsors (Google, Microsoft, Yahoo and Yandex), under
 CC-BY-SA-3.0: https://creativecommons.org/licenses/by-sa/3.0/
 Source: https://schema.org/version/30.0/
-The source commit is recorded in the bundle manifest; checksums are generated
-in resources/resources.json.
+
+Includes unmodified reference files for:
+- DCAT 3, by the W3C Dataset Exchange Working Group, under CC-BY-4.0.
+  https://www.w3.org/TR/vocab-dcat-3/
+- Dublin Core terms, elements and types, by the Dublin Core Metadata Initiative,
+  under CC-BY-4.0. https://www.dublincore.org/specifications/dublin-core/dcmi-terms/
+- DataCite Metadata Schema 4.7, by the DataCite Metadata Working Group,
+  under CC-BY-4.0. https://schema.datacite.org/meta/kernel-4.7/
+CC-BY-4.0: https://creativecommons.org/licenses/by/4.0/
+
+DataCite's include/xml.xsd is the W3C XML namespace schema.
+Copyright 2009 W3C (World Wide Web Consortium).
+https://www.w3.org/2009/01/xml.xsd
+Its software and document license is included in LICENSES/W3C-2023.txt.
+
+Source URLs, available Git commits and checksums are recorded in
+the manifest.json beside each resource bundle. Upstream files retain their original bytes.

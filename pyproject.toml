@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Offline FAIR assessment using versioned metric profiles"
 readme = "README.md"
 requires-python = ">=3.12"
-license = "Apache-2.0 AND CC-BY-SA-3.0"
-license-files = ["LICENSE", "NOTICE"]
+license = "Apache-2.0 AND CC-BY-SA-3.0 AND CC-BY-4.0 AND LicenseRef-W3C-2023"
+license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
 authors = [
     { name = "Data Archiving and Networked Services (DANS)" },
     { name = "Laurens Tobias", email = "laurens.tobias@dans.knaw.nl" },
@@ -26,7 +26,7 @@ classifiers = [
 dependencies = ["packaging>=25", "pydantic>=2.12,<3", "PyLD>=3.3,<4"]
 
 [dependency-groups]
-dev = ["mypy>=1.15", "pytest>=8", "pytest-socket>=0.7", "ruff>=0.12"]
+dev = ["lxml>=6", "mypy>=1.15", "pytest>=8", "pytest-socket>=0.7", "ruff>=0.12"]
 release = ["twine>=6", "cffconvert>=2", "PyYAML>=6"]
 
 [tool.uv.build-backend]

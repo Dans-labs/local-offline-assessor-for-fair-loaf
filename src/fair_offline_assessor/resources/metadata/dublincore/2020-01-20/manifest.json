@@ -1,0 +1,34 @@
+{
+  "version": "2020-01-20",
+  "license": "CC-BY-4.0",
+  "source": {},
+  "files": [
+    {
+      "id": "dublincore:terms",
+      "path": "dublin_core_terms.rdf",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "url": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_terms.rdf"
+      }
+    },
+    {
+      "id": "dublincore:elements",
+      "path": "dublin_core_elements.rdf",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "url": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_elements.rdf"
+      }
+    },
+    {
+      "id": "dublincore:types",
+      "path": "dublin_core_type.rdf",
+      "kind": "reference",
+      "format": "xml",
+      "source": {
+        "url": "https://www.dublincore.org/specifications/dublin-core/dcmi-terms/dublin_core_type.rdf"
+      }
+    }
+  ]
+}

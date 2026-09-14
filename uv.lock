@@ -379,6 +379,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "lxml" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-socket" },
@@ -399,6 +400,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "lxml", specifier = ">=6" },
     { name = "mypy", specifier = ">=1.15" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-socket", specifier = ">=0.7" },
