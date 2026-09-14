@@ -1,0 +1,554 @@
+{
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MaturityLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "metric": {
+          "minLength": 1,
+          "title": "Metric",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "indeterminate",
+            "not_applicable",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "reason_code": {
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Score"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "outcome",
+        "metric",
+        "reason_code",
+        "message"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "errors": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Errors",
+          "type": "integer"
+        },
+        "evaluated": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Evaluated",
+          "type": "integer"
+        },
+        "indeterminate": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Indeterminate",
+          "type": "integer"
+        },
+        "not_applicable": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Not Applicable",
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Diagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "Diagnostic",
+      "type": "object"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Captured At"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "resource": {
+          "title": "Resource",
+          "type": "string"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject"
+        }
+      },
+      "required": [
+        "resource",
+        "digest",
+        "location"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "MaturityLevel": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "scheme": {
+          "minLength": 1,
+          "title": "Scheme",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "title": "MaturityLevel",
+      "type": "object"
+    },
+    "MetricResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MaturityLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outcome": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "indeterminate",
+            "not_applicable",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "principles": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Principles",
+          "type": "array"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Score"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "outcome",
+        "principles"
+      ],
+      "title": "MetricResult",
+      "type": "object"
+    },
+    "ProfileInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "title": "Adapter",
+          "type": "string"
+        },
+        "adapter_version": {
+          "title": "Adapter Version",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "engine_requires": {
+          "minLength": 1,
+          "title": "Engine Requires",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "title",
+        "adapter",
+        "engine_requires",
+        "adapter_version",
+        "digest"
+      ],
+      "title": "ProfileInfo",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "captures": {
+          "additionalProperties": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": "Captures",
+          "type": "object"
+        },
+        "engine_version": {
+          "title": "Engine Version",
+          "type": "string"
+        },
+        "input_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Input Digest",
+          "type": "string"
+        },
+        "processor_version": {
+          "title": "Processor Version",
+          "type": "string"
+        },
+        "resources": {
+          "items": {
+            "$ref": "#/$defs/ResourceRef"
+          },
+          "title": "Resources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "engine_version",
+        "processor_version",
+        "input_digest",
+        "resources"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "ResourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "format": {
+          "default": "json",
+          "enum": [
+            "json",
+            "xml",
+            "yaml"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "context",
+            "mapping",
+            "reference"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "kind",
+        "digest"
+      ],
+      "title": "ResourceRef",
+      "type": "object"
+    },
+    "Score": {
+      "additionalProperties": false,
+      "properties": {
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "maximum": {
+          "minimum": 0,
+          "title": "Maximum",
+          "type": "number"
+        },
+        "observed_earned": {
+          "minimum": 0,
+          "title": "Observed Earned",
+          "type": "number"
+        },
+        "percent": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Percent"
+        }
+      },
+      "required": [
+        "observed_earned",
+        "maximum",
+        "complete"
+      ],
+      "title": "Score",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "diagnostics": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricResult"
+      },
+      "title": "Metrics",
+      "type": "array"
+    },
+    "overall_score": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Score"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "principle_scores": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Score"
+      },
+      "propertyNames": {
+        "enum": [
+          "F",
+          "A",
+          "I",
+          "R"
+        ]
+      },
+      "title": "Principle Scores",
+      "type": "object"
+    },
+    "profile": {
+      "$ref": "#/$defs/ProfileInfo"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "status": {
+      "default": "completed",
+      "enum": [
+        "completed",
+        "completed_with_errors"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "title": "Tests",
+      "type": "array"
+    }
+  },
+  "required": [
+    "profile",
+    "provenance",
+    "tests",
+    "metrics"
+  ],
+  "title": "AssessmentResult",
+  "type": "object"
+}

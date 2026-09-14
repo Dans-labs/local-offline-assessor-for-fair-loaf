@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "ResourceSelection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "ResourceSelection",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "adapter": {
+      "pattern": "^[a-z][a-z0-9._-]*$",
+      "title": "Adapter",
+      "type": "string"
+    },
+    "adapter_version": {
+      "title": "Adapter Version",
+      "type": "string"
+    },
+    "engine_requires": {
+      "minLength": 1,
+      "title": "Engine Requires",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "limitations": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/ResourceSelection"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "title",
+    "adapter",
+    "engine_requires",
+    "adapter_version",
+    "schema_version",
+    "resources"
+  ],
+  "title": "Profile",
+  "type": "object"
+}

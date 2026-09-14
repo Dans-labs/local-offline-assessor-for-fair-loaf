@@ -2,9 +2,26 @@ import json
 from hashlib import sha256
 from importlib.resources import as_file, files
 
+import pytest
 from lxml import etree
 from pyld import jsonld
 from pyld.documentloader.frozen import FrozenDocumentLoader
+
+from fair_offline_assessor.models import AssessmentResult, Profile
+
+
+@pytest.mark.parametrize(
+    ("name", "model", "mode"),
+    [("profile", Profile, "validation"), ("result", AssessmentResult, "serialization")],
+)
+def test_bundled_schemas_match_current_models(name, model, mode):
+    path = files("fair_offline_assessor").joinpath(
+        "resources", "schemas", f"{name}-v1.json"
+    )
+    assert path.is_file(), f"Missing bundled schema: {name}"
+    schema = json.loads(path.read_bytes())
+    assert schema.pop("$schema") == "https://json-schema.org/draft/2020-12/schema"
+    assert schema == model.model_json_schema(mode=mode)
 
 
 def read_resources():
