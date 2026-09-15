@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import cast
 
 from pydantic import JsonValue
@@ -12,6 +13,12 @@ from fair_offline_assessor.models import (
     ProfileError,
 )
 from fair_offline_assessor.profiles import LoadedProfile
+
+
+@dataclass(frozen=True)
+class SelectedDataset:
+    node: dict[str, JsonValue]
+    graph: list[dict[str, JsonValue]]
 
 
 def _context_loader(
@@ -89,3 +96,63 @@ def expand_metadata(
         raise InputError(
             "invalid_jsonld", f"Invalid JSON-LD metadata: {exc.code}"
         ) from exc
+
+
+def select_dataset(request: AssessmentInput, profile: LoadedProfile) -> SelectedDataset:
+    """Select the requested subject or the sole Schema.org Dataset and its graph."""
+    expanded = expand_metadata(request, profile)
+    loader = FrozenDocumentLoader(documents={})
+    issuer = jsonld.IdentifierIssuer("_:b")
+    try:
+        nodes = cast(
+            "list[dict[str, JsonValue]]",
+            jsonld.flatten(
+                expanded,
+                options={
+                    "documentLoader": loader,
+                    "contextResolver": ContextResolver({}, loader),
+                    "identifierIssuer": issuer,
+                },
+            ),
+        )
+    except jsonld.JsonLdError as exc:
+        raise InputError("invalid_jsonld", "Cannot combine JSON-LD records") from exc
+
+    subject = request.subject
+    if subject is not None and subject.startswith("_:"):
+        # Flattening renames blank nodes; match the caller's original label.
+        subject = issuer.existing.get(subject, "")
+    graphs = [
+        nodes,
+        *(
+            cast("list[dict[str, JsonValue]]", n["@graph"])
+            for n in nodes
+            if "@graph" in n
+        ),
+    ]
+    matches = [
+        SelectedDataset(node, graph)
+        for graph in graphs
+        for node in graph
+        if (
+            node.get("@id") == subject
+            if subject is not None
+            else any(
+                kind in ("http://schema.org/Dataset", "https://schema.org/Dataset")
+                for kind in cast("list[str]", node.get("@type", []))
+            )
+        )
+    ]
+    if not matches:
+        if subject is not None:
+            raise InputError(
+                "subject_not_found", f"Subject not found: {request.subject}"
+            )
+        raise InputError(
+            "dataset_not_found", "No Schema.org Dataset found; supply subject"
+        )
+    if len(matches) > 1:
+        if subject is not None:
+            raise InputError("ambiguous_subject", "Subject occurs in multiple graphs")
+        raise InputError("ambiguous_dataset", "Multiple datasets found; supply subject")
+    return matches[0]
