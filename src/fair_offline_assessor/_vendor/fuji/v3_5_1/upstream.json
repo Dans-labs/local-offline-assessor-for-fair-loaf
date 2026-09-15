@@ -1,0 +1,40 @@
+{
+  "repository": "https://github.com/pangaea-data-publisher/fuji",
+  "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+  "version": "3.5.1",
+  "license": "MIT",
+  "files": [
+    {
+      "path": "fuji_server/evaluators/fair_evaluator.py",
+      "sha256": "b3c30d022e911f5047f7b6bbe19855803406dbae5289ecb27d016bf84e21e078"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_minimal_metadata.py",
+      "sha256": "e005192b83c319c981eee9d5dec410a20d5f0a037ba9a49fa6a3e46f48237a2e"
+    },
+    {
+      "path": "fuji_server/helper/metadata_mapper.py",
+      "sha256": "4eef3e4aabce658097aaae3e76d8538a4f109f453cb3a2ee316b889f5e5d3156"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector.py",
+      "sha256": "11a53029fdbb295898ef6d697e0c2f2c97d7b849324cdf7b441442c3f98d4c35"
+    },
+    {
+      "path": "fuji_server/models/core_metadata.py",
+      "sha256": "e589aaa45883046473bcaa16d71584da414d582a06af4380412477955c632d32"
+    },
+    {
+      "path": "fuji_server/models/core_metadata_output.py",
+      "sha256": "9e7c3bac3e865f1733376ad2324324723ed2286588afe5069c3b116582e00c83"
+    },
+    {
+      "path": "fuji_server/models/fair_result_common_score.py",
+      "sha256": "594826ba09542d68d5ef48dc5aaa95a81e075ea0fb1134ae2ec9ad97037d623f"
+    },
+    {
+      "path": "fuji_server/models/fair_result_evaluation_criterium.py",
+      "sha256": "924ebbce6ad68d8e975a3c96c8b2cb4a1ba92ab412f37d79f6c67f526f170430"
+    }
+  ]
+}

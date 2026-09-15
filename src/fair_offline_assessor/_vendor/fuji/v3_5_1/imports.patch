@@ -1,0 +1,34 @@
+--- a/evaluators/fair_evaluator.py
++++ b/evaluators/fair_evaluator.py
+@@ -2,9 +2,9 @@
+ #
+ # SPDX-License-Identifier: MIT
+ 
+-from fuji_server.helper.metadata_mapper import Mapper
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from .constants import Mapper
++from .models import FAIRResultCommonScore
++from .models import FAIRResultEvaluationCriterium
+ 
+ 
+ class FAIREvaluator:
+--- a/evaluators/fair_evaluator_minimal_metadata.py
++++ b/evaluators/fair_evaluator_minimal_metadata.py
+@@ -2,11 +2,11 @@
+ #
+ # SPDX-License-Identifier: MIT
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.helper.metadata_collector import MetadataOfferingMethods
+-from fuji_server.helper.metadata_mapper import Mapper
+-from fuji_server.models.core_metadata import CoreMetadata
+-from fuji_server.models.core_metadata_output import CoreMetadataOutput
++from .fair_evaluator import FAIREvaluator
++from .constants import MetadataOfferingMethods
++from .constants import Mapper
++from .models import CoreMetadata
++from .models import CoreMetadataOutput
+ 
+ 
+ class FAIREvaluatorCoreMetadata(FAIREvaluator):

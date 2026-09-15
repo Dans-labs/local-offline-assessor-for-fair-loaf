@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ["packaging>=25", "pydantic>=2.12,<3", "PyLD>=3.3,<4"]
+dependencies = ["packaging>=25", "pydantic>=2.12,<3", "PyLD>=3.3,<4", "PyYAML>=6"]
 
 [dependency-groups]
 dev = [
@@ -31,8 +31,8 @@ dev = [
     "mypy>=1.15",
     "pytest>=8",
     "pytest-socket>=0.7",
-    "pyyaml>=6",
     "ruff>=0.12",
+    "types-PyYAML>=6",
 ]
 release = [
     "twine>=6",
@@ -48,6 +48,11 @@ addopts = "--disable-socket"
 
 [tool.ruff]
 target-version = "py312"
+# Preserve copied upstream code; maintained integration code remains checked.
+extend-exclude = [
+    "src/fair_offline_assessor/_vendor/fuji/v3_5_1/fair_evaluator*.py",
+    "src/fair_offline_assessor/_vendor/fuji/v3_5_1/constants.py",
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -67,3 +72,11 @@ ignore = [
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fair_offline_assessor._vendor.fuji.v3_5_1.fair_evaluator",
+    "fair_offline_assessor._vendor.fuji.v3_5_1.fair_evaluator_minimal_metadata",
+    "fair_offline_assessor._vendor.fuji.v3_5_1.constants",
+]
+ignore_errors = true
