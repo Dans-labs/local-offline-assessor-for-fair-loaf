@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: MIT
 
-from .constants import Mapper
-from .models import FAIRResultCommonScore
-from .models import FAIRResultEvaluationCriterium
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
 
 
 class FAIREvaluator:

@@ -9,7 +9,7 @@ to that directory; run commands from the repository root.
 Using F-UJI as the example:
 
 1. Copy its metric YAML into `assessors/fuji/<version>/` without editing it.
-   The bundle manifest records the upstream source and file path.
+   The [F-UJI guide](../fuji/README.md) gives the source archive and YAML location.
    Shared references such as Schema.org and DCAT go under `metadata/`.
 2. Add a `manifest.json` beside the files. Record their names, source commit or
    URL, source paths, version and licence. The [F-UJI manifest](../../src/fair_offline_assessor/resources/assessors/fuji/3.5.1/manifest.json)

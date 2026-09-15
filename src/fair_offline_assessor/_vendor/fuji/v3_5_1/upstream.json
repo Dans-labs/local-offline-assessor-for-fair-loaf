@@ -2,8 +2,31 @@
   "repository": "https://github.com/pangaea-data-publisher/fuji",
   "commit": "9227fabb7f047475714f2e7622798b855c883f72",
   "version": "3.5.1",
+  "archive_sha256": "d2800516af15ab42ba0e701d3abc448b8b70db0b6ccc46cb785f866cd7bca249",
+  "evaluators": [
+    "fair_evaluator_minimal_metadata",
+    "fair_evaluator_retrievable_metadata_data"
+  ],
   "license": "MIT",
+  "constants": {
+    "helper.metadata_mapper": [
+      "Mapper",
+      [
+        "MATURITY_LEVELS",
+        "REFERENCE_METADATA_LIST",
+        "REQUIRED_CORE_METADATA"
+      ]
+    ],
+    "helper.metadata_collector": [
+      "MetadataOfferingMethods",
+      []
+    ]
+  },
   "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "48c5dc0f1fe16e18f43930ebf797d556320a929a0c8ae4c6d8dac72e7b3b5a73"
+    },
     {
       "path": "fuji_server/evaluators/fair_evaluator.py",
       "sha256": "b3c30d022e911f5047f7b6bbe19855803406dbae5289ecb27d016bf84e21e078"
@@ -13,12 +36,20 @@
       "sha256": "e005192b83c319c981eee9d5dec410a20d5f0a037ba9a49fa6a3e46f48237a2e"
     },
     {
-      "path": "fuji_server/helper/metadata_mapper.py",
-      "sha256": "4eef3e4aabce658097aaae3e76d8538a4f109f453cb3a2ee316b889f5e5d3156"
+      "path": "fuji_server/evaluators/fair_evaluator_retrievable_metadata_data.py",
+      "sha256": "69ca0b0870883e72a5d708e24396dd0651e2c2f2acde47d060aac27821fed335"
     },
     {
       "path": "fuji_server/helper/metadata_collector.py",
       "sha256": "11a53029fdbb295898ef6d697e0c2f2c97d7b849324cdf7b441442c3f98d4c35"
+    },
+    {
+      "path": "fuji_server/helper/metadata_mapper.py",
+      "sha256": "4eef3e4aabce658097aaae3e76d8538a4f109f453cb3a2ee316b889f5e5d3156"
+    },
+    {
+      "path": "fuji_server/models/base_model_.py",
+      "sha256": "f5069146126f499990140c274adaed20bea01111dc1ce06edc73356fb82391f1"
     },
     {
       "path": "fuji_server/models/core_metadata.py",
@@ -29,12 +60,40 @@
       "sha256": "9e7c3bac3e865f1733376ad2324324723ed2286588afe5069c3b116582e00c83"
     },
     {
+      "path": "fuji_server/models/debug.py",
+      "sha256": "606c63eeb75820155bbdff37d99914012cb85264706e11adef93bf1d65852a1d"
+    },
+    {
+      "path": "fuji_server/models/fair_result_common.py",
+      "sha256": "c4b21a3ff45885dd1f05fc9533a7bc904ddfe2629fef99416958943462aa19fa"
+    },
+    {
       "path": "fuji_server/models/fair_result_common_score.py",
       "sha256": "594826ba09542d68d5ef48dc5aaa95a81e075ea0fb1134ae2ec9ad97037d623f"
     },
     {
       "path": "fuji_server/models/fair_result_evaluation_criterium.py",
       "sha256": "924ebbce6ad68d8e975a3c96c8b2cb4a1ba92ab412f37d79f6c67f526f170430"
+    },
+    {
+      "path": "fuji_server/models/output_core_metadata_found.py",
+      "sha256": "882aae5c7f2d13f9b3f85b0119d91fa66d7a8b8fdfdd7c8d717113b34ff2b546"
+    },
+    {
+      "path": "fuji_server/models/retrievable.py",
+      "sha256": "76645c24de69c4a8a6e80f620fbb4f721a284c38dd17deb9861436d44b6934a7"
+    },
+    {
+      "path": "fuji_server/models/retrievable_output.py",
+      "sha256": "4f6730f3d1a639f08f87990460db7326c7bea2e90dd84e3afdbc2992bc313d86"
+    },
+    {
+      "path": "fuji_server/models/retrievable_output_inner.py",
+      "sha256": "dcdc63d4f48a8e6961227837c43d45e3b0de420d9a76fea3b11582a34323be9b"
+    },
+    {
+      "path": "fuji_server/util.py",
+      "sha256": "c9eeed78bf99cd7125d81bed39705e57046635f407442e8cbc391fb816e0dce9"
     }
   ]
 }

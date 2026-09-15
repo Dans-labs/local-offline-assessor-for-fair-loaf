@@ -8,8 +8,8 @@ from typing import cast
 import yaml
 from pydantic import JsonValue
 
-from fair_offline_assessor._vendor.fuji.v3_5_1.fair_evaluator_minimal_metadata import (
-    FAIREvaluatorCoreMetadata,
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_minimal_metadata as core_metadata,
 )
 from fair_offline_assessor.models import ProfileError
 
@@ -49,5 +49,5 @@ def evaluate_core_metadata(
         metadata_sources=[],
         landing_url=None,
     )
-    evaluator = FAIREvaluatorCoreMetadata(context)  # type: ignore[no-untyped-call]
+    evaluator = core_metadata.FAIREvaluatorCoreMetadata(context)  # type: ignore[no-untyped-call]
     return cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]

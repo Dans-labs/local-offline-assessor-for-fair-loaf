@@ -23,4 +23,5 @@ uv run python scripts/resources/prepare_resources.py --check
 
 Update instructions are kept with the tools:
 
+- [F-UJI source code](scripts/fuji/README.md)
 - [Profiles, reference files and JSON Schemas](scripts/resources/README.md)

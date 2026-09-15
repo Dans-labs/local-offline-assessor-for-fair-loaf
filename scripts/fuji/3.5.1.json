@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/pangaea-data-publisher/fuji",
+  "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+  "version": "3.5.1",
+  "archive_sha256": "d2800516af15ab42ba0e701d3abc448b8b70db0b6ccc46cb785f866cd7bca249",
+  "evaluators": [
+    "fair_evaluator_minimal_metadata",
+    "fair_evaluator_retrievable_metadata_data"
+  ]
+}

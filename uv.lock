@@ -376,6 +376,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "pyld" },
     { name = "pyyaml" },
+    { name = "six" },
 ]
 
 [package.dev-dependencies]
@@ -398,6 +399,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12,<3" },
     { name = "pyld", specifier = ">=3.3,<4" },
     { name = "pyyaml", specifier = ">=6" },
+    { name = "six", specifier = ">=1.17" },
 ]
 
 [package.metadata.requires-dev]

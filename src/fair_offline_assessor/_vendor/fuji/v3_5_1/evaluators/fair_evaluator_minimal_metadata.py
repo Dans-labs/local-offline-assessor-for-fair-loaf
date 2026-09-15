@@ -2,11 +2,11 @@
 #
 # SPDX-License-Identifier: MIT
 
-from .fair_evaluator import FAIREvaluator
-from .constants import MetadataOfferingMethods
-from .constants import Mapper
-from .models import CoreMetadata
-from .models import CoreMetadataOutput
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_collector import MetadataOfferingMethods
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
+from fair_offline_assessor._vendor.fuji.v3_5_1.models.core_metadata import CoreMetadata
+from fair_offline_assessor._vendor.fuji.v3_5_1.models.core_metadata_output import CoreMetadataOutput
 
 
 class FAIREvaluatorCoreMetadata(FAIREvaluator):
