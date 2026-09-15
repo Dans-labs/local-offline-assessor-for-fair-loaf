@@ -1,13 +1,14 @@
 # ruff: noqa: INP001
 import argparse
 import ast
-import io
 import json
+import os
 import re
-import tarfile
+import subprocess
 from difflib import unified_diff
 from hashlib import sha256
 from pathlib import Path
+from shutil import which
 from tempfile import TemporaryDirectory
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,8 +28,27 @@ class Recipe(BaseModel):
     repository: str
     commit: str = Field(pattern=r"^[0-9a-f]{40}$")
     version: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
-    archive_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     evaluators: tuple[str, ...] = Field(min_length=1)
+
+
+def git(repository: Path, *arguments: str) -> bytes:
+    """Run Git without interactive prompts."""
+    executable = which("git")
+    if executable is None:
+        raise ValueError("Git is required to prepare F-UJI")
+    try:
+        return subprocess.run(  # noqa: S603
+            [executable, "-C", str(repository), *arguments],
+            check=True,
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            timeout=60,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        ).stdout
+    except subprocess.CalledProcessError as exc:
+        raise ValueError(
+            f"Git failed: {exc.stderr.decode(errors='replace').strip()}"
+        ) from exc
 
 
 def constants(source: str, module: str) -> str:
@@ -97,10 +117,8 @@ def dependencies(source: str) -> set[str]:
     return internal
 
 
-def generate(archive: bytes, recipe: Recipe) -> dict[str, bytes]:
-    """Build isolated modules and provenance from an exact upstream archive."""
-    if sha256(archive).hexdigest() != recipe.archive_sha256:
-        raise ValueError("Upstream archive digest differs from the recipe")
+def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
+    """Copy selected modules from the pinned Git commit."""
     namespace = "fair_offline_assessor._vendor.fuji.v" + recipe.version.replace(
         ".", "_"
     )
@@ -110,49 +128,44 @@ def generate(archive: bytes, recipe: Recipe) -> dict[str, bytes]:
     pending = {"evaluators." + name for name in recipe.evaluators}
     reviewed = pending | {"evaluators.fair_evaluator", "util"} | _CONSTANTS.keys()
     seen: set[str] = set()
-    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as bundle:
-        members = {member.name.partition("/")[2]: member for member in bundle}
 
-        def read(path: str) -> bytes:
-            """Read source bytes without extracting archive paths or links."""
-            member = members.get(path)
-            if member is None or not member.isfile():
-                raise ValueError(f"Missing upstream file: {path}")
-            stream = bundle.extractfile(member)
-            if stream is None:
-                raise ValueError(f"Unreadable upstream file: {path}")
-            content = stream.read()
-            records.append({"path": path, "sha256": sha256(content).hexdigest()})
-            return content
+    def read(path: str) -> bytes:
+        """Read a committed regular file without checkout filters or local edits."""
+        entry = git(repository, "ls-tree", recipe.commit, "--", path)
+        if entry.split(b" ", 1)[0] not in {b"100644", b"100755"}:
+            raise ValueError(f"Missing upstream file: {path}")
+        content = git(repository, "cat-file", "blob", f"{recipe.commit}:{path}")
+        records.append({"path": path, "sha256": sha256(content).hexdigest()})
+        return content
 
-        read("LICENSE")
-        while pending:
-            module = min(pending)
-            pending.remove(module)
-            if module in seen:
-                continue
-            if module not in reviewed and not re.fullmatch(r"models\.[a-z_]+", module):
-                raise ValueError(f"Unreviewed F-UJI dependency: {module}")
-            seen.add(module)
-            path = module.replace(".", "/") + ".py"
-            original = read("fuji_server/" + path).decode("utf-8")
-            source = constants(original, module) if module in _CONSTANTS else original
-            pending.update(dependencies(source) - seen)
-            rewritten = re.sub(
-                r"(?m)^(\s*from )fuji_server(?=[. ])", r"\g<1>" + namespace, source
+    read("LICENSE")
+    while pending:
+        module = min(pending)
+        pending.remove(module)
+        if module in seen:
+            continue
+        if module not in reviewed and not re.fullmatch(r"models\.[a-z_]+", module):
+            raise ValueError(f"Unreviewed F-UJI dependency: {module}")
+        seen.add(module)
+        path = module.replace(".", "/") + ".py"
+        original = read("fuji_server/" + path).decode("utf-8")
+        source = constants(original, module) if module in _CONSTANTS else original
+        pending.update(dependencies(source) - seen)
+        rewritten = re.sub(
+            r"(?m)^(\s*from )fuji_server(?=[. ])", r"\g<1>" + namespace, source
+        )
+        compile(rewritten, path, "exec")
+        outputs[path] = rewritten.encode()
+        for parent in Path(path).parents:
+            outputs[(parent / "__init__.py").as_posix()] = b""
+        patches.extend(
+            unified_diff(
+                source.splitlines(keepends=True),
+                rewritten.splitlines(keepends=True),
+                fromfile="a/fuji_server/" + path,
+                tofile="b/" + path,
             )
-            compile(rewritten, path, "exec")
-            outputs[path] = rewritten.encode()
-            for parent in Path(path).parents:
-                outputs[(parent / "__init__.py").as_posix()] = b""
-            patches.extend(
-                unified_diff(
-                    source.splitlines(keepends=True),
-                    rewritten.splitlines(keepends=True),
-                    fromfile="a/fuji_server/" + path,
-                    tofile="b/" + path,
-                )
-            )
+        )
     outputs["imports.patch"] = "".join(patches).encode()
     provenance = recipe.model_dump(mode="json") | {
         "license": "MIT",
@@ -164,13 +177,36 @@ def generate(archive: bytes, recipe: Recipe) -> dict[str, bytes]:
 
 
 def prepare(
-    archive: Path, target: Path, declaration: dict[str, object], *, check: bool = False
+    target: Path,
+    declaration: dict[str, object],
+    *,
+    check: bool = False,
+    source: Path | None = None,
 ) -> None:
-    """Validate and stage generated files before replacing this version's directory."""
+    """Fetch the pinned commit and prepare its files before replacing this version."""
     recipe = Recipe.model_validate(declaration)
     if target.name != "v" + recipe.version.replace(".", "_") or target.is_symlink():
         raise ValueError("Target must be the matching version directory")
-    outputs = generate(archive.read_bytes(), recipe)
+    with TemporaryDirectory(prefix="fuji-source-") as temporary:
+        repository = Path(temporary)
+        git(repository, "init", "--bare", "--quiet")
+        git(
+            repository,
+            "fetch",
+            "--quiet",
+            "--depth=1",
+            "--no-tags",
+            "--no-recurse-submodules",
+            "--",
+            str(source.resolve()) if source is not None else recipe.repository,
+            recipe.commit,
+        )
+        if (
+            git(repository, "rev-parse", "FETCH_HEAD^{commit}").decode().strip()
+            != recipe.commit
+        ):
+            raise ValueError("Fetched Git commit differs from the recipe")
+        outputs = generate(repository, recipe)
     if check:
         current = {
             path.relative_to(target).as_posix(): path.read_bytes()
@@ -204,9 +240,9 @@ def prepare(
 
 
 def main() -> None:
-    """Prepare F-UJI from a local, pinned archive; never download or activate it."""
+    """Fetch and prepare the F-UJI version selected by a recipe."""
     parser = argparse.ArgumentParser(description="Prepare selected F-UJI evaluators.")
-    parser.add_argument("archive", type=Path, help="Pinned upstream tar.gz archive")
+    parser.add_argument("--source", type=Path, help="Use a local Git repository")
     parser.add_argument(
         "--recipe", type=Path, default=Path(__file__).with_name("3.5.1.json")
     )
@@ -220,12 +256,12 @@ def main() -> None:
             / "src/fair_offline_assessor/_vendor/fuji"
         )
         prepare(
-            arguments.archive,
             root / ("v" + recipe.version.replace(".", "_")),
             declaration,
             check=arguments.check,
+            source=arguments.source,
         )
-    except (OSError, ValueError, tarfile.TarError, SyntaxError) as exc:
+    except (OSError, ValueError, subprocess.TimeoutExpired, SyntaxError) as exc:
         parser.error(str(exc))
 
 
