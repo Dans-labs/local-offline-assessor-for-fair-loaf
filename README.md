@@ -22,15 +22,20 @@ request = AssessmentInput(
         "publisher": "Example Archive",
         "datePublished": "2026-01-01",
         "keywords": ["soil"],
+        "license": "https://creativecommons.org/licenses/by/4.0/",
     }
 )
 result = assess(request, profile="fusji-offline@3.5.1")
 print(result.model_dump_json(indent=2))
 ```
 
-Currently, only the two F2 core-metadata checks run. The other 29 checks are
-returned as `indeterminate`. Scores are available for F2; there is no overall score.
+Currently, the two F2 core-metadata checks and the R1.1 licence check run. The other
+28 checks are returned as `indeterminate`. There is no overall score.
 `result.coverage` reports how many checks ran. HTTP captures are not assessed yet.
+
+The licence check tests whether licence information is present; it does not require
+an SPDX-listed licence. Licence URLs are not fetched. For licence text in the
+Schema.org context, use `"license": {"@value": "Your licence terms"}`.
 
 A single Schema.org Dataset is selected automatically. Set `subject` to its
 expanded identifier when there are several. Supply additional context documents

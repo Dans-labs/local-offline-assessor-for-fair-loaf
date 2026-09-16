@@ -23,7 +23,15 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ["packaging>=25", "pydantic>=2.12,<3", "PyLD>=3.3,<4", "PyYAML>=6", "six>=1.17"]
+dependencies = [
+    "idutils~=1.2",
+    "levenshtein>=0.27,<0.28",
+    "packaging>=25",
+    "pydantic>=2.12,<3",
+    "PyLD>=3.3,<4",
+    "PyYAML>=6",
+    "six>=1.17",
+]
 
 [dependency-groups]
 dev = [

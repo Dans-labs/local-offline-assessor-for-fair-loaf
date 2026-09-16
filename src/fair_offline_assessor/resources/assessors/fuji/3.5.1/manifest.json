@@ -16,6 +16,15 @@
       "source": {
         "path": "fuji_server/yaml/metrics_v0.8.yaml"
       }
+    },
+    {
+      "id": "fuji:licenses",
+      "path": "licenses.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/data/licenses.yaml"
+      }
     }
   ]
 }

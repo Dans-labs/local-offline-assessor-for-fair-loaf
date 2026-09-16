@@ -196,9 +196,34 @@ for status in (200, 404):
 assert not any(name.startswith('fuji_server') for name in sys.modules)
 result = assess(AssessmentInput(metadata={
     '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
-    'creator': {'@id': 'https://example.org/person'}
+    'creator': {'@id': 'https://example.org/person'},
+    'license': {'@id': 'https://example.org/custom-licence'}
 }), profile='fusji-offline@3.5.1')
 assert result.status == 'completed'
 assert not attempts
 """
     subprocess.run([sys.executable, "-c", script], check=True, timeout=10)  # noqa: S603
+
+
+@pytest.mark.parametrize(
+    ("value", "details"),
+    [
+        ("MIT License", "http://spdx.org/licenses/MIT.html"),
+        (
+            "https://spdx.org/licenses/Apache-2.0.html",
+            "http://spdx.org/licenses/Apache-2.0.html",
+        ),
+        ("Custom permission from the author", None),
+    ],
+)
+def test_licence_catalogue_keeps_native_lookup_without_changing_presence_score(
+    definitions, value, details
+):
+    result = _fuji.evaluate_license(
+        {"license": [value]},
+        definitions=definitions,
+        licenses=load_profile("fusji-offline@3.5.1").resources["fuji:licenses"],
+    )
+    assert result.native["score"] == {"earned": 1, "total": 1}
+    assert result.native["output"][0]["license"] == value
+    assert result.native["output"][0]["details_url"] == details

@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 2,
-        "indeterminate": 29,
+        "evaluated": 3,
+        "indeterminate": 28,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -79,6 +79,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     evaluated = {
         "FsF-F2-01M-2",
         "FsF-F2-01M-3",
+        "FsF-R1.1-01M-1",
     }
     assert {
         check.id for check in result.tests if check.outcome in {"pass", "fail"}
@@ -96,6 +97,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert result.profile == library.load_profile(PROFILE).info
     assert {ref.id for ref in result.provenance.resources} == {
         "fuji:metrics",
+        "fuji:licenses",
         "schemaorg:context",
     }
     assert (
@@ -133,7 +135,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
     assert title.digest != changed_citation.evidence[0].digest
 
 
-@pytest.mark.parametrize("problem", ["adapter", "definitions"])
+@pytest.mark.parametrize("problem", ["adapter", "definitions", "licenses"])
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
     bundle = base.load("fusji-offline", "3.5.1")
@@ -147,13 +149,14 @@ def test_configuration_is_checked_before_input(problem):
             update={"adapter_version": "2.0.0", "digest": sha256(content).hexdigest()}
         )
     else:
-        content = bundle.resources["fuji:metrics"] + b"\n"
+        resource = "fuji:licenses" if problem == "licenses" else "fuji:metrics"
+        content = bundle.resources[resource] + b"\n"
         bundle = replace(
             bundle,
-            resources={**bundle.resources, "fuji:metrics": content},
+            resources={**bundle.resources, resource: content},
             references=tuple(
                 ref.model_copy(update={"digest": sha256(content).hexdigest()})
-                if ref.id == "fuji:metrics"
+                if ref.id == resource
                 else ref
                 for ref in bundle.references
             ),
@@ -251,3 +254,49 @@ def test_unused_metadata_and_captures_are_reported(request_data):
         "captures_not_supported",
     }
     assert result.status == "completed"
+
+
+@pytest.mark.parametrize(
+    ("term", "value", "outcome"),
+    [
+        ("license", "https://creativecommons.org/licenses/by/4.0/", "pass"),
+        ("license", {"@value": "Use with written permission from the author."}, "pass"),
+        ("license", {"@id": "https://example.org/licence"}, "pass"),
+        ("license", {"url": "https://example.org/licence"}, "pass"),
+        ("http://purl.org/dc/terms/license", "MIT License", "pass"),
+        ("license", None, "fail"),
+        ("license", [{"@value": ""}, {"@value": "  "}, 0, False], "fail"),
+        ("license", {"@id": "_:unknown"}, "fail"),
+    ],
+)
+def test_licence_presence_uses_supplied_values_without_requiring_spdx(
+    request_data, term, value, outcome
+):
+    request_data.metadata[term] = value
+    original = request_data.model_copy(deep=True)
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(item for item in result.metrics if item.id == "FsF-R1.1-01M")
+    check = next(item for item in result.tests if item.metric == metric.id)
+    assert metric.outcome == check.outcome == outcome
+    assert metric.score == check.score
+    assert metric.score.observed_earned == (1 if outcome == "pass" else 0)
+    assert metric.score.maximum == 1
+    assert metric.score.complete
+    assert metric.level.value == (3 if outcome == "pass" else 0)
+    assert check.evidence or outcome == "fail"
+    assert all(
+        "license" in ref.location or "url" in ref.location for ref in check.evidence
+    )
+    core = next(item for item in result.tests if item.metric == "FsF-F2-01M")
+    assert all("license" not in ref.location for ref in core.evidence)
+    assert not result.diagnostics
+    assert request_data == original
+    empty = library.assess(
+        AssessmentInput(
+            metadata={"@context": "https://schema.org", "@type": "Dataset"}
+        ),
+        profile=PROFILE,
+    )
+    assert (
+        next(item for item in empty.metrics if item.id == metric.id).outcome == "fail"
+    )

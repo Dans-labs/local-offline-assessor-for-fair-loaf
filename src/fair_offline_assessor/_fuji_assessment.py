@@ -53,11 +53,11 @@ def _digest(value: object) -> str:
 
 
 def _evidence(
-    dataset: SelectedDataset, metadata: FujiMetadata
+    dataset: SelectedDataset, sources: dict[str, tuple[str, ...]]
 ) -> tuple[EvidenceRef, ...]:
     """Locate mapped values in the prepared graph, including linked records."""
     digest = _digest(dataset.graph)
-    paths = dict.fromkeys(path for paths in metadata.sources.values() for path in paths)
+    paths = dict.fromkeys(path for paths in sources.values() for path in paths)
     return tuple(
         EvidenceRef(
             resource="prepared_metadata",
@@ -99,17 +99,31 @@ def _unmeasured(
 
 def _assess_metric(
     definition: _Metric,
-    definitions: bytes,
+    profile: LoadedProfile,
+    dataset: SelectedDataset,
     metadata: FujiMetadata,
-    evidence: tuple[EvidenceRef, ...],
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
-    if definition["metric_identifier"] != "FsF-F2-01M":
+    identifier = definition["metric_identifier"]
+    if identifier not in {"FsF-F2-01M", "FsF-R1.1-01M"}:
         return _unmeasured(definition)
+    definitions = profile.resources[_fuji.DEFINITION.id]
+    fields = ("license",) if identifier == "FsF-R1.1-01M" else _fuji.CORE_FIELDS
+    sources = {
+        field: paths for field, paths in metadata.sources.items() if field in fields
+    }
+    evidence = _evidence(dataset, sources)
     try:
-        evaluation = _fuji.evaluate_core_metadata(
-            metadata.fields, definitions=definitions
-        )
+        if identifier == "FsF-F2-01M":
+            evaluation = _fuji.evaluate_core_metadata(
+                metadata.fields, definitions=definitions
+            )
+        else:
+            evaluation = _fuji.evaluate_license(
+                metadata.fields,
+                definitions=definitions,
+                licenses=profile.resources[_fuji.LICENSES.id],
+            )
     except (InputError, ProfileError):
         raise
     except Exception:
@@ -123,7 +137,7 @@ def _assess_metric(
 class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
-    definitions: tuple[ResourceRef, ...] = (_fuji.DEFINITION,)
+    definitions: tuple[ResourceRef, ...] = (_fuji.DEFINITION, _fuji.LICENSES)
 
     def assess(
         self, request: AssessmentInput, profile: LoadedProfile
@@ -132,18 +146,17 @@ class FujiAdapter:
         input_digest = _digest(request.model_dump(mode="json"))
         dataset = select_dataset(request, profile)
         metadata = prepare_metadata(dataset)
-        evidence = _evidence(dataset, metadata)
         definitions = profile.resources[_fuji.DEFINITION.id]
         inventory = cast("list[_Metric]", yaml.safe_load(definitions)["metrics"])
         metrics = []
         tests: list[CheckResult] = []
         for definition in inventory:
-            metric, checks = _assess_metric(definition, definitions, metadata, evidence)
+            metric, checks = _assess_metric(definition, profile, dataset, metadata)
             metrics.append(metric)
             tests.extend(checks)
         diagnostics = [
             Diagnostic(
-                code="unmapped_term", message=f"No F-UJI core field mapping for {term}."
+                code="unmapped_term", message=f"No F-UJI field mapping for {term}."
             )
             for term in metadata.unmapped
         ]

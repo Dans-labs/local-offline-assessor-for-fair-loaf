@@ -10,6 +10,9 @@ import yaml
 from pydantic import JsonValue
 
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_license as license_metadata,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_minimal_metadata as core_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -18,6 +21,7 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import (
     FAIREvaluator,
 )
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
 from fair_offline_assessor.models import (
     CheckResult,
     MaturityLevel,
@@ -34,6 +38,14 @@ DEFINITION = ResourceRef(
     format="yaml",
     digest="99c65ad9202a1f1dc8178c3457347f1a533b78329d3b53814687382874fad18a",
 )
+LICENSES = ResourceRef(
+    id="fuji:licenses",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="38f58300a320075e072f2010e00d4db29cae1abe303c93695c2f13c9541edbb4",
+)
+CORE_FIELDS: tuple[str, ...] = tuple(Mapper.REQUIRED_CORE_METADATA.value)
 
 
 @dataclass(frozen=True)
@@ -88,6 +100,25 @@ def evaluate_core_metadata(
         landing_url=None,
     )
     evaluator = core_metadata.FAIREvaluatorCoreMetadata(context)  # type: ignore[no-untyped-call]
+    return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
+
+
+def evaluate_license(
+    metadata: Mapping[str, JsonValue], *, definitions: bytes, licenses: bytes
+) -> MetricEvaluation:
+    """Run the pinned R1.1 check with F-UJI's bundled licence catalogue."""
+    if sha256(licenses).hexdigest() != LICENSES.digest:
+        raise ProfileError("unsupported_definitions", "Unsupported F-UJI licences")
+    catalogue = yaml.safe_load(licenses)
+    identifier = "FsF-R1.1-01M"
+    context = _context(
+        definitions,
+        identifier,
+        metadata_merged=dict(metadata),
+        SPDX_LICENSES=catalogue,
+        SPDX_LICENSE_NAMES=[item["name"] for item in catalogue],
+    )
+    evaluator = license_metadata.FAIREvaluatorLicense(context)  # type: ignore[no-untyped-call]
     return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
 
 

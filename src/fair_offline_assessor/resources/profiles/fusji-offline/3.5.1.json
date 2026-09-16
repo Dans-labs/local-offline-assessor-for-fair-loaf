@@ -11,6 +11,10 @@
       "version": "3.5.1"
     },
     {
+      "id": "fuji:licenses",
+      "version": "3.5.1"
+    },
+    {
       "id": "schemaorg:context",
       "version": "30.0"
     }

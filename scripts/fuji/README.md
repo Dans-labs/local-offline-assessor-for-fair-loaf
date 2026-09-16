@@ -46,8 +46,12 @@ Missing evidence must stay indeterminate. Incomplete scores must have no percent
 ## Metadata mapping
 
 [_fuji_metadata.py](../../src/fair_offline_assessor/_fuji_metadata.py) maps supplied
-JSON-LD into F-UJI's core fields. The supported terms follow the
+JSON-LD into F-UJI fields. The supported terms follow the
 [F-UJI 3.5.1 RDF collector](https://github.com/pangaea-data-publisher/fuji/blob/9227fabb7f047475714f2e7622798b855c883f72/fuji_server/helper/metadata_collector_rdf.py#L480),
 while keeping multiple values and their source locations. This mapper is maintained
 manually; source preparation does not generate it. Extend it when new checks need
 additional fields.
+
+The licence evaluator uses `licenses.yaml` from the same pinned F-UJI commit.
+Keep it beside the metric YAML and include it in the resource manifest and profile.
+Source preparation generates Python files, not these resource files.

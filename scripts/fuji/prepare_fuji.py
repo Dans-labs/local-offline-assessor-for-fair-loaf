@@ -20,7 +20,18 @@ _CONSTANTS = {
     ),
     "helper.metadata_collector": ("MetadataOfferingMethods", ()),
 }
-_EXTERNAL_IMPORTS = {"datetime", "enum", "pprint", "typing", "six", "dateutil.parser"}
+_EXTERNAL_IMPORTS = {
+    "datetime",
+    "enum",
+    "pprint",
+    "typing",
+    "six",
+    "dateutil.parser",
+    "fnmatch",
+    "re",
+    "idutils",
+    "Levenshtein",
+}
 
 
 class Recipe(BaseModel):

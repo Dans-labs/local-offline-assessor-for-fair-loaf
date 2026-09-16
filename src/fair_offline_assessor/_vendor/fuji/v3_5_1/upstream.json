@@ -3,6 +3,7 @@
   "commit": "9227fabb7f047475714f2e7622798b855c883f72",
   "version": "3.5.1",
   "evaluators": [
+    "fair_evaluator_license",
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_retrievable_metadata_data"
   ],
@@ -29,6 +30,10 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator.py",
       "sha256": "b3c30d022e911f5047f7b6bbe19855803406dbae5289ecb27d016bf84e21e078"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_license.py",
+      "sha256": "f21d2f8359865987241dcc400a0b89c3983b5cf2cbb2b6895be9ea5145c5cdc6"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator_minimal_metadata.py",
@@ -73,6 +78,18 @@
     {
       "path": "fuji_server/models/fair_result_evaluation_criterium.py",
       "sha256": "924ebbce6ad68d8e975a3c96c8b2cb4a1ba92ab412f37d79f6c67f526f170430"
+    },
+    {
+      "path": "fuji_server/models/license.py",
+      "sha256": "ec746c83a9f1ff9b76af3f8aea9afd8be728b3df7e030520ed1008f92103f9a5"
+    },
+    {
+      "path": "fuji_server/models/license_output.py",
+      "sha256": "23246b7134648f04ba222e4f751ca1e146c8bab9547f2eafa77bb020dda68546"
+    },
+    {
+      "path": "fuji_server/models/license_output_inner.py",
+      "sha256": "49428ed665c375d8aff434b4cf5d09db80dcbac4d06036e35b005aaab0e68919"
     },
     {
       "path": "fuji_server/models/output_core_metadata_found.py",

@@ -21,6 +21,7 @@ _SCHEMA_FIELDS = {
     "identifier": "object_identifier",
     "url": "object_identifier",
     "sameAs": "object_identifier",
+    "license": "license",
 }
 _DC_FIELDS = {
     "title": "title",
@@ -43,10 +44,12 @@ _FIELDS = {
     },
     "http://purl.org/dc/terms/abstract": "summary",
     "http://purl.org/dc/terms/issued": "publication_date",
+    "http://purl.org/dc/terms/license": "license",
     "http://www.w3.org/ns/dcat#keyword": "keywords",
 }
 _NAMES = (*(ns + "name" for ns in _SCHEMA), "http://xmlns.com/foaf/0.1/name")
 _DETAILS = {
+    "license": tuple(ns + "url" for ns in _SCHEMA),
     "creator": _NAMES,
     "publisher": (
         *_NAMES,
@@ -117,7 +120,7 @@ def _linked_values(
 
 
 def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
-    """Map selected metadata into F-UJI's core fields, retaining all supplied values."""
+    """Map selected metadata into F-UJI fields, retaining all supplied values."""
     graph = {
         cast("str", node["@id"]): (i, node) for i, node in enumerate(dataset.graph)
     }
