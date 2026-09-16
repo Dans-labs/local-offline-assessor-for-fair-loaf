@@ -1,18 +1,20 @@
---- a/fuji_server/evaluators/fair_evaluator_license.py
-+++ b/evaluators/fair_evaluator_license.py
-@@ -8,9 +8,9 @@
- import idutils
- import Levenshtein
+--- a/fuji_server/evaluators/fair_evaluator_data_access_level.py
++++ b/evaluators/fair_evaluator_data_access_level.py
+@@ -4,10 +4,10 @@
+ 
+ import re
  
 -from fuji_server.evaluators.fair_evaluator import FAIREvaluator
--from fuji_server.models.license import License
--from fuji_server.models.license_output_inner import LicenseOutputInner
+-from fuji_server.evaluators.fair_evaluator_license import FAIREvaluatorLicense
+-from fuji_server.models.data_access_level import DataAccessLevel
+-from fuji_server.models.data_access_output import DataAccessOutput
 +from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.license import License
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.license_output_inner import LicenseOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator_license import FAIREvaluatorLicense
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_access_level import DataAccessLevel
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_access_output import DataAccessOutput
  
  
- class FAIREvaluatorLicense(FAIREvaluator):
+ class FAIREvaluatorDataAccessLevel(FAIREvaluator):
 --- a/fuji_server/evaluators/fair_evaluator.py
 +++ b/evaluators/fair_evaluator.py
 @@ -2,9 +2,9 @@
@@ -28,6 +30,21 @@
  
  
  class FAIREvaluator:
+--- a/fuji_server/evaluators/fair_evaluator_license.py
++++ b/evaluators/fair_evaluator_license.py
+@@ -8,9 +8,9 @@
+ import idutils
+ import Levenshtein
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.models.license import License
+-from fuji_server.models.license_output_inner import LicenseOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.license import License
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.license_output_inner import LicenseOutputInner
+ 
+ 
+ class FAIREvaluatorLicense(FAIREvaluator):
 --- a/fuji_server/evaluators/fair_evaluator_minimal_metadata.py
 +++ b/evaluators/fair_evaluator_minimal_metadata.py
 @@ -2,11 +2,11 @@
@@ -113,6 +130,42 @@
  
  
  class CoreMetadataOutput(Model):
+--- a/fuji_server/models/data_access_level.py
++++ b/models/data_access_level.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.data_access_output import DataAccessOutput
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_access_output import DataAccessOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+ 
+ 
+ class DataAccessLevel(Model):
+--- a/fuji_server/models/data_access_output.py
++++ b/models/data_access_output.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class DataAccessOutput(Model):
 --- a/fuji_server/models/debug.py
 +++ b/models/debug.py
 @@ -6,8 +6,8 @@

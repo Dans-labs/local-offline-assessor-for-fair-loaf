@@ -3,6 +3,7 @@
   "commit": "9227fabb7f047475714f2e7622798b855c883f72",
   "version": "3.5.1",
   "evaluators": [
+    "fair_evaluator_data_access_level",
     "fair_evaluator_license",
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_retrievable_metadata_data"

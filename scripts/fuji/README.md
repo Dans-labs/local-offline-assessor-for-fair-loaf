@@ -52,6 +52,7 @@ while keeping multiple values and their source locations. This mapper is maintai
 manually; source preparation does not generate it. Extend it when new checks need
 additional fields.
 
-The licence evaluator uses `licenses.yaml` from the same pinned F-UJI commit.
-Keep it beside the metric YAML and include it in the resource manifest and profile.
+The licence and access evaluators use `licenses.yaml` and `access_rights.yaml`
+from the same pinned F-UJI commit. Keep them beside the metric YAML and include
+them in the resource manifest and profile.
 Source preparation generates Python files, not these resource files.

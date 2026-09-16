@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 3,
-        "indeterminate": 28,
+        "evaluated": 4,
+        "indeterminate": 27,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -79,6 +79,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     evaluated = {
         "FsF-F2-01M-2",
         "FsF-F2-01M-3",
+        "FsF-A1-01M-1",
         "FsF-R1.1-01M-1",
     }
     assert {
@@ -98,6 +99,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert {ref.id for ref in result.provenance.resources} == {
         "fuji:metrics",
         "fuji:licenses",
+        "fuji:access-rights",
         "schemaorg:context",
     }
     assert (
@@ -135,7 +137,9 @@ def test_evidence_and_digests_are_reproducible(request_data):
     assert title.digest != changed_citation.evidence[0].digest
 
 
-@pytest.mark.parametrize("problem", ["adapter", "definitions", "licenses"])
+@pytest.mark.parametrize(
+    "problem", ["adapter", "definitions", "licenses", "access-rights"]
+)
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
     bundle = base.load("fusji-offline", "3.5.1")
@@ -149,7 +153,7 @@ def test_configuration_is_checked_before_input(problem):
             update={"adapter_version": "2.0.0", "digest": sha256(content).hexdigest()}
         )
     else:
-        resource = "fuji:licenses" if problem == "licenses" else "fuji:metrics"
+        resource = "fuji:metrics" if problem == "definitions" else f"fuji:{problem}"
         content = bundle.resources[resource] + b"\n"
         bundle = replace(
             bundle,
@@ -300,3 +304,52 @@ def test_licence_presence_uses_supplied_values_without_requiring_spdx(
     assert (
         next(item for item in empty.metrics if item.id == metric.id).outcome == "fail"
     )
+
+
+@pytest.mark.parametrize(
+    ("metadata", "outcome", "earned"),
+    [
+        ({"conditionsOfAccess": "Available on request."}, "pass", 1),
+        (
+            {
+                "http://purl.org/dc/terms/accessRights": {
+                    "@id": "http://purl.org/coar/access_right/c_16ec"
+                }
+            },
+            "pass",
+            1,
+        ),
+        ({"conditionsOfAccess": "MIT License"}, "fail", 0),
+        ({"license": "https://creativecommons.org/licenses/by/4.0/"}, "fail", 0),
+        ({"conditionsOfAccess": [None, "  "]}, "fail", 0),
+        ({"isAccessibleForFree": True}, "pass", 0),
+        ({"isAccessibleForFree": False}, "pass", 0),
+    ],
+)
+def test_access_information_preserves_fuji_scoring(
+    request_data, metadata, outcome, earned
+):
+    request_data.metadata.update(metadata)
+    original = request_data.model_copy(deep=True)
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(item for item in result.metrics if item.id == "FsF-A1-01M")
+    check = next(item for item in result.tests if item.metric == metric.id)
+    assert metric.outcome == outcome
+    assert metric.score.observed_earned == earned
+    assert metric.score.maximum == 1
+    assert metric.score.complete
+    assert check.outcome == ("pass" if earned else "fail")
+    assert check.score == metric.score
+    assert metric.level.value == (3 if earned else 0)
+    assert check.evidence or not earned
+    assert all("license" not in ref.location for ref in check.evidence)
+    assert not result.diagnostics
+    assert request_data == original
+
+
+@pytest.mark.parametrize("value", ["false", [True, False]])
+def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value):
+    request_data.metadata["isAccessibleForFree"] = value
+    with pytest.raises(InputError) as error:
+        library.assess(request_data, profile=PROFILE)
+    assert error.value.code == "invalid_access_free"

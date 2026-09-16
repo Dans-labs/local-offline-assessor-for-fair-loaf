@@ -6,8 +6,10 @@ from copy import deepcopy
 
 import pytest
 
-from fair_offline_assessor import _fuji, load_profile
+from fair_offline_assessor import AssessmentInput, _fuji, load_profile
 from fair_offline_assessor._fuji import evaluate_core_metadata
+from fair_offline_assessor._fuji_metadata import prepare_metadata
+from fair_offline_assessor._metadata import select_dataset
 from fair_offline_assessor.models import ProfileError
 
 
@@ -197,7 +199,8 @@ assert not any(name.startswith('fuji_server') for name in sys.modules)
 result = assess(AssessmentInput(metadata={
     '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
     'creator': {'@id': 'https://example.org/person'},
-    'license': {'@id': 'https://example.org/custom-licence'}
+    'license': {'@id': 'https://example.org/custom-licence'},
+    'conditionsOfAccess': 'Available on request.'
 }), profile='fusji-offline@3.5.1')
 assert result.status == 'completed'
 assert not attempts
@@ -227,3 +230,50 @@ def test_licence_catalogue_keeps_native_lookup_without_changing_presence_score(
     assert result.native["score"] == {"earned": 1, "total": 1}
     assert result.native["output"][0]["license"] == value
     assert result.native["output"][0]["details_url"] == details
+
+
+def test_access_booleans_and_evaluator_mutations_are_isolated(definitions):
+    profile = load_profile("fusji-offline@3.5.1")
+    resources = profile.resources
+    inputs = [
+        {"isAccessibleForFree": True},
+        {"isAccessibleForFree": False},
+        {"conditionsOfAccess": "MIT License", "license": {"@value": "Custom licence"}},
+    ]
+    original = deepcopy(inputs)
+
+    def evaluate(metadata):
+        request = AssessmentInput(
+            metadata={
+                "@context": "https://schema.org",
+                "@type": "Dataset",
+                **metadata,
+            }
+        )
+        prepared = prepare_metadata(select_dataset(request, profile))
+        original_fields = deepcopy(prepared.fields)
+        result = _fuji.evaluate_access(
+            prepared.fields,
+            definitions=definitions,
+            licenses=resources["fuji:licenses"],
+            access_rights=resources["fuji:access-rights"],
+        )
+        assert prepared.fields == original_fields
+        return result
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(evaluate, inputs))
+    assert [result.native["output"]["access_level"] for result in results] == [
+        "public",
+        "restricted",
+        None,
+    ]
+    assert [result.native["test_status"] for result in results] == [
+        "pass",
+        "pass",
+        "fail",
+    ]
+    assert all(
+        result.native["score"] == {"earned": 0, "total": 1} for result in results
+    )
+    assert inputs == original

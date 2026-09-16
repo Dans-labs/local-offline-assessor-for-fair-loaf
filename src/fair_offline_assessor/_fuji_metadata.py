@@ -4,6 +4,7 @@ from typing import cast
 from pydantic import JsonValue
 
 from fair_offline_assessor._metadata import SelectedDataset
+from fair_offline_assessor.models import InputError
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
 _SCHEMA_FIELDS = {
@@ -22,6 +23,8 @@ _SCHEMA_FIELDS = {
     "url": "object_identifier",
     "sameAs": "object_identifier",
     "license": "license",
+    "conditionsOfAccess": "access_level",
+    "isAccessibleForFree": "access_free",
 }
 _DC_FIELDS = {
     "title": "title",
@@ -32,6 +35,7 @@ _DC_FIELDS = {
     "subject": "keywords",
     "identifier": "object_identifier",
     "type": "object_type",
+    "rights": "access_level",
 }
 _FIELDS = {
     "@id": "object_identifier",
@@ -45,6 +49,7 @@ _FIELDS = {
     "http://purl.org/dc/terms/abstract": "summary",
     "http://purl.org/dc/terms/issued": "publication_date",
     "http://purl.org/dc/terms/license": "license",
+    "http://purl.org/dc/terms/accessRights": "access_level",
     "http://www.w3.org/ns/dcat#keyword": "keywords",
 }
 _NAMES = (*(ns + "name" for ns in _SCHEMA), "http://xmlns.com/foaf/0.1/name")
@@ -144,6 +149,16 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
                         normalized = normalized.removeprefix(ns)
                 cast("list[JsonValue]", fields.setdefault(field, [])).append(normalized)
                 sources[field] = (*sources.get(field, ()), *paths)
+    if "access_free" in fields:
+        values = cast("list[JsonValue]", fields["access_free"])
+        if any(not isinstance(value, bool) for value in values) or any(
+            value != values[0] for value in values
+        ):
+            raise InputError(
+                "invalid_access_free",
+                "isAccessibleForFree must contain one unambiguous boolean value",
+            )
+        fields["access_free"] = values[0]
     return FujiMetadata(
         fields=fields,
         sources=sources,

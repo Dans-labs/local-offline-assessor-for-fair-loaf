@@ -25,6 +25,15 @@
       "source": {
         "path": "fuji_server/data/licenses.yaml"
       }
+    },
+    {
+      "id": "fuji:access-rights",
+      "path": "access_rights.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/data/access_rights.yaml"
+      }
     }
   ]
 }

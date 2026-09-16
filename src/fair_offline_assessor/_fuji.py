@@ -10,6 +10,9 @@ import yaml
 from pydantic import JsonValue
 
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_data_access_level as access_metadata,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_license as license_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -46,6 +49,13 @@ LICENSES = ResourceRef(
     digest="38f58300a320075e072f2010e00d4db29cae1abe303c93695c2f13c9541edbb4",
 )
 CORE_FIELDS: tuple[str, ...] = tuple(Mapper.REQUIRED_CORE_METADATA.value)
+ACCESS_RIGHTS = ResourceRef(
+    id="fuji:access-rights",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="2b6f32c7f0d04090f9df8766f9a175107e116fa1ce751defb4dcb007cad5cfab",
+)
 
 
 @dataclass(frozen=True)
@@ -103,13 +113,18 @@ def evaluate_core_metadata(
     return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
 
 
+def _license_catalogue(licenses: bytes) -> list[dict[str, JsonValue]]:
+    """Load the pinned licence catalogue for licence and access checks."""
+    if sha256(licenses).hexdigest() != LICENSES.digest:
+        raise ProfileError("unsupported_definitions", "Unsupported F-UJI licences")
+    return cast("list[dict[str, JsonValue]]", yaml.safe_load(licenses))
+
+
 def evaluate_license(
     metadata: Mapping[str, JsonValue], *, definitions: bytes, licenses: bytes
 ) -> MetricEvaluation:
     """Run the pinned R1.1 check with F-UJI's bundled licence catalogue."""
-    if sha256(licenses).hexdigest() != LICENSES.digest:
-        raise ProfileError("unsupported_definitions", "Unsupported F-UJI licences")
-    catalogue = yaml.safe_load(licenses)
+    catalogue = _license_catalogue(licenses)
     identifier = "FsF-R1.1-01M"
     context = _context(
         definitions,
@@ -119,6 +134,32 @@ def evaluate_license(
         SPDX_LICENSE_NAMES=[item["name"] for item in catalogue],
     )
     evaluator = license_metadata.FAIREvaluatorLicense(context)  # type: ignore[no-untyped-call]
+    return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
+
+
+def evaluate_access(
+    metadata: Mapping[str, JsonValue],
+    *,
+    definitions: bytes,
+    licenses: bytes,
+    access_rights: bytes,
+) -> MetricEvaluation:
+    """Run A1 access-information checks against the pinned catalogues."""
+    if sha256(access_rights).hexdigest() != ACCESS_RIGHTS.digest:
+        raise ProfileError("unsupported_definitions", "Unsupported F-UJI access rights")
+    catalogue = _license_catalogue(licenses)
+    identifier = "FsF-A1-01M"
+    context = _context(
+        definitions,
+        identifier,
+        metadata_merged=dict(metadata),
+        SPDX_LICENSES=catalogue,
+        SPDX_LICENSE_NAMES=[item["name"] for item in catalogue],
+        ACCESS_RIGHTS=yaml.safe_load(access_rights),
+        # The verified definition pin selects metrics 0.8.
+        metric_helper=SimpleNamespace(get_metric_version=lambda: 0.8),
+    )
+    evaluator = access_metadata.FAIREvaluatorDataAccessLevel(context)  # type: ignore[no-untyped-call]
     return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
 
 

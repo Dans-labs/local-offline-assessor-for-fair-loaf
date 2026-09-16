@@ -105,10 +105,14 @@ def _assess_metric(
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
     identifier = definition["metric_identifier"]
-    if identifier not in {"FsF-F2-01M", "FsF-R1.1-01M"}:
+    fields = {
+        "FsF-F2-01M": _fuji.CORE_FIELDS,
+        "FsF-R1.1-01M": ("license",),
+        "FsF-A1-01M": ("access_level", "access_free"),
+    }.get(identifier)
+    if fields is None:
         return _unmeasured(definition)
     definitions = profile.resources[_fuji.DEFINITION.id]
-    fields = ("license",) if identifier == "FsF-R1.1-01M" else _fuji.CORE_FIELDS
     sources = {
         field: paths for field, paths in metadata.sources.items() if field in fields
     }
@@ -118,11 +122,18 @@ def _assess_metric(
             evaluation = _fuji.evaluate_core_metadata(
                 metadata.fields, definitions=definitions
             )
-        else:
+        elif identifier == "FsF-R1.1-01M":
             evaluation = _fuji.evaluate_license(
                 metadata.fields,
                 definitions=definitions,
                 licenses=profile.resources[_fuji.LICENSES.id],
+            )
+        else:
+            evaluation = _fuji.evaluate_access(
+                metadata.fields,
+                definitions=definitions,
+                licenses=profile.resources[_fuji.LICENSES.id],
+                access_rights=profile.resources[_fuji.ACCESS_RIGHTS.id],
             )
     except (InputError, ProfileError):
         raise
@@ -137,7 +148,11 @@ def _assess_metric(
 class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
-    definitions: tuple[ResourceRef, ...] = (_fuji.DEFINITION, _fuji.LICENSES)
+    definitions: tuple[ResourceRef, ...] = (
+        _fuji.DEFINITION,
+        _fuji.LICENSES,
+        _fuji.ACCESS_RIGHTS,
+    )
 
     def assess(
         self, request: AssessmentInput, profile: LoadedProfile
