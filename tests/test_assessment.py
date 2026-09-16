@@ -212,7 +212,7 @@ def test_evaluator_errors_are_findings_without_internal_details(
         raise RuntimeError("private implementation details")
 
     original = library.assess(request_data, profile=PROFILE)
-    monkeypatch.setattr(_fuji, "evaluate_core_metadata", fail)
+    monkeypatch.setattr(_fuji.EVALUATORS["FsF-F2-01M"].implementation, "evaluate", fail)
     result = library.assess(request_data, profile=PROFILE)
     assert result.status == "completed_with_errors"
     assert result.coverage.errors == 2
@@ -353,3 +353,22 @@ def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value
     with pytest.raises(InputError) as error:
         library.assess(request_data, profile=PROFILE)
     assert error.value.code == "invalid_access_free"
+
+
+def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatch):
+    original = _fuji.yaml.safe_load
+    parsed = []
+
+    def read(content):
+        parsed.append(content)
+        return original(content)
+
+    monkeypatch.setattr(_fuji.yaml, "safe_load", read)
+    first = library.assess(request_data, profile=PROFILE)
+    second = library.assess(request_data, profile=PROFILE)
+    assert first == second
+    resources = library.load_profile(PROFILE).resources
+    assert all(
+        parsed.count(resources[resource]) == 2
+        for resource in ("fuji:metrics", "fuji:licenses", "fuji:access-rights")
+    )

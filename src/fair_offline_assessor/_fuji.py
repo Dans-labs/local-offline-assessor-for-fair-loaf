@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from hashlib import sha256
 from types import SimpleNamespace
-from typing import Literal, cast
+from typing import Literal, NotRequired, TypedDict, cast
 
 import yaml
 from pydantic import JsonValue
@@ -65,140 +65,147 @@ class MetricEvaluation:
     native: dict[str, JsonValue]
 
 
-def _context(
-    definitions: bytes, identifier: str, **evidence: object
-) -> SimpleNamespace:
-    """Load the pinned metric into independent evaluation state."""
-    if sha256(definitions).hexdigest() != DEFINITION.digest:
-        raise ProfileError("unsupported_definitions", "Unsupported F-UJI definitions")
-    metric = next(
-        item
-        for item in yaml.safe_load(definitions)["metrics"]
-        if item["metric_identifier"] == identifier
-    )
-    metric["agnostic_identifier"] = metric["metric_identifier"]
-    for test in metric["metric_tests"]:
-        test["agnostic_test_identifier"] = test["metric_test_identifier"]
-    return SimpleNamespace(
-        isDebug=False,
-        count=0,
-        logger=logging.getLogger(__name__),
-        LOG_SUCCESS=25,
-        METRICS={identifier: metric},
-        **deepcopy(evidence),
-    )
+class CheckDefinition(TypedDict):
+    metric_test_identifier: str
+    metric_test_name: str
+    agnostic_test_identifier: NotRequired[str]
 
 
-def evaluate_core_metadata(
-    metadata: Mapping[str, JsonValue], *, definitions: bytes
-) -> MetricEvaluation:
-    """Run pinned F2 checks on prepared F-UJI fields."""
-    # Upstream checks field names, so empty values must not reach the evaluator.
-    prepared = {
-        key: value
-        for key, value in metadata.items()
-        if value is not None
-        and (not isinstance(value, str) or value.strip())
-        and value not in ([], {})
-    }
-    identifier = "FsF-F2-01M"
-    context = _context(
-        definitions,
-        identifier,
-        metadata_merged=prepared,
-        metadata_sources=[],
-        landing_url=None,
-    )
-    evaluator = core_metadata.FAIREvaluatorCoreMetadata(context)  # type: ignore[no-untyped-call]
-    return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
+class MetricDefinition(TypedDict):
+    metric_identifier: str
+    fair_principle: NotRequired[str]
+    metric_tests: list[CheckDefinition]
+    agnostic_identifier: NotRequired[str]
 
 
-def _license_catalogue(licenses: bytes) -> list[dict[str, JsonValue]]:
-    """Load the pinned licence catalogue for licence and access checks."""
-    if sha256(licenses).hexdigest() != LICENSES.digest:
-        raise ProfileError("unsupported_definitions", "Unsupported F-UJI licences")
-    return cast("list[dict[str, JsonValue]]", yaml.safe_load(licenses))
+@dataclass(frozen=True)
+class Evaluator:
+    implementation: type[FAIREvaluator]
+    fields: tuple[str, ...]
+    resources: tuple[ResourceRef, ...] = ()
 
 
-def evaluate_license(
-    metadata: Mapping[str, JsonValue], *, definitions: bytes, licenses: bytes
-) -> MetricEvaluation:
-    """Run the pinned R1.1 check with F-UJI's bundled licence catalogue."""
-    catalogue = _license_catalogue(licenses)
-    identifier = "FsF-R1.1-01M"
-    context = _context(
-        definitions,
-        identifier,
-        metadata_merged=dict(metadata),
-        SPDX_LICENSES=catalogue,
-        SPDX_LICENSE_NAMES=[item["name"] for item in catalogue],
-    )
-    evaluator = license_metadata.FAIREvaluatorLicense(context)  # type: ignore[no-untyped-call]
-    return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
+EVALUATORS = {
+    "FsF-F2-01M": Evaluator(core_metadata.FAIREvaluatorCoreMetadata, CORE_FIELDS),
+    "FsF-R1.1-01M": Evaluator(
+        license_metadata.FAIREvaluatorLicense, ("license",), (LICENSES,)
+    ),
+    "FsF-A1-01M": Evaluator(
+        access_metadata.FAIREvaluatorDataAccessLevel,
+        ("access_level", "access_free"),
+        (LICENSES, ACCESS_RIGHTS),
+    ),
+}
+REFERENCES = (
+    DEFINITION,
+    *{
+        ref.id: ref for evaluator in EVALUATORS.values() for ref in evaluator.resources
+    }.values(),
+)
 
 
-def evaluate_access(
-    metadata: Mapping[str, JsonValue],
-    *,
-    definitions: bytes,
-    licenses: bytes,
-    access_rights: bytes,
-) -> MetricEvaluation:
-    """Run A1 access-information checks against the pinned catalogues."""
-    if sha256(access_rights).hexdigest() != ACCESS_RIGHTS.digest:
-        raise ProfileError("unsupported_definitions", "Unsupported F-UJI access rights")
-    catalogue = _license_catalogue(licenses)
-    identifier = "FsF-A1-01M"
-    context = _context(
-        definitions,
-        identifier,
-        metadata_merged=dict(metadata),
-        SPDX_LICENSES=catalogue,
-        SPDX_LICENSE_NAMES=[item["name"] for item in catalogue],
-        ACCESS_RIGHTS=yaml.safe_load(access_rights),
-        # The verified definition pin selects metrics 0.8.
-        metric_helper=SimpleNamespace(get_metric_version=lambda: 0.8),
-    )
-    evaluator = access_metadata.FAIREvaluatorDataAccessLevel(context)  # type: ignore[no-untyped-call]
-    return _evaluate(evaluator, checks=context.METRICS[identifier]["metric_tests"])
+class Runner:
+    def __init__(self, resources: Mapping[str, bytes]) -> None:
+        """Load the pinned definitions and catalogues once for this assessment."""
+        loaded = {}
+        for reference in REFERENCES:
+            content = resources.get(reference.id)
+            if content is None or sha256(content).hexdigest() != reference.digest:
+                raise ProfileError(
+                    "unsupported_definitions",
+                    f"Unsupported F-UJI resource: {reference.id}",
+                )
+            loaded[reference.id] = yaml.safe_load(content)
+        self.metrics = {
+            metric["metric_identifier"]: metric
+            for metric in cast(
+                "list[MetricDefinition]", loaded[DEFINITION.id]["metrics"]
+            )
+        }
+        licences = loaded[LICENSES.id]
+        self._resources = {
+            LICENSES.id: {
+                "SPDX_LICENSES": licences,
+                "SPDX_LICENSE_NAMES": [item["name"] for item in licences],
+            },
+            ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
+        }
 
+    def _context(self, identifier: str, **evidence: object) -> SimpleNamespace:
+        """Give each evaluator private definitions, metadata and catalogues."""
+        metric = deepcopy(self.metrics[identifier])
+        metric["agnostic_identifier"] = identifier
+        for test in metric["metric_tests"]:
+            test["agnostic_test_identifier"] = test["metric_test_identifier"]
+        return SimpleNamespace(
+            isDebug=False,
+            count=0,
+            logger=logging.getLogger(__name__),
+            LOG_SUCCESS=25,
+            METRICS={identifier: metric},
+            **deepcopy(evidence),
+        )
 
-def evaluate_retrievability(
-    *,
-    definitions: bytes,
-    metadata: Sequence[Mapping[str, JsonValue]] | None = None,
-    data: Mapping[str, Mapping[str, JsonValue]] | None = None,
-) -> MetricEvaluation:
-    """Run A1 on prepared retrieval evidence; None leaves that check indeterminate.
+    def evaluate(
+        self, identifier: str, metadata: Mapping[str, JsonValue]
+    ) -> MetricEvaluation:
+        """Run a registered metadata evaluator with its required resources."""
+        registration = EVALUATORS[identifier]
+        # Empty values must not satisfy upstream checks that only inspect field names.
+        prepared = {
+            key: value
+            for key, value in metadata.items()
+            if value is not None
+            and (not isinstance(value, str) or value.strip())
+            and value not in ([], {})
+        }
+        state: dict[str, object] = {
+            "metadata_merged": prepared,
+            "metadata_sources": [],
+            "landing_url": None,
+            # The verified definition pin selects metrics 0.8.
+            "metric_helper": SimpleNamespace(get_metric_version=lambda: 0.8),
+        }
+        for resource in registration.resources:
+            state.update(self._resources[resource.id])
+        context = self._context(identifier, **state)
+        evaluator = registration.implementation(context)
+        return _evaluate(evaluator, checks=self.metrics[identifier]["metric_tests"])
 
-    The preparer must bind observations to the assessed resource. Empty collections
-    mean a completed, unsuccessful observation, not missing or unresolved captures.
-    Metadata entries require a successful GET with a parsed body for the subject.
-    """
-    identifier = "FsF-A1-02MD"
-    context = _context(
-        definitions,
-        identifier,
-        metadata_unmerged=metadata if metadata is not None else [],
-        content_identifier=data if data is not None else {},
-    )
-    metric = context.METRICS[identifier]
-    available = {
-        identifier + suffix
-        for suffix, evidence in (("-1", metadata), ("-2", data))
-        if evidence is not None
-    }
-    checks = metric["metric_tests"]
-    # Both upstream branches guard their work with isTestDefined().
-    metric["metric_tests"] = [
-        test for test in checks if test["metric_test_identifier"] in available
-    ]
-    evaluator = retrieval.FAIREvaluatorMetadataDataRetrievable(context)  # type: ignore[no-untyped-call]
-    return _evaluate(evaluator, checks=checks)
+    def evaluate_retrievability(
+        self,
+        *,
+        metadata: Sequence[Mapping[str, JsonValue]] | None = None,
+        data: Mapping[str, Mapping[str, JsonValue]] | None = None,
+    ) -> MetricEvaluation:
+        """Run retrieval checks on bound observations; None means missing evidence.
+
+        Empty collections mean an observed failure. Metadata needs a successful GET
+        with a parsed body describing the subject.
+        """
+        identifier = "FsF-A1-02MD"
+        context = self._context(
+            identifier,
+            metadata_unmerged=metadata if metadata is not None else [],
+            content_identifier=data if data is not None else {},
+        )
+        metric = context.METRICS[identifier]
+        available = {
+            identifier + suffix
+            for suffix, evidence in (("-1", metadata), ("-2", data))
+            if evidence is not None
+        }
+        checks = metric["metric_tests"]
+        # Both upstream branches guard their work with isTestDefined().
+        metric["metric_tests"] = [
+            test for test in checks if test["metric_test_identifier"] in available
+        ]
+        evaluator = retrieval.FAIREvaluatorMetadataDataRetrievable(context)  # type: ignore[no-untyped-call]
+        return _evaluate(evaluator, checks=checks)
 
 
 def _evaluate(
-    evaluator: FAIREvaluator, *, checks: Sequence[Mapping[str, JsonValue]]
+    evaluator: FAIREvaluator, *, checks: Sequence[CheckDefinition]
 ) -> MetricEvaluation:
     """Run F-UJI and convert its checks and metric result."""
     native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
@@ -206,7 +213,7 @@ def _evaluate(
     metric = evaluator.fuji.METRICS[identifier]
     results = []
     for test in checks:
-        check_id = cast("str", test["metric_test_identifier"])
+        check_id = test["metric_test_identifier"]
         if check_id not in evaluator.metric_tests:
             results.append(
                 CheckResult(

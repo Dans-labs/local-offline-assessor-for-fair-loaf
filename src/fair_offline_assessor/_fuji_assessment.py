@@ -2,9 +2,7 @@ import json
 import logging
 from hashlib import sha256
 from importlib.metadata import version
-from typing import Literal, NotRequired, TypedDict, cast
-
-import yaml
+from typing import Literal, cast
 
 from fair_offline_assessor import _fuji
 from fair_offline_assessor._fuji_metadata import FujiMetadata, prepare_metadata
@@ -22,17 +20,6 @@ from fair_offline_assessor.models import (
     ResourceRef,
 )
 from fair_offline_assessor.profiles import LoadedProfile
-
-
-class _Check(TypedDict):
-    metric_test_identifier: str
-    metric_test_name: str
-
-
-class _Metric(TypedDict):
-    metric_identifier: str
-    fair_principle: NotRequired[str]
-    metric_tests: list[_Check]
 
 
 def _digest(value: object) -> str:
@@ -70,7 +57,9 @@ def _evidence(
 
 
 def _unmeasured(
-    definition: _Metric, *, outcome: Literal["indeterminate", "error"] = "indeterminate"
+    definition: _fuji.MetricDefinition,
+    *,
+    outcome: Literal["indeterminate", "error"] = "indeterminate",
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Keep unavailable checks and execution errors visible without assigning points."""
     identifier = definition["metric_identifier"]
@@ -98,43 +87,24 @@ def _unmeasured(
 
 
 def _assess_metric(
-    definition: _Metric,
-    profile: LoadedProfile,
+    definition: _fuji.MetricDefinition,
+    runner: _fuji.Runner,
     dataset: SelectedDataset,
     metadata: FujiMetadata,
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
     identifier = definition["metric_identifier"]
-    fields = {
-        "FsF-F2-01M": _fuji.CORE_FIELDS,
-        "FsF-R1.1-01M": ("license",),
-        "FsF-A1-01M": ("access_level", "access_free"),
-    }.get(identifier)
-    if fields is None:
+    registration = _fuji.EVALUATORS.get(identifier)
+    if registration is None:
         return _unmeasured(definition)
-    definitions = profile.resources[_fuji.DEFINITION.id]
     sources = {
-        field: paths for field, paths in metadata.sources.items() if field in fields
+        field: paths
+        for field, paths in metadata.sources.items()
+        if field in registration.fields
     }
     evidence = _evidence(dataset, sources)
     try:
-        if identifier == "FsF-F2-01M":
-            evaluation = _fuji.evaluate_core_metadata(
-                metadata.fields, definitions=definitions
-            )
-        elif identifier == "FsF-R1.1-01M":
-            evaluation = _fuji.evaluate_license(
-                metadata.fields,
-                definitions=definitions,
-                licenses=profile.resources[_fuji.LICENSES.id],
-            )
-        else:
-            evaluation = _fuji.evaluate_access(
-                metadata.fields,
-                definitions=definitions,
-                licenses=profile.resources[_fuji.LICENSES.id],
-                access_rights=profile.resources[_fuji.ACCESS_RIGHTS.id],
-            )
+        evaluation = runner.evaluate(identifier, metadata.fields)
     except (InputError, ProfileError):
         raise
     except Exception:
@@ -148,11 +118,7 @@ def _assess_metric(
 class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
-    definitions: tuple[ResourceRef, ...] = (
-        _fuji.DEFINITION,
-        _fuji.LICENSES,
-        _fuji.ACCESS_RIGHTS,
-    )
+    definitions: tuple[ResourceRef, ...] = _fuji.REFERENCES
 
     def assess(
         self, request: AssessmentInput, profile: LoadedProfile
@@ -161,12 +127,11 @@ class FujiAdapter:
         input_digest = _digest(request.model_dump(mode="json"))
         dataset = select_dataset(request, profile)
         metadata = prepare_metadata(dataset)
-        definitions = profile.resources[_fuji.DEFINITION.id]
-        inventory = cast("list[_Metric]", yaml.safe_load(definitions)["metrics"])
+        runner = _fuji.Runner(profile.resources)
         metrics = []
         tests: list[CheckResult] = []
-        for definition in inventory:
-            metric, checks = _assess_metric(definition, profile, dataset, metadata)
+        for definition in runner.metrics.values():
+            metric, checks = _assess_metric(definition, runner, dataset, metadata)
             metrics.append(metric)
             tests.extend(checks)
         diagnostics = [

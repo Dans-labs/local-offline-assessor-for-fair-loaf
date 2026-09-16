@@ -47,9 +47,7 @@ def test_maps_core_fields_into_the_existing_fuji_evaluator(profile):
         "publisher": ["Archive"],
         "publication_date": ["2026-01-01"],
     }
-    result = _fuji.evaluate_core_metadata(
-        prepared.fields, definitions=profile.resources["fuji:metrics"]
-    )
+    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
     assert result.metric.score.observed_earned == 2
     assert [check.outcome for check in result.tests] == ["pass", "pass"]
     assert selected == original
@@ -108,9 +106,7 @@ def test_empty_values_and_blank_identifiers_do_not_earn_points(profile, empty):
     )
     prepared = prepare_metadata(select_dataset(request, profile))
     assert prepared.fields == {"object_type": ["Dataset"]}
-    result = _fuji.evaluate_core_metadata(
-        prepared.fields, definitions=profile.resources["fuji:metrics"]
-    )
+    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
     assert result.metric.score.observed_earned == 0
 
 

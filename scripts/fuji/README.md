@@ -43,6 +43,10 @@ review the dependency before allowing it in `prepare_fuji.py`.
 
 Missing evidence must stay indeterminate. Incomplete scores must have no percentage.
 
+Register supported metrics in `_fuji.EVALUATORS` with their generated evaluator,
+evidence fields and required resources. The runner loads resources once per
+assessment and gives each evaluator a separate working copy.
+
 ## Metadata mapping
 
 [_fuji_metadata.py](../../src/fair_offline_assessor/_fuji_metadata.py) maps supplied

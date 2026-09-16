@@ -7,7 +7,6 @@ from copy import deepcopy
 import pytest
 
 from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji import evaluate_core_metadata
 from fair_offline_assessor._fuji_metadata import prepare_metadata
 from fair_offline_assessor._metadata import select_dataset
 from fair_offline_assessor.models import ProfileError
@@ -27,8 +26,8 @@ def metadata():
 
 
 @pytest.fixture
-def definitions():
-    return load_profile("fusji-offline@3.5.1").resources["fuji:metrics"]
+def runner():
+    return _fuji.Runner(load_profile("fusji-offline@3.5.1").resources)
 
 
 @pytest.mark.parametrize(
@@ -41,7 +40,7 @@ def definitions():
     ],
 )
 def test_core_metadata_preserves_upstream_results(
-    definitions, kind, earned, maturity, outcomes
+    runner, kind, earned, maturity, outcomes
 ):
     supplied = metadata()
     if kind == "citation":
@@ -51,7 +50,7 @@ def test_core_metadata_preserves_upstream_results(
     elif kind == "empty":
         supplied = {}
     original = deepcopy(supplied)
-    result = evaluate_core_metadata(supplied, definitions=definitions)
+    result = runner.evaluate("FsF-F2-01M", supplied)
     assert supplied == original
     assert result.metric.id == "FsF-F2-01M"
     assert result.metric.principles == ("F2",)
@@ -73,20 +72,20 @@ def test_core_metadata_preserves_upstream_results(
     assert json.loads(json.dumps(result.native)) == result.native
 
 
-def test_empty_fields_do_not_earn_points(definitions):
+def test_empty_fields_do_not_earn_points(runner):
     for empty in (None, "", "  ", [], {}):
-        result = evaluate_core_metadata(
-            {**metadata(), "creator": deepcopy(empty)}, definitions=definitions
+        result = runner.evaluate(
+            "FsF-F2-01M", {**metadata(), "creator": deepcopy(empty)}
         )
         assert result.metric.score.observed_earned == 0
 
 
-def test_assessments_do_not_share_mutable_state(definitions):
+def test_assessments_do_not_share_mutable_state(runner):
     supplied = metadata()
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(
             pool.map(
-                lambda value: evaluate_core_metadata(value, definitions=definitions),
+                lambda value: runner.evaluate("FsF-F2-01M", value),
                 [supplied, {}, supplied, {}],
             )
         )
@@ -98,9 +97,11 @@ def test_assessments_do_not_share_mutable_state(definitions):
     ]
 
 
-def test_other_metric_definitions_are_rejected(definitions):
+def test_other_metric_definitions_are_rejected():
+    resources = dict(load_profile("fusji-offline@3.5.1").resources)
+    resources["fuji:metrics"] += b"\n"
     with pytest.raises(ProfileError) as error:
-        evaluate_core_metadata(metadata(), definitions=definitions + b"\n")
+        _fuji.Runner(resources)
     assert error.value.code == "unsupported_definitions"
 
 
@@ -109,7 +110,7 @@ def test_other_metric_definitions_are_rejected(definitions):
     [(None, "indeterminate", 0), (200, "pass", 1), (404, "fail", 0)],
 )
 def test_retrieval_distinguishes_missing_evidence_from_failure(
-    definitions, status, outcome, earned
+    runner, status, outcome, earned
 ):
     data = (
         None
@@ -123,7 +124,7 @@ def test_retrieval_distinguishes_missing_evidence_from_failure(
         }
     )
     original = deepcopy(data)
-    result = _fuji.evaluate_retrievability(definitions=definitions, data=data)
+    result = runner.evaluate_retrievability(data=data)
     assert data == original
     assert [check.outcome for check in result.tests] == ["indeterminate", outcome]
     assert result.tests[0].score is None
@@ -139,10 +140,9 @@ def test_retrieval_distinguishes_missing_evidence_from_failure(
     ("found", "status", "earned"), [(True, 200, 2), (True, 404, 1), (False, 404, 0)]
 )
 def test_retrieval_preserves_upstream_scoring_when_evidence_is_complete(
-    definitions, found, status, earned
+    runner, found, status, earned
 ):
-    result = _fuji.evaluate_retrievability(
-        definitions=definitions,
+    result = runner.evaluate_retrievability(
         metadata=[
             {
                 "url": "https://example.org/metadata.jsonld",
@@ -184,14 +184,14 @@ def forbid_network(event, args):
         raise AssertionError(event)
 sys.addaudithook(forbid_network)
 from fair_offline_assessor import AssessmentInput, assess, load_profile
-from fair_offline_assessor._fuji import evaluate_core_metadata, evaluate_retrievability
-definitions = load_profile('fusji-offline@3.5.1').resources['fuji:metrics']
-core = evaluate_core_metadata({}, definitions=definitions)
+from fair_offline_assessor._fuji import Runner
+runner = Runner(load_profile('fusji-offline@3.5.1').resources)
+core = runner.evaluate('FsF-F2-01M', {})
 assert core.metric.score.observed_earned == 0
-missing = evaluate_retrievability(definitions=definitions)
+missing = runner.evaluate_retrievability()
 assert missing.tests[0].outcome == 'indeterminate'
 for status in (200, 404):
-    result = evaluate_retrievability(definitions=definitions, data={
+    result = runner.evaluate_retrievability(data={
         'https://example.org/data': {'url': 'https://example.org/data',
             'scheme': 'https', 'status_code': status}})
     assert result.tests[1].outcome == ('pass' if status == 200 else 'fail')
@@ -220,21 +220,16 @@ assert not attempts
     ],
 )
 def test_licence_catalogue_keeps_native_lookup_without_changing_presence_score(
-    definitions, value, details
+    runner, value, details
 ):
-    result = _fuji.evaluate_license(
-        {"license": [value]},
-        definitions=definitions,
-        licenses=load_profile("fusji-offline@3.5.1").resources["fuji:licenses"],
-    )
+    result = runner.evaluate("FsF-R1.1-01M", {"license": [value]})
     assert result.native["score"] == {"earned": 1, "total": 1}
     assert result.native["output"][0]["license"] == value
     assert result.native["output"][0]["details_url"] == details
 
 
-def test_access_booleans_and_evaluator_mutations_are_isolated(definitions):
+def test_access_booleans_and_evaluator_mutations_are_isolated(runner):
     profile = load_profile("fusji-offline@3.5.1")
-    resources = profile.resources
     inputs = [
         {"isAccessibleForFree": True},
         {"isAccessibleForFree": False},
@@ -252,12 +247,7 @@ def test_access_booleans_and_evaluator_mutations_are_isolated(definitions):
         )
         prepared = prepare_metadata(select_dataset(request, profile))
         original_fields = deepcopy(prepared.fields)
-        result = _fuji.evaluate_access(
-            prepared.fields,
-            definitions=definitions,
-            licenses=resources["fuji:licenses"],
-            access_rights=resources["fuji:access-rights"],
-        )
+        result = runner.evaluate("FsF-A1-01M", prepared.fields)
         assert prepared.fields == original_fields
         return result
 
@@ -277,3 +267,23 @@ def test_access_booleans_and_evaluator_mutations_are_isolated(definitions):
         result.native["score"] == {"earned": 0, "total": 1} for result in results
     )
     assert inputs == original
+
+
+def test_evaluators_cannot_change_cached_catalogues_or_definitions(runner, monkeypatch):
+    implementation = _fuji.EVALUATORS["FsF-R1.1-01M"].implementation
+    original = implementation.evaluate
+
+    def evaluate(self):
+        original(self)
+        self.fuji.SPDX_LICENSES.clear()
+        self.fuji.METRICS["FsF-R1.1-01M"]["metric_tests"].clear()
+
+    monkeypatch.setattr(implementation, "evaluate", evaluate)
+    first = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT License"]})
+    second = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT License"]})
+    assert first == second
+    assert (
+        first.native["output"][0]["details_url"] == "http://spdx.org/licenses/MIT.html"
+    )
+    assert len(first.tests) == 1
+    assert first.metric.score.observed_earned == 1
