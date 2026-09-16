@@ -174,11 +174,14 @@ def test_fresh_import_and_evaluation_do_not_access_the_network():
 import sys
 attempts = []
 def forbid_network(event, args):
+    # urllib3 checks local IPv6 support during import.
+    if event == 'socket.__new__' or (event == 'socket.bind' and args[1] == ('::1', 0)):
+        return
     if event.startswith('socket.'):
         attempts.append(event)
         raise AssertionError(event)
 sys.addaudithook(forbid_network)
-from fair_offline_assessor import load_profile
+from fair_offline_assessor import AssessmentInput, assess, load_profile
 from fair_offline_assessor._fuji import evaluate_core_metadata, evaluate_retrievability
 definitions = load_profile('fusji-offline@3.5.1').resources['fuji:metrics']
 core = evaluate_core_metadata({}, definitions=definitions)
@@ -191,6 +194,11 @@ for status in (200, 404):
             'scheme': 'https', 'status_code': status}})
     assert result.tests[1].outcome == ('pass' if status == 200 else 'fail')
 assert not any(name.startswith('fuji_server') for name in sys.modules)
+result = assess(AssessmentInput(metadata={
+    '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
+    'creator': {'@id': 'https://example.org/person'}
+}), profile='fusji-offline@3.5.1')
+assert result.status == 'completed'
 assert not attempts
 """
     subprocess.run([sys.executable, "-c", script], check=True, timeout=10)  # noqa: S603

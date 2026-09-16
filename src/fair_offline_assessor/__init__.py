@@ -1,3 +1,6 @@
+import logging
+
+from fair_offline_assessor.assessment import assess
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
@@ -20,6 +23,9 @@ __all__ = [
     "ProfileBundle",
     "ProfileError",
     "ProfileProvider",
+    "assess",
     "list_profiles",
     "load_profile",
 ]
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())

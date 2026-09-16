@@ -23,10 +23,17 @@ from fair_offline_assessor.models import (
     MaturityLevel,
     MetricResult,
     ProfileError,
+    ResourceRef,
     Score,
 )
 
-_METRICS_DIGEST = "99c65ad9202a1f1dc8178c3457347f1a533b78329d3b53814687382874fad18a"
+DEFINITION = ResourceRef(
+    id="fuji:metrics",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="99c65ad9202a1f1dc8178c3457347f1a533b78329d3b53814687382874fad18a",
+)
 
 
 @dataclass(frozen=True)
@@ -40,7 +47,7 @@ def _context(
     definitions: bytes, identifier: str, **evidence: object
 ) -> SimpleNamespace:
     """Load the pinned metric into independent evaluation state."""
-    if sha256(definitions).hexdigest() != _METRICS_DIGEST:
+    if sha256(definitions).hexdigest() != DEFINITION.digest:
         raise ProfileError("unsupported_definitions", "Unsupported F-UJI definitions")
     metric = next(
         item
