@@ -62,6 +62,44 @@ def git(repository: Path, *arguments: str) -> bytes:
         ) from exc
 
 
+def read_source(repository: Path, commit: str, path: str) -> bytes:
+    """Read a committed regular file without checkout filters or local edits."""
+    entry = git(repository, "ls-tree", commit, "--", path)
+    if entry.split(b" ", 1)[0] not in {b"100644", b"100755"}:
+        raise ValueError(f"Missing upstream file: {path}")
+    return git(repository, "cat-file", "blob", f"{commit}:{path}")
+
+
+def resource_files(root: Path, recipe: Recipe) -> dict[str, str]:
+    """Read resource paths from the manifest and verify their source pin."""
+    manifest = json.loads((root / "manifest.json").read_bytes())
+    if manifest["version"] != recipe.version:
+        raise ValueError("Resource version differs from the recipe")
+    files = {}
+    for file in manifest["files"]:
+        source = manifest["source"] | file.get("source", {})
+        if any(
+            source.get(key) != getattr(recipe, key) for key in ("repository", "commit")
+        ):
+            raise ValueError("Resource source differs from the recipe")
+        name = file["path"]
+        path = Path(name)
+        if (
+            not path.parts
+            or path.is_absolute()
+            or ".." in path.parts
+            or path.as_posix() != name
+            or any(character in name for character in ("\\", ":", "\x00"))
+        ):
+            raise ValueError(f"Use a relative resource path: {name}")
+        if name == "manifest.json" or name in files:
+            raise ValueError(f"Conflicting resource path: {name}")
+        if (root / name).resolve() != root.resolve() / name:
+            raise ValueError(f"Symlinked resource path: {name}")
+        files[name] = source["path"]
+    return files
+
+
 def constants(source: str, module: str) -> str:
     """Extract the reviewed enum or enum members without importing collectors."""
     name, members = _CONSTANTS[module]
@@ -141,11 +179,8 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
     seen: set[str] = set()
 
     def read(path: str) -> bytes:
-        """Read a committed regular file without checkout filters or local edits."""
-        entry = git(repository, "ls-tree", recipe.commit, "--", path)
-        if entry.split(b" ", 1)[0] not in {b"100644", b"100755"}:
-            raise ValueError(f"Missing upstream file: {path}")
-        content = git(repository, "cat-file", "blob", f"{recipe.commit}:{path}")
+        """Record the original bytes used to generate vendor files."""
+        content = read_source(repository, recipe.commit, path)
         records.append({"path": path, "sha256": sha256(content).hexdigest()})
         return content
 
@@ -191,6 +226,7 @@ def prepare(
     target: Path,
     declaration: dict[str, object],
     *,
+    resources: Path,
     check: bool = False,
     source: Path | None = None,
 ) -> None:
@@ -198,6 +234,7 @@ def prepare(
     recipe = Recipe.model_validate(declaration)
     if target.name != "v" + recipe.version.replace(".", "_") or target.is_symlink():
         raise ValueError("Target must be the matching version directory")
+    files = resource_files(resources, recipe)
     with TemporaryDirectory(prefix="fuji-source-") as temporary:
         repository = Path(temporary)
         git(repository, "init", "--bare", "--quiet")
@@ -218,6 +255,10 @@ def prepare(
         ):
             raise ValueError("Fetched Git commit differs from the recipe")
         outputs = generate(repository, recipe)
+        references = {
+            name: read_source(repository, recipe.commit, path)
+            for name, path in files.items()
+        }
     if check:
         current = {
             path.relative_to(target).as_posix(): path.read_bytes()
@@ -228,6 +269,12 @@ def prepare(
             name
             for name in current.keys() | outputs.keys()
             if current.get(name) != outputs.get(name)
+        )
+        changed.extend(
+            f"resources/{name}"
+            for name, content in references.items()
+            if not (resources / name).is_file()
+            or (resources / name).read_bytes() != content
         )
         if changed:
             raise ValueError("Stale F-UJI files: " + ", ".join(changed))
@@ -248,11 +295,17 @@ def prepare(
             if previous.exists():
                 previous.rename(target)
             raise
+    for name, content in references.items():
+        path = resources / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
 
 
 def main() -> None:
     """Fetch and prepare the F-UJI version selected by a recipe."""
-    parser = argparse.ArgumentParser(description="Prepare selected F-UJI evaluators.")
+    parser = argparse.ArgumentParser(
+        description="Prepare selected F-UJI evaluators and resources."
+    )
     parser.add_argument("--source", type=Path, help="Use a local Git repository")
     parser.add_argument(
         "--recipe", type=Path, default=Path(__file__).with_name("3.5.1.json")
@@ -262,13 +315,11 @@ def main() -> None:
     try:
         declaration = json.loads(arguments.recipe.read_bytes())
         recipe = Recipe.model_validate(declaration)
-        root = (
-            Path(__file__).resolve().parents[2]
-            / "src/fair_offline_assessor/_vendor/fuji"
-        )
+        root = Path(__file__).resolve().parents[2] / "src/fair_offline_assessor"
         prepare(
-            root / ("v" + recipe.version.replace(".", "_")),
+            root / "_vendor/fuji" / ("v" + recipe.version.replace(".", "_")),
             declaration,
+            resources=root / "resources/assessors/fuji" / recipe.version,
             check=arguments.check,
             source=arguments.source,
         )

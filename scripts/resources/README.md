@@ -8,13 +8,13 @@ to that directory; run commands from the repository root.
 
 Using F-UJI as the example:
 
-1. Copy its metric YAML into `assessors/fuji/<version>/` without editing it.
-   The [F-UJI guide](../fuji/README.md) links to the metric YAML.
-   Shared references such as Schema.org and DCAT go under `metadata/`.
-2. Add a `manifest.json` beside the files. Record their names, source commit or
+1. Add `assessors/fuji/<version>/manifest.json`. Record the file names, source commit or
    URL, source paths, version and licence. The [F-UJI manifest](../../src/fair_offline_assessor/resources/assessors/fuji/3.5.1/manifest.json)
    shows the format. Keep the required licences and attribution in `LICENSES/` and `NOTICE`
    at the repository root. Keep relative paths between files, such as XSD includes.
+2. Run the [F-UJI preparation command](../fuji/README.md) to copy the declared files.
+   For other reference bundles, copy the upstream files unchanged beside their
+   manifest. Shared references such as Schema.org and DCAT go under `metadata/`.
 3. Add `profiles/fusji-offline/<profile-version>.json`. Set `adapter` and
    `adapter_version` to the implementation to run, and `resources` to the exact
    resource IDs and versions it needs. Set `engine_requires` to the compatible
