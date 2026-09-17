@@ -19,6 +19,81 @@ def at_pointer(value, pointer):
     return value
 
 
+def test_provenance_fields_keep_local_names_and_dates(profile):
+    expected = {
+        "contributor": ["Alice"],
+        "right_holder": ["Archive"],
+        "created_date": ["2020-01-01"],
+        "modified_date": ["2021-01-01"],
+        "accepted_date": ["2022-01-01"],
+        "submitted_date": ["2023-01-01"],
+    }
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "contributor": {"name": "Alice"},
+            "copyrightHolder": {"name": "Archive"},
+            **{
+                "http://purl.org/dc/terms/" + term: expected[field][0]
+                for term, field in (
+                    ("created", "created_date"),
+                    ("modified", "modified_date"),
+                    ("dateAccepted", "accepted_date"),
+                    ("dateSubmitted", "submitted_date"),
+                )
+            },
+        }
+    )
+    prepared = prepare_metadata(select_dataset(request, profile))
+    assert prepared.fields == {"object_type": ["Dataset"], **expected}
+    assert not prepared.unmapped
+
+
+def test_provenance_namespaces_follow_local_nodes_without_crossing_graphs(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "pav": "http://purl.org/pav/",
+                "activity": "prov:Activity",
+            },
+            "@graph": [
+                {
+                    "@id": "urn:data",
+                    "@type": "Dataset",
+                    "subjectOf": {"@list": [{"@id": "urn:run"}]},
+                    "isPartOf": {"@id": "urn:other-graph"},
+                    "description": {"@value": "text", "@type": "pav:Literal"},
+                },
+                {
+                    "@id": "urn:run",
+                    "@type": "activity",
+                    "prov:used": {"@id": "urn:data"},
+                },
+                {"@id": "urn:unrelated", "pav:createdBy": "Bob"},
+                {
+                    "@id": "urn:other-graph",
+                    "@graph": [{"@id": "urn:run", "pav:createdBy": "Bob"}],
+                },
+            ],
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["provenance_namespaces"] == ["http://www.w3.org/ns/prov#"]
+    values = [
+        at_pointer(selected.graph, path)
+        for path in prepared.sources["provenance_namespaces"]
+    ]
+    assert len(values) == 2
+    assert "http://www.w3.org/ns/prov#Activity" in values
+    assert [{"@id": "urn:data"}] in values
+    assert selected == original
+
+
 def test_maps_core_fields_into_the_existing_fuji_evaluator(profile):
     request = AssessmentInput(
         metadata={

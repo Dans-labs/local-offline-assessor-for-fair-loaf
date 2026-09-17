@@ -115,6 +115,7 @@ def _assess_metric(
         fields = registration.fields
         if check.id in registration.check_fields:
             fields = (registration.check_fields[check.id],)
+        fields = registration.check_evidence.get(check.id, fields)
         refs = dict.fromkeys(ref for field in fields for ref in evidence.get(field, ()))
         checks.append(check.model_copy(update={"evidence": tuple(refs)}))
     return evaluation.metric, tuple(checks)

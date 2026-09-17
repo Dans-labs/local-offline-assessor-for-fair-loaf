@@ -57,3 +57,27 @@ class Mapper(enum.Enum):
         "object_identifier",
         "object_type",
     ]
+
+    PROVENANCE_MAPPING = {
+        "contributor": "prov:wasAttributedTo",
+        "creator": "prov:wasAttributedTo",
+        "publisher": "prov:wasAttributedTo",
+        "right_holder": "prov:wasAttributedTo",
+        "created_date": "prov:generatedAtTime",
+        "publication_date": "prov:generatedAtTime",
+        "accepted_date": "prov:generatedAtTime",
+        "submitted_date": "prov:generatedAtTime",
+        "modified_date": "prov:generatedAtTime",
+        "hasFormat": "prov:alternateOf",
+        "isFormatOf": "prov:alternateOf",
+        "isVersionOf": "prov:wasRevisionOf",
+        "isNewVersionOf": "prov:wasRevisionOf",
+        "isReferencedBy": "prov:hadDerivation",
+        "isReplacedBy": "prov:wasRevisionOf",
+        "References": "prov:wasDerivedFrom",
+        "IsDerivedFrom": "prov:wasDerivedFrom",
+        "isBasedOn": "prov:hadPrimarySource",
+        "hasVersion": "prov:hadRevision",
+        "Obsoletes": "prov:wasRevisionOf",
+        "Replaces": "prov:wasDerivedFrom",
+    }

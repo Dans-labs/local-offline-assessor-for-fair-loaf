@@ -16,6 +16,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_identifier_included as data_links,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_data_provenance as provenance,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_license as license_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -117,9 +120,15 @@ class Evaluator:
     resources: tuple[ResourceRef, ...] = ()
     # Per-check fields must be supplied and provide that check's evidence.
     check_fields: Mapping[str, str] = field(default_factory=dict)
+    check_evidence: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
 
 EVALUATORS = {
+    "FsF-R1.2-01M": Evaluator(
+        provenance.FAIREvaluatorDataProvenance,
+        (*Mapper.PROVENANCE_MAPPING.value, "related_resources"),
+        check_evidence={"FsF-R1.2-01M-2": ("provenance_namespaces",)},
+    ),
     "FsF-I3-01M": Evaluator(
         related_resources.FAIREvaluatorRelatedResources,
         ("related_resources",),
@@ -245,6 +254,7 @@ class Runner:
         state: dict[str, object] = {
             "metadata_merged": prepared,
             "related_resources": prepared.get("related_resources", []),
+            "namespace_uri": prepared.get("provenance_namespaces", []),
             "metadata_sources": [],
             "landing_url": None,
             "origin_url": metadata_url,

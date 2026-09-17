@@ -16,7 +16,12 @@ from pydantic import BaseModel, ConfigDict, Field
 _CONSTANTS = {
     "helper.metadata_mapper": (
         "Mapper",
-        ("MATURITY_LEVELS", "REFERENCE_METADATA_LIST", "REQUIRED_CORE_METADATA"),
+        (
+            "MATURITY_LEVELS",
+            "PROVENANCE_MAPPING",
+            "REFERENCE_METADATA_LIST",
+            "REQUIRED_CORE_METADATA",
+        ),
     ),
     "helper.metadata_collector": ("MetadataOfferingMethods", ()),
 }

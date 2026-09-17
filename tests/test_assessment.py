@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 10,
-        "indeterminate": 21,
+        "evaluated": 12,
+        "indeterminate": 19,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -87,6 +87,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "FsF-A1.2-01MD-1",
         "FsF-I3-01M-1",
         "FsF-I3-01M-2",
+        "FsF-R1.2-01M-1",
+        "FsF-R1.2-01M-2",
     }
     assert {
         check.id for check in result.tests if check.outcome in {"pass", "fail"}

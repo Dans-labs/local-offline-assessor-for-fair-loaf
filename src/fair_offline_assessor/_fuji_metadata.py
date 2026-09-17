@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import cast
 
@@ -7,6 +8,7 @@ from fair_offline_assessor._metadata import SelectedDataset
 from fair_offline_assessor.models import InputError
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
+_PROVENANCE = ("http://www.w3.org/ns/prov#", "http://purl.org/pav/")
 _SCHEMA_FIELDS = {
     "name": "title",
     "headline": "title",
@@ -14,10 +16,13 @@ _SCHEMA_FIELDS = {
     "abstract": "summary",
     "creator": "creator",
     "author": "creator",
+    "contributor": "contributor",
+    "copyrightHolder": "right_holder",
     "publisher": "publisher",
     "provider": "publisher",
     "datePublished": "publication_date",
     "dateCreated": "publication_date",
+    "dateModified": "modified_date",
     "keywords": "keywords",
     "identifier": "object_identifier",
     "url": "object_identifier",
@@ -31,6 +36,7 @@ _DC_FIELDS = {
     "title": "title",
     "description": "summary",
     "creator": "creator",
+    "contributor": "contributor",
     "publisher": "publisher",
     "date": "publication_date",
     "subject": "keywords",
@@ -49,6 +55,11 @@ _FIELDS = {
     },
     "http://purl.org/dc/terms/abstract": "summary",
     "http://purl.org/dc/terms/issued": "publication_date",
+    "http://purl.org/dc/terms/created": "created_date",
+    "http://purl.org/dc/terms/modified": "modified_date",
+    "http://purl.org/dc/terms/dateAccepted": "accepted_date",
+    "http://purl.org/dc/terms/dateSubmitted": "submitted_date",
+    "http://purl.org/dc/terms/rightsHolder": "right_holder",
     "http://purl.org/dc/terms/license": "license",
     "http://purl.org/dc/terms/accessRights": "access_level",
     "http://www.w3.org/ns/dcat#keyword": "keywords",
@@ -84,6 +95,8 @@ _RELATIONS = {
 _DETAILS = {
     "license": tuple(ns + "url" for ns in _SCHEMA),
     "creator": _NAMES,
+    "contributor": _NAMES,
+    "right_holder": _NAMES,
     "publisher": (
         *_NAMES,
         *(ns + "url" for ns in _SCHEMA),
@@ -205,6 +218,56 @@ def _access_free(values: list[JsonValue]) -> bool:
     return cast("bool", values[0])
 
 
+def _local_nodes(
+    node: dict[str, JsonValue], graph: GraphIndex
+) -> Iterator[tuple[int, dict[str, JsonValue]]]:
+    """Follow local references and lists, staying inside the selected graph."""
+    pending: list[JsonValue] = [node]
+    visited = set()
+    while pending:
+        value = pending.pop()
+        if isinstance(value, list):
+            pending.extend(reversed(value))
+        elif isinstance(value, dict) and "@value" not in value:
+            if "@list" in value:
+                pending.append(value["@list"])
+                continue
+            identifier = value.get("@id")
+            if (
+                isinstance(identifier, str)
+                and identifier in graph
+                and identifier not in visited
+            ):
+                visited.add(identifier)
+                index, linked = graph[identifier]
+                yield index, linked
+                pending.extend(
+                    item for term, item in linked.items() if not term.startswith("@")
+                )
+
+
+def _provenance_namespaces(
+    node: dict[str, JsonValue], graph: GraphIndex
+) -> list[SourcedValue]:
+    """Locate PROV/PAV predicates and types actually used by the dataset."""
+    found: dict[str, list[str]] = {}
+    for index, linked in _local_nodes(node, graph):
+        terms = [
+            (term, _pointer(index, term))
+            for term, values in linked.items()
+            if not term.startswith("@") and values
+        ]
+        terms.extend(
+            (term, f"/{index}/@type/{i}")
+            for i, term in enumerate(cast("list[str]", linked.get("@type", [])))
+        )
+        for term, path in terms:
+            for namespace in _PROVENANCE:
+                if term.startswith(namespace) and term != namespace:
+                    found.setdefault(namespace, []).append(path)
+    return [(namespace, tuple(paths)) for namespace, paths in found.items()]
+
+
 def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
     """Map selected metadata into F-UJI fields, retaining all supplied values."""
     graph = {
@@ -234,12 +297,24 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
                         normalized = normalized.removeprefix(ns)
                 cast("list[JsonValue]", fields.setdefault(field, [])).append(normalized)
                 sources[field] = (*sources.get(field, ()), *paths)
-    relations = _related_resources(node, index, graph)
-    if relations:
-        fields["related_resources"] = [value for value, _ in relations]
-        sources["related_resources"] = tuple(
-            path for _, paths in relations for path in paths
-        )
+    derived = {
+        "related_resources": _related_resources(node, index, graph),
+        "provenance_namespaces": _provenance_namespaces(node, graph),
+    }
+    fields.update(
+        {
+            field: [value for value, _ in values]
+            for field, values in derived.items()
+            if values
+        }
+    )
+    sources.update(
+        {
+            field: tuple(path for _, paths in values for path in paths)
+            for field, values in derived.items()
+            if values
+        }
+    )
     if "access_free" in fields:
         fields["access_free"] = _access_free(
             cast("list[JsonValue]", fields["access_free"])
@@ -254,6 +329,7 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
                 if not term.startswith("@")
                 and term not in _FIELDS
                 and term not in _RELATIONS
+                and not term.startswith(_PROVENANCE)
             )
         ),
     )

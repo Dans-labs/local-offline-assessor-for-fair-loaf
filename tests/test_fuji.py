@@ -203,6 +203,8 @@ assert not any(name.startswith('fuji_server') for name in sys.modules)
 result = assess(AssessmentInput(metadata={
     '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
     'creator': {'@id': 'https://example.org/person'},
+    'http://www.w3.org/ns/prov#wasGeneratedBy': {'@id': 'https://example.org/run'},
+    'http://purl.org/pav/createdBy': {'@id': 'https://example.org/person'},
     'license': {'@id': 'https://example.org/custom-licence'},
     'conditionsOfAccess': 'Available on request.',
     'citation': ['A study by Alice', '10.5072/example', 'taxonomy:9606'],

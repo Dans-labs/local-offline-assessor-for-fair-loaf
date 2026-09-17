@@ -5,6 +5,7 @@
   "evaluators": [
     "fair_evaluator_data_access_level",
     "fair_evaluator_data_identifier_included",
+    "fair_evaluator_data_provenance",
     "fair_evaluator_license",
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_related_resources",
@@ -19,6 +20,7 @@
       "Mapper",
       [
         "MATURITY_LEVELS",
+        "PROVENANCE_MAPPING",
         "REFERENCE_METADATA_LIST",
         "REQUIRED_CORE_METADATA"
       ]
@@ -44,6 +46,10 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator_data_identifier_included.py",
       "sha256": "ffb991fd0ece166f7da50f395383e0b58a52f575d022bb893ef890404977ce7f"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_data_provenance.py",
+      "sha256": "e51873ab10eddec87e90bd51a5b7e2e00d1c537ed8036b6c3e5975c698796c78"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator_license.py",
@@ -104,6 +110,18 @@
     {
       "path": "fuji_server/models/data_access_output.py",
       "sha256": "873a9feabc5e3f392e1309bee1dc246438ea200104e14fcbd3751f767154677d"
+    },
+    {
+      "path": "fuji_server/models/data_provenance.py",
+      "sha256": "22131418011900bb3551c0e8e0235941a1a4995262afb89461c89759c76b2820"
+    },
+    {
+      "path": "fuji_server/models/data_provenance_output.py",
+      "sha256": "464a4015ca02de358ca994282462d1971a3b96b880671c58ca56f656edf40911"
+    },
+    {
+      "path": "fuji_server/models/data_provenance_output_inner.py",
+      "sha256": "1f1644c8da7c1618f80d789d93c72ee71f5f0f9b14609d161921611e07137008"
     },
     {
       "path": "fuji_server/models/debug.py",
