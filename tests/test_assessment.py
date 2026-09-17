@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 4,
-        "indeterminate": 27,
+        "evaluated": 5,
+        "indeterminate": 26,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -79,6 +79,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     evaluated = {
         "FsF-F2-01M-2",
         "FsF-F2-01M-3",
+        "FsF-F3-01M-2",
         "FsF-A1-01M-1",
         "FsF-R1.1-01M-1",
     }
@@ -372,3 +373,40 @@ def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatc
         parsed.count(resources[resource]) == 2
         for resource in ("fuji:metrics", "fuji:licenses", "fuji:access-rights")
     )
+
+
+@pytest.mark.parametrize(
+    ("distribution", "outcome"),
+    [
+        ({"contentUrl": "https://example.org/data.csv"}, "pass"),
+        ({"url": "https://example.org/data.csv"}, "pass"),
+        ({"@id": "https://example.org/data.csv"}, "pass"),
+        (None, "fail"),
+        ({"name": "Data file"}, "fail"),
+        ({"@id": "_:missing"}, "fail"),
+        ({"contentUrl": [{"@value": "  "}, False, 0]}, "fail"),
+    ],
+)
+def test_data_links_use_distributions_without_counting_the_dataset_url(
+    request_data, distribution, outcome
+):
+    request_data.metadata.update(
+        url="https://example.org/dataset", distribution=distribution
+    )
+    original = request_data.model_copy(deep=True)
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(item for item in result.metrics if item.id == "FsF-F3-01M")
+    check = next(item for item in result.tests if item.id == "FsF-F3-01M-2")
+    assert metric.outcome == check.outcome == outcome
+    assert metric.score == check.score
+    assert metric.score.observed_earned == (1 if outcome == "pass" else 0)
+    assert metric.score.maximum == 1
+    assert metric.score.complete
+    assert metric.level.value == (3 if outcome == "pass" else 0)
+    assert check.evidence or outcome == "fail"
+    assert all(
+        ref.subject != "urn:data" or "distribution" in ref.location
+        for ref in check.evidence
+    )
+    assert not result.diagnostics
+    assert request_data == original

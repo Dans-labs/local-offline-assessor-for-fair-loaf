@@ -174,7 +174,11 @@ def test_retrieval_preserves_upstream_scoring_when_evidence_is_complete(
 def test_fresh_import_and_evaluation_do_not_access_the_network():
     script = """
 import sys
+import socket
 attempts = []
+def forbid_timeout(value):
+    raise AssertionError('global socket timeout changed')
+socket.setdefaulttimeout = forbid_timeout
 def forbid_network(event, args):
     # urllib3 checks local IPv6 support during import.
     if event == 'socket.__new__' or (event == 'socket.bind' and args[1] == ('::1', 0)):
@@ -200,7 +204,8 @@ result = assess(AssessmentInput(metadata={
     '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
     'creator': {'@id': 'https://example.org/person'},
     'license': {'@id': 'https://example.org/custom-licence'},
-    'conditionsOfAccess': 'Available on request.'
+    'conditionsOfAccess': 'Available on request.',
+    'distribution': {'contentUrl': 'https://example.org/data.csv'}
 }), profile='fusji-offline@3.5.1')
 assert result.status == 'completed'
 assert not attempts

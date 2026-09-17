@@ -1,6 +1,7 @@
 import json
 import os
 import runpy
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -76,6 +77,33 @@ def source(tmp_path, *, extra=""):
     }
     (resources / "manifest.json").write_text(json.dumps(manifest))
     return repository, recipe, resources
+
+
+@pytest.mark.parametrize("timeout", [1, 2])
+def test_data_link_preparation_removes_only_the_reviewed_timeout(tmp_path, timeout):
+    prepare = runpy.run_path(str(SCRIPT))["prepare"]
+    repository, recipe, resources = source(tmp_path)
+    name = "fair_evaluator_data_identifier_included"
+    (repository / f"fuji_server/evaluators/{name}.py").write_text(
+        "import socket\n\nclass Evaluator:\n    def evaluate(self):\n"
+        f"        socket.setdefaulttimeout({timeout})\n        return 7\n"
+    )
+    recipe.update(commit=commit(repository), evaluators=[name])
+    manifest = resources / "manifest.json"
+    declaration = json.loads(manifest.read_bytes())
+    declaration["source"]["commit"] = recipe["commit"]
+    manifest.write_text(json.dumps(declaration))
+    target = tmp_path / "v3_5_1"
+    if timeout != 1:
+        with pytest.raises(ValueError, match="Missing reviewed"):
+            prepare(target, recipe, resources=resources)
+        assert not target.exists()
+        return
+    prepare(target, recipe, resources=resources)
+    previous = socket.getdefaulttimeout()
+    evaluator = runpy.run_path(str(target / f"evaluators/{name}.py"))["Evaluator"]
+    assert evaluator().evaluate() == 7
+    assert socket.getdefaulttimeout() == previous
 
 
 @pytest.mark.parametrize("changed", ["code", "resource"])

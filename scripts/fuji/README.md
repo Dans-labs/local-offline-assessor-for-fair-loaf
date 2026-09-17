@@ -15,9 +15,11 @@ uv run python scripts/fuji/prepare_fuji.py
 The script fetches the exact commit into a temporary Git repository and writes
 the code to `src/fair_offline_assessor/_vendor/fuji/v3_5_1/`.
 Evaluator and model code is copied with its imports changed to our package.
+Preparation also removes F3's socket import and global timeout change, keeping
+assessment from changing the application's networking settings.
 The two helper files contain only the upstream constants we use.
-`upstream.json` records the source files and checksums; `imports.patch` shows the
-import changes already made. All of these files are generated.
+`upstream.json` records the source files and checksums; `source.patch` shows the
+import and offline changes already made. All of these files are generated.
 
 The [resource manifest](../../src/fair_offline_assessor/resources/assessors/fuji/3.5.1/manifest.json)
 lists the metric YAML and catalogues to copy into that manifest's directory.
@@ -26,8 +28,8 @@ the manifest stays manually maintained.
 
 Add `--check` to fetch and compare without changing the generated files.
 For offline preparation, pass `--source` followed by the path to a local F-UJI Git
-repository containing the selected commit. An unexpected import stops preparation;
-review the dependency before allowing it in `prepare_fuji.py`.
+repository containing the selected commit. Unexpected imports or changed lines
+marked for removal stop preparation; review them in `prepare_fuji.py`.
 
 ## Add a F-UJI version
 

@@ -32,6 +32,13 @@ _EXTERNAL_IMPORTS = {
     "idutils",
     "Levenshtein",
 }
+# F3 does not use sockets; keep its timeout change out of the host application.
+_REMOVALS = {
+    ("3.5.1", "evaluators.fair_evaluator_data_identifier_included"): (
+        "import socket\n",
+        "        socket.setdefaulttimeout(1)\n",
+    ),
+}
 
 
 class Recipe(BaseModel):
@@ -196,9 +203,16 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
         path = module.replace(".", "/") + ".py"
         original = read("fuji_server/" + path).decode("utf-8")
         source = constants(original, module) if module in _CONSTANTS else original
-        pending.update(dependencies(source) - seen)
+        rewritten = source
+        for removed in _REMOVALS.get((recipe.version, module), ()):
+            if rewritten.count(removed) != 1:
+                raise ValueError(
+                    f"Missing reviewed source line in {module}: {removed.strip()}"
+                )
+            rewritten = rewritten.replace(removed, "")
+        pending.update(dependencies(rewritten) - seen)
         rewritten = re.sub(
-            r"(?m)^(\s*from )fuji_server(?=[. ])", r"\g<1>" + namespace, source
+            r"(?m)^(\s*from )fuji_server(?=[. ])", r"\g<1>" + namespace, rewritten
         )
         compile(rewritten, path, "exec")
         outputs[path] = rewritten.encode()
@@ -212,7 +226,7 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
                 tofile="b/" + path,
             )
         )
-    outputs["imports.patch"] = "".join(patches).encode()
+    outputs["source.patch"] = "".join(patches).encode()
     provenance = recipe.model_dump(mode="json") | {
         "license": "MIT",
         "constants": _CONSTANTS,

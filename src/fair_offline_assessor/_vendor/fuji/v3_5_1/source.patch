@@ -30,6 +30,34 @@
  
  
  class FAIREvaluator:
+--- a/fuji_server/evaluators/fair_evaluator_data_identifier_included.py
++++ b/evaluators/fair_evaluator_data_identifier_included.py
+@@ -3,12 +3,11 @@
+ # SPDX-License-Identifier: MIT
+ 
+ import enum
+-import socket
+-
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.models.identifier_included import IdentifierIncluded
+-from fuji_server.models.identifier_included_output import IdentifierIncludedOutput
+-from fuji_server.models.identifier_included_output_inner import IdentifierIncludedOutputInner
++
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.identifier_included import IdentifierIncluded
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.identifier_included_output import IdentifierIncludedOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.identifier_included_output_inner import IdentifierIncludedOutputInner
+ 
+ 
+ class FAIREvaluatorDataIdentifierIncluded(FAIREvaluator):
+@@ -158,7 +157,6 @@
+         return test_status
+ 
+     def evaluate(self):
+-        socket.setdefaulttimeout(1)
+ 
+         self.result = IdentifierIncluded(
+             id=self.metric_number, metric_identifier=self.metric_identifier, metric_name=self.metric_name
 --- a/fuji_server/evaluators/fair_evaluator_license.py
 +++ b/evaluators/fair_evaluator_license.py
 @@ -8,9 +8,9 @@
@@ -224,6 +252,57 @@
  
  
  class FAIRResultEvaluationCriterium(Model):
+--- a/fuji_server/models/identifier_included.py
++++ b/models/identifier_included.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+-from fuji_server.models.identifier_included_output import IdentifierIncludedOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.identifier_included_output import IdentifierIncludedOutput
+ 
+ 
+ class IdentifierIncluded(Model):
+--- a/fuji_server/models/identifier_included_output.py
++++ b/models/identifier_included_output.py
+@@ -6,9 +6,9 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.identifier_included_output_inner import IdentifierIncludedOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.identifier_included_output_inner import IdentifierIncludedOutputInner
+ 
+ 
+ class IdentifierIncludedOutput(Model):
+--- a/fuji_server/models/identifier_included_output_inner.py
++++ b/models/identifier_included_output_inner.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class IdentifierIncludedOutputInner(Model):
 --- a/fuji_server/models/license.py
 +++ b/models/license.py
 @@ -6,13 +6,13 @@

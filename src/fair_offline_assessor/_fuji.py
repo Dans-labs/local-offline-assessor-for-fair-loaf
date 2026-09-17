@@ -13,6 +13,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_access_level as access_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_data_identifier_included as data_links,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_license as license_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -87,6 +90,9 @@ class Evaluator:
 
 EVALUATORS = {
     "FsF-F2-01M": Evaluator(core_metadata.FAIREvaluatorCoreMetadata, CORE_FIELDS),
+    "FsF-F3-01M": Evaluator(
+        data_links.FAIREvaluatorDataIdentifierIncluded, ("object_content_identifier",)
+    ),
     "FsF-R1.1-01M": Evaluator(
         license_metadata.FAIREvaluatorLicense, ("license",), (LICENSES,)
     ),

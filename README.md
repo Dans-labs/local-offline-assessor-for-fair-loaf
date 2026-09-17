@@ -22,6 +22,7 @@ request = AssessmentInput(
         "publisher": "Example Archive",
         "datePublished": "2026-01-01",
         "keywords": ["soil"],
+        "distribution": {"contentUrl": "https://example.org/soil.csv"},
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "conditionsOfAccess": "Available on request.",
     }
@@ -30,9 +31,13 @@ result = assess(request, profile="fusji-offline@3.5.1")
 print(result.model_dump_json(indent=2))
 ```
 
-Currently, the two F2 core-metadata checks, R1.1 licence check and A1 access-information
-check run. The other 27 checks are returned as `indeterminate`. There is no overall score.
+Currently, F2 core metadata, F3 data links, R1.1 licence and A1 access information
+run: 5 of 31 checks. The other 26 are returned as `indeterminate`. There is no overall score.
 `result.coverage` reports how many checks ran. HTTP captures are not assessed yet.
+
+Data links come from Schema.org `distribution` entries: `contentUrl`, `url`, or a
+distribution's identifier. Links are not fetched; the dataset's own URL does not
+satisfy this check.
 
 The licence check tests whether licence information is present; it does not require
 an SPDX-listed licence. Licence URLs are not fetched. For licence text in the

@@ -25,6 +25,7 @@ _SCHEMA_FIELDS = {
     "license": "license",
     "conditionsOfAccess": "access_level",
     "isAccessibleForFree": "access_free",
+    "distribution": "object_content_identifier",
 }
 _DC_FIELDS = {
     "title": "title",
@@ -62,6 +63,9 @@ _DETAILS = {
         "http://xmlns.com/foaf/0.1/homepage",
     ),
     "object_identifier": tuple(ns + "value" for ns in _SCHEMA),
+    "object_content_identifier": tuple(
+        ns + term for ns in _SCHEMA for term in ("contentUrl", "url")
+    ),
 }
 
 type GraphIndex = dict[str, tuple[int, dict[str, JsonValue]]]
@@ -143,7 +147,11 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
             path = f"{location}/{i}" if i is not None else location
             entry: JsonValue = {"@id": item} if term in ("@id", "@type") else item
             for value, paths in _values(entry, path, graph, properties):
-                normalized = value
+                if field == "object_content_identifier" and not isinstance(value, str):
+                    continue
+                normalized = (
+                    {"url": value} if field == "object_content_identifier" else value
+                )
                 if field == "object_type" and isinstance(normalized, str):
                     for ns in _SCHEMA:
                         normalized = normalized.removeprefix(ns)

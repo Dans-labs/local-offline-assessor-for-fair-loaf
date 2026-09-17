@@ -168,3 +168,52 @@ def test_links_are_not_fetched_or_followed_outside_the_selected_graph(profile):
     prepared = prepare_metadata(select_dataset(request, profile))
     assert prepared.fields["creator"] == ["https://example.org/person"]
     assert "publisher" not in prepared.fields
+
+
+def test_distribution_links_keep_local_sources_and_multiple_downloads(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "https://schema.org/",
+                "files": "https://schema.org/distribution",
+                "download": {"@id": "https://schema.org/contentUrl", "@type": "@id"},
+            },
+            "@graph": [
+                {
+                    "@id": "urn:data",
+                    "@type": "Dataset",
+                    "files": [{"@id": "urn:file"}, {"@id": "_:foreign"}],
+                },
+                {
+                    "@id": "urn:file",
+                    "download": [
+                        "https://example.org/a.csv",
+                        "https://example.org/b.csv",
+                    ],
+                },
+                {"@id": "urn:unrelated", "download": "https://example.org/unrelated"},
+                {
+                    "@id": "urn:other-graph",
+                    "@graph": [
+                        {"@id": "_:foreign", "download": "https://example.org/foreign"}
+                    ],
+                },
+            ],
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["object_content_identifier"] == [
+        {"url": "https://example.org/a.csv"},
+        {"url": "https://example.org/b.csv"},
+    ]
+    values = [
+        at_pointer(selected.graph, path)
+        for path in prepared.sources["object_content_identifier"]
+    ]
+    assert {"@id": "urn:file"} in values
+    assert {"@id": "https://example.org/a.csv"} in values
+    assert {"@id": "https://example.org/b.csv"} in values
+    assert not prepared.unmapped
+    assert selected == original
