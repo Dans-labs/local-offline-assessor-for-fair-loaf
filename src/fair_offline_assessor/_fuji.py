@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 from types import SimpleNamespace
 from typing import Literal, NotRequired, TypedDict, cast
@@ -23,6 +23,12 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_retrievable_metadata_data as retrieval,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_standardised_protocol_auth_metadata_data as authentication,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_standardised_protocol_metadata_data as protocols,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import (
     FAIREvaluator,
@@ -59,6 +65,13 @@ ACCESS_RIGHTS = ResourceRef(
     format="yaml",
     digest="2b6f32c7f0d04090f9df8766f9a175107e116fa1ce751defb4dcb007cad5cfab",
 )
+PROTOCOLS = ResourceRef(
+    id="fuji:protocols",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="8e7a8250868b2818f14f523d07438ce0b751d4e1af797a4f3f0550148aab1e4e",
+)
 
 
 @dataclass(frozen=True)
@@ -86,6 +99,8 @@ class Evaluator:
     implementation: type[FAIREvaluator]
     fields: tuple[str, ...]
     resources: tuple[ResourceRef, ...] = ()
+    # Per-check fields must be supplied and provide that check's evidence.
+    check_fields: Mapping[str, str] = field(default_factory=dict)
 
 
 EVALUATORS = {
@@ -100,6 +115,24 @@ EVALUATORS = {
         access_metadata.FAIREvaluatorDataAccessLevel,
         ("access_level", "access_free"),
         (LICENSES, ACCESS_RIGHTS),
+    ),
+    "FsF-A1.1-01MD": Evaluator(
+        protocols.FAIREvaluatorStandardisedProtocolMetadata,
+        (),
+        (PROTOCOLS,),
+        {
+            "FsF-A1.1-01MD-1": "metadata_url",
+            "FsF-A1.1-01MD-2": "object_content_identifier",
+        },
+    ),
+    "FsF-A1.2-01MD": Evaluator(
+        authentication.FAIREvaluatorStandardisedProtocolAuthentication,
+        (),
+        (PROTOCOLS,),
+        {
+            "FsF-A1.2-01MD-1": "metadata_url",
+            "FsF-A1.2-01MD-2": "object_content_identifier",
+        },
     ),
 }
 REFERENCES = (
@@ -135,6 +168,7 @@ class Runner:
                 "SPDX_LICENSE_NAMES": [item["name"] for item in licences],
             },
             ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
+            PROTOCOLS.id: {"STANDARD_PROTOCOLS": loaded[PROTOCOLS.id]},
         }
 
     def _context(self, identifier: str, **evidence: object) -> SimpleNamespace:
@@ -153,7 +187,11 @@ class Runner:
         )
 
     def evaluate(
-        self, identifier: str, metadata: Mapping[str, JsonValue]
+        self,
+        identifier: str,
+        metadata: Mapping[str, JsonValue],
+        *,
+        metadata_url: str | None = None,
     ) -> MetricEvaluation:
         """Run a registered metadata evaluator with its required resources."""
         registration = EVALUATORS[identifier]
@@ -169,14 +207,33 @@ class Runner:
             "metadata_merged": prepared,
             "metadata_sources": [],
             "landing_url": None,
+            "origin_url": metadata_url,
+            "pid_url": None,
+            "content_identifier": {
+                item["url"]: item
+                for item in cast(
+                    "list[dict[str, JsonValue]]",
+                    prepared.get("object_content_identifier", []),
+                )
+            },
             # The verified definition pin selects metrics 0.8.
             "metric_helper": SimpleNamespace(get_metric_version=lambda: 0.8),
         }
         for resource in registration.resources:
             state.update(self._resources[resource.id])
         context = self._context(identifier, **state)
+        checks = context.METRICS[identifier]["metric_tests"]
+        available = {**prepared, "metadata_url": metadata_url}
+        missing = {
+            check
+            for check, required in registration.check_fields.items()
+            if not available.get(required)
+        }
+        context.METRICS[identifier]["metric_tests"] = [
+            check for check in checks if check["metric_test_identifier"] not in missing
+        ]
         evaluator = registration.implementation(context)
-        return _evaluate(evaluator, checks=self.metrics[identifier]["metric_tests"])
+        return _evaluate(evaluator, checks=checks)
 
     def evaluate_retrievability(
         self,

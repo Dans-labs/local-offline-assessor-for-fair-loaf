@@ -206,7 +206,7 @@ result = assess(AssessmentInput(metadata={
     'license': {'@id': 'https://example.org/custom-licence'},
     'conditionsOfAccess': 'Available on request.',
     'distribution': {'contentUrl': 'https://example.org/data.csv'}
-}), profile='fusji-offline@3.5.1')
+}, metadata_url='https://example.org/meta'), profile='fusji-offline@3.5.1')
 assert result.status == 'completed'
 assert not attempts
 """

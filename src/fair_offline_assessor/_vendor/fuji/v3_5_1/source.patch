@@ -109,6 +109,40 @@
  
  
  class FAIREvaluatorMetadataDataRetrievable(FAIREvaluator):
+--- a/fuji_server/evaluators/fair_evaluator_standardised_protocol_auth_metadata_data.py
++++ b/evaluators/fair_evaluator_standardised_protocol_auth_metadata_data.py
+@@ -4,10 +4,10 @@
+ 
+ from urllib.parse import urlparse
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.models.standardised_protocol_metadata import StandardisedProtocolMetadata
+-from fuji_server.models.standardised_protocol_output import StandardisedProtocolOutput
+-from fuji_server.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_metadata import StandardisedProtocolMetadata
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output import StandardisedProtocolOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
+ 
+ 
+ class FAIREvaluatorStandardisedProtocolAuthentication(FAIREvaluator):
+--- a/fuji_server/evaluators/fair_evaluator_standardised_protocol_metadata_data.py
++++ b/evaluators/fair_evaluator_standardised_protocol_metadata_data.py
+@@ -4,10 +4,10 @@
+ 
+ from urllib.parse import urlparse
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.models.standardised_protocol_metadata import StandardisedProtocolMetadata
+-from fuji_server.models.standardised_protocol_output import StandardisedProtocolOutput
+-from fuji_server.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_metadata import StandardisedProtocolMetadata
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output import StandardisedProtocolOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
+ 
+ 
+ class FAIREvaluatorStandardisedProtocolMetadata(FAIREvaluator):
 --- a/fuji_server/models/core_metadata.py
 +++ b/models/core_metadata.py
 @@ -6,13 +6,13 @@
@@ -418,3 +452,54 @@
  
  
  class RetrievableOutputInner(Model):
+--- a/fuji_server/models/standardised_protocol_metadata.py
++++ b/models/standardised_protocol_metadata.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+-from fuji_server.models.standardised_protocol_output import StandardisedProtocolOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output import StandardisedProtocolOutput
+ 
+ 
+ class StandardisedProtocolMetadata(Model):
+--- a/fuji_server/models/standardised_protocol_output.py
++++ b/models/standardised_protocol_output.py
+@@ -6,9 +6,9 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.standardised_protocol_output_inner import StandardisedProtocolOutputInner
+ 
+ 
+ class StandardisedProtocolOutput(Model):
+--- a/fuji_server/models/standardised_protocol_output_inner.py
++++ b/models/standardised_protocol_output_inner.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class StandardisedProtocolOutputInner(Model):

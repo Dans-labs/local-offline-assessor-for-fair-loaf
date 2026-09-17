@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 5,
-        "indeterminate": 26,
+        "evaluated": 7,
+        "indeterminate": 24,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -82,15 +82,20 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "FsF-F3-01M-2",
         "FsF-A1-01M-1",
         "FsF-R1.1-01M-1",
+        "FsF-A1.1-01MD-1",
+        "FsF-A1.2-01MD-1",
     }
     assert {
         check.id for check in result.tests if check.outcome in {"pass", "fail"}
     } == evaluated
-    assert all(
-        check.score is None and check.reason_code == "not_implemented"
-        for check in result.tests
-        if check.outcome == "indeterminate"
-    )
+    for check in result.tests:
+        if check.outcome == "indeterminate":
+            assert check.score is None
+            assert check.reason_code == (
+                "missing_evidence"
+                if check.id in {"FsF-A1.1-01MD-2", "FsF-A1.2-01MD-2"}
+                else "not_implemented"
+            )
     assert result.overall_score is None
     assert result.principle_scores == {}
     assert result.status == "completed"
@@ -101,6 +106,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "fuji:metrics",
         "fuji:licenses",
         "fuji:access-rights",
+        "fuji:protocols",
         "schemaorg:context",
     }
     assert (
@@ -120,7 +126,15 @@ def test_evidence_and_digests_are_reproducible(request_data):
         request_data.model_copy(update={"metadata_url": "https://example.org/other"}),
         profile=PROFILE,
     )
-    assert first.tests == relocated.tests
+    assert first.metrics == relocated.metrics
+    for before, after in zip(first.tests, relocated.tests, strict=True):
+        evidence = tuple(
+            ref.model_copy(update={"digest": relocated.provenance.input_digest})
+            if ref.resource == "assessment_input"
+            else ref
+            for ref in before.evidence
+        )
+        assert before.model_copy(update={"evidence": evidence}) == after
     assert first.provenance.input_digest != relocated.provenance.input_digest
     citation = next(check for check in first.tests if check.id == "FsF-F2-01M-2")
     title = next(
@@ -139,7 +153,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
 
 
 @pytest.mark.parametrize(
-    "problem", ["adapter", "definitions", "licenses", "access-rights"]
+    "problem", ["adapter", "definitions", "licenses", "access-rights", "protocols"]
 )
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
@@ -370,8 +384,7 @@ def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatc
     assert first == second
     resources = library.load_profile(PROFILE).resources
     assert all(
-        parsed.count(resources[resource]) == 2
-        for resource in ("fuji:metrics", "fuji:licenses", "fuji:access-rights")
+        parsed.count(resources[reference.id]) == 2 for reference in _fuji.REFERENCES
     )
 
 
@@ -410,3 +423,100 @@ def test_data_links_use_distributions_without_counting_the_dataset_url(
     )
     assert not result.diagnostics
     assert request_data == original
+
+
+@pytest.mark.parametrize(
+    ("metadata_url", "data_urls", "standard", "authentication"),
+    [
+        (
+            "https://example.org/meta",
+            ["https://example.org/data"],
+            ("pass", "pass"),
+            ("pass", "pass"),
+        ),
+        (
+            "ws://example.org/meta",
+            ["ws://example.org/data"],
+            ("pass", "pass"),
+            ("fail", "fail"),
+        ),
+        (
+            "unknown://example.org/meta",
+            ["unknown://example.org/data"],
+            ("fail", "fail"),
+            ("fail", "fail"),
+        ),
+        (
+            "https://example.org/meta",
+            ["unknown://example.org/data"],
+            ("pass", "fail"),
+            ("pass", "fail"),
+        ),
+        (
+            None,
+            ["unknown://example.org/data", "https://example.org/data"],
+            ("indeterminate", "pass"),
+            ("indeterminate", "pass"),
+        ),
+        (
+            "https://example.org/meta",
+            [],
+            ("pass", "indeterminate"),
+            ("pass", "indeterminate"),
+        ),
+        (
+            None,
+            [],
+            ("indeterminate", "indeterminate"),
+            ("indeterminate", "indeterminate"),
+        ),
+    ],
+)
+def test_protocols_use_supplied_urls_and_catalogue_capabilities(
+    metadata_url, data_urls, standard, authentication
+):
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "@id": "https://example.org/dataset",
+            "distribution": [{"contentUrl": url} for url in data_urls],
+        },
+        metadata_url=metadata_url,
+    )
+    original = request.model_copy(deep=True)
+    result = library.assess(request, profile=PROFILE)
+    for identifier, outcomes in (
+        ("FsF-A1.1-01MD", standard),
+        ("FsF-A1.2-01MD", authentication),
+    ):
+        checks = [check for check in result.tests if check.metric == identifier]
+        metric = next(item for item in result.metrics if item.id == identifier)
+        assert tuple(check.outcome for check in checks) == outcomes
+        earned = outcomes.count("pass")
+        complete = "indeterminate" not in outcomes
+        assert metric.score.observed_earned == earned
+        assert metric.score.maximum == 2
+        assert metric.score.complete == complete
+        assert metric.score.percent == (earned * 50 if complete else None)
+        assert metric.outcome == (
+            "pass" if earned else "fail" if complete else "indeterminate"
+        )
+        for check in checks:
+            if check.outcome == "indeterminate":
+                assert check.reason_code == "missing_evidence"
+                assert check.score is None
+                assert not check.evidence
+            else:
+                assert check.score.observed_earned == (check.outcome == "pass")
+                assert check.level.value == (3 if check.outcome == "pass" else 0)
+                assert check.evidence
+        if metadata_url:
+            assert len(checks[0].evidence) == 1
+            ref = checks[0].evidence[0]
+            assert (ref.resource, ref.location) == ("assessment_input", "/metadata_url")
+            assert ref.digest == result.provenance.input_digest
+        assert all(ref.resource == "prepared_metadata" for ref in checks[1].evidence)
+        assert all("@id" not in ref.location for ref in checks[1].evidence)
+    assert result.coverage.errors == 0
+    assert request == original

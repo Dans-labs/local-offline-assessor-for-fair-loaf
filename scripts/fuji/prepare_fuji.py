@@ -25,6 +25,7 @@ _EXTERNAL_IMPORTS = {
     "enum",
     "pprint",
     "typing",
+    "urllib.parse",
     "six",
     "dateutil.parser",
     "fnmatch",

@@ -27,6 +27,15 @@
       }
     },
     {
+      "id": "fuji:protocols",
+      "path": "standard_uri_protocols.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/data/standard_uri_protocols.yaml"
+      }
+    },
+    {
       "id": "fuji:access-rights",
       "path": "access_rights.yaml",
       "kind": "reference",

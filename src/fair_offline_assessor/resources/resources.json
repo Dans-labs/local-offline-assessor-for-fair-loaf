@@ -285,6 +285,23 @@
     "aliases": []
   },
   {
+    "id": "fuji:protocols",
+    "version": "3.5.1",
+    "kind": "reference",
+    "format": "yaml",
+    "digest": "8e7a8250868b2818f14f523d07438ce0b751d4e1af797a4f3f0550148aab1e4e",
+    "path": "assessors/fuji/3.5.1/standard_uri_protocols.yaml",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/pangaea-data-publisher/fuji",
+      "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+      "version": "3.5.1",
+      "metric_version": "0.8",
+      "path": "fuji_server/data/standard_uri_protocols.yaml"
+    },
+    "aliases": []
+  },
+  {
     "id": "schemaorg:context",
     "version": "30.0",
     "kind": "context",

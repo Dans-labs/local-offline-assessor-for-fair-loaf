@@ -41,19 +41,21 @@ def _digest(value: object) -> str:
 
 def _evidence(
     dataset: SelectedDataset, sources: dict[str, tuple[str, ...]]
-) -> tuple[EvidenceRef, ...]:
+) -> dict[str, tuple[EvidenceRef, ...]]:
     """Locate mapped values in the prepared graph, including linked records."""
     digest = _digest(dataset.graph)
-    paths = dict.fromkeys(path for paths in sources.values() for path in paths)
-    return tuple(
-        EvidenceRef(
-            resource="prepared_metadata",
-            digest=digest,
-            location=path,
-            subject=cast("str", dataset.graph[int(path.split("/")[1])]["@id"]),
+    return {
+        field: tuple(
+            EvidenceRef(
+                resource="prepared_metadata",
+                digest=digest,
+                location=path,
+                subject=cast("str", dataset.graph[int(path.split("/")[1])]["@id"]),
+            )
+            for path in dict.fromkeys(paths)
         )
-        for path in paths
-    )
+        for field, paths in sources.items()
+    }
 
 
 def _unmeasured(
@@ -89,30 +91,33 @@ def _unmeasured(
 def _assess_metric(
     definition: _fuji.MetricDefinition,
     runner: _fuji.Runner,
-    dataset: SelectedDataset,
     metadata: FujiMetadata,
+    evidence: dict[str, tuple[EvidenceRef, ...]],
+    *,
+    metadata_url: str | None,
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
     identifier = definition["metric_identifier"]
     registration = _fuji.EVALUATORS.get(identifier)
     if registration is None:
         return _unmeasured(definition)
-    sources = {
-        field: paths
-        for field, paths in metadata.sources.items()
-        if field in registration.fields
-    }
-    evidence = _evidence(dataset, sources)
     try:
-        evaluation = runner.evaluate(identifier, metadata.fields)
+        evaluation = runner.evaluate(
+            identifier, metadata.fields, metadata_url=metadata_url
+        )
     except (InputError, ProfileError):
         raise
     except Exception:
         logging.getLogger(__name__).debug("F-UJI evaluation failed", exc_info=True)
         return _unmeasured(definition, outcome="error")
-    return evaluation.metric, tuple(
-        check.model_copy(update={"evidence": evidence}) for check in evaluation.tests
-    )
+    checks = []
+    for check in evaluation.tests:
+        fields = registration.fields
+        if check.id in registration.check_fields:
+            fields = (registration.check_fields[check.id],)
+        refs = dict.fromkeys(ref for field in fields for ref in evidence.get(field, ()))
+        checks.append(check.model_copy(update={"evidence": tuple(refs)}))
+    return evaluation.metric, tuple(checks)
 
 
 class FujiAdapter:
@@ -127,11 +132,26 @@ class FujiAdapter:
         input_digest = _digest(request.model_dump(mode="json"))
         dataset = select_dataset(request, profile)
         metadata = prepare_metadata(dataset)
+        evidence = _evidence(dataset, metadata.sources)
+        if request.metadata_url:
+            evidence["metadata_url"] = (
+                EvidenceRef(
+                    resource="assessment_input",
+                    digest=input_digest,
+                    location="/metadata_url",
+                ),
+            )
         runner = _fuji.Runner(profile.resources)
         metrics = []
         tests: list[CheckResult] = []
         for definition in runner.metrics.values():
-            metric, checks = _assess_metric(definition, runner, dataset, metadata)
+            metric, checks = _assess_metric(
+                definition,
+                runner,
+                metadata,
+                evidence,
+                metadata_url=request.metadata_url,
+            )
             metrics.append(metric)
             tests.extend(checks)
         diagnostics = [
