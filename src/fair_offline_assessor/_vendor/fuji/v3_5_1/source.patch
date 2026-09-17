@@ -30,6 +30,23 @@
  
  
  class FAIREvaluator:
+--- a/fuji_server/evaluators/fair_evaluator_data_content_metadata.py
++++ b/evaluators/fair_evaluator_data_content_metadata.py
+@@ -4,10 +4,10 @@
+ 
+ import re
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.models.data_content_metadata import DataContentMetadata
+-from fuji_server.models.data_content_metadata_output import DataContentMetadataOutput
+-from fuji_server.models.data_content_metadata_output_inner import DataContentMetadataOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_content_metadata import DataContentMetadata
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_content_metadata_output import DataContentMetadataOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_content_metadata_output_inner import DataContentMetadataOutputInner
+ 
+ 
+ class FAIREvaluatorDataContentMetadata(FAIREvaluator):
 --- a/fuji_server/evaluators/fair_evaluator_data_identifier_included.py
 +++ b/evaluators/fair_evaluator_data_identifier_included.py
 @@ -3,12 +3,11 @@
@@ -397,6 +414,57 @@
  
  
  class DataAccessOutput(Model):
+--- a/fuji_server/models/data_content_metadata.py
++++ b/models/data_content_metadata.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.data_content_metadata_output import DataContentMetadataOutput
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_content_metadata_output import DataContentMetadataOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+ 
+ 
+ class DataContentMetadata(Model):
+--- a/fuji_server/models/data_content_metadata_output.py
++++ b/models/data_content_metadata_output.py
+@@ -6,9 +6,9 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.data_content_metadata_output_inner import DataContentMetadataOutputInner
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.data_content_metadata_output_inner import DataContentMetadataOutputInner
+ 
+ 
+ class DataContentMetadataOutput(Model):
+--- a/fuji_server/models/data_content_metadata_output_inner.py
++++ b/models/data_content_metadata_output_inner.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class DataContentMetadataOutputInner(Model):
 --- a/fuji_server/models/data_provenance.py
 +++ b/models/data_provenance.py
 @@ -6,13 +6,13 @@

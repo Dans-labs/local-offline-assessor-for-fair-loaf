@@ -13,6 +13,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_access_level as access_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_data_content_metadata as data_content,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_identifier_included as data_links,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -124,6 +127,20 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-R1-01M": Evaluator(
+        data_content.FAIREvaluatorDataContentMetadata,
+        (),
+        check_evidence={
+            "FsF-R1-01M-1": ("object_type",),
+            "FsF-R1-01M-2": (
+                "object_content_identifier",
+                "distribution_details",
+                "object_size",
+                "object_format",
+            ),
+            "FsF-R1-01M-3": ("measured_variable", "object_content_identifier"),
+        },
+    ),
     "FsF-R1.2-01M": Evaluator(
         provenance.FAIREvaluatorDataProvenance,
         (*Mapper.PROVENANCE_MAPPING.value, "related_resources"),
@@ -261,7 +278,12 @@ class Runner:
             "id": metadata_url,
             "pid_url": None,
             "content_identifier": {
-                item["url"]: item
+                item["url"]: {
+                    **item,
+                    "claimed_type": item.get("type"),
+                    "claimed_size": item.get("size"),
+                    "claimed_service": item.get("service"),
+                }
                 for item in cast(
                     "list[dict[str, JsonValue]]",
                     prepared.get("object_content_identifier", []),
@@ -269,6 +291,8 @@ class Runner:
             },
             # The verified definition pin selects metrics 0.8.
             "metric_helper": SimpleNamespace(get_metric_version=lambda: 0.8),
+            # Metrics 0.8 checks type presence, not the legacy type whitelist.
+            "VALID_RESOURCE_TYPES": (),
         }
         for resource in registration.resources:
             state.update(self._resources[resource.id])

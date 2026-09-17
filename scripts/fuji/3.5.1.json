@@ -4,6 +4,7 @@
   "version": "3.5.1",
   "evaluators": [
     "fair_evaluator_data_access_level",
+    "fair_evaluator_data_content_metadata",
     "fair_evaluator_data_identifier_included",
     "fair_evaluator_data_provenance",
     "fair_evaluator_license",

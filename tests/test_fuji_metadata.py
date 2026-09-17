@@ -294,6 +294,68 @@ def test_distribution_links_keep_local_sources_and_multiple_downloads(profile):
     assert selected == original
 
 
+def test_distribution_descriptors_stay_with_their_files_and_sources(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "https://schema.org/",
+                "bytes": "https://schema.org/contentSize",
+            },
+            "@graph": [
+                {
+                    "@id": "urn:data",
+                    "@type": "Dataset",
+                    "distribution": {"@list": [{"@id": "urn:a"}, {"@id": "urn:b"}]},
+                },
+                {
+                    "@id": "urn:a",
+                    "contentUrl": [
+                        "https://example.org/a",
+                        "https://example.org/mirror",
+                    ],
+                    "bytes": "100",
+                    "encodingFormat": ["text/csv", "application/csv"],
+                },
+                {"@id": "urn:b", "url": "https://example.org/b", "fileSize": "200"},
+                {"@id": "urn:unrelated", "encodingFormat": "text/csv"},
+                {
+                    "@id": "urn:other-graph",
+                    "@graph": [{"@id": "urn:b", "encodingFormat": "text/csv"}],
+                },
+            ],
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["object_content_identifier"] == [
+        {
+            "url": "https://example.org/a",
+            "type": ["text/csv", "application/csv"],
+            "size": "100",
+        },
+        {
+            "url": "https://example.org/mirror",
+            "type": ["text/csv", "application/csv"],
+            "size": "100",
+        },
+        {"url": "https://example.org/b", "size": "200"},
+    ]
+    details = [
+        at_pointer(selected.graph, path)
+        for path in prepared.sources["distribution_details"]
+    ]
+    assert {"@value": "100"} in details
+    assert {"@value": "200"} in details
+    assert {"@value": "text/csv"} in details
+    assert {"@value": "application/csv"} in details
+    assert all(
+        "encodingFormat" not in path and "contentSize" not in path
+        for path in prepared.sources["object_content_identifier"]
+    )
+    assert selected == original
+
+
 def test_related_resources_keep_relation_types_and_local_graph_sources(profile):
     request = AssessmentInput(
         metadata={

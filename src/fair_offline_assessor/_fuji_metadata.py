@@ -9,6 +9,7 @@ from fair_offline_assessor.models import InputError
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
 _PROVENANCE = ("http://www.w3.org/ns/prov#", "http://purl.org/pav/")
+_DISTRIBUTIONS = tuple(ns + "distribution" for ns in _SCHEMA)
 _SCHEMA_FIELDS = {
     "name": "title",
     "headline": "title",
@@ -30,7 +31,11 @@ _SCHEMA_FIELDS = {
     "license": "license",
     "conditionsOfAccess": "access_level",
     "isAccessibleForFree": "access_free",
-    "distribution": "object_content_identifier",
+    "size": "object_size",
+    "contentSize": "object_size",
+    "encodingFormat": "object_format",
+    "fileFormat": "object_format",
+    "variableMeasured": "measured_variable",
 }
 _DC_FIELDS = {
     "title": "title",
@@ -43,6 +48,7 @@ _DC_FIELDS = {
     "identifier": "object_identifier",
     "type": "object_type",
     "rights": "access_level",
+    "format": "object_format",
 }
 _FIELDS = {
     "@id": "object_identifier",
@@ -62,6 +68,7 @@ _FIELDS = {
     "http://purl.org/dc/terms/rightsHolder": "right_holder",
     "http://purl.org/dc/terms/license": "license",
     "http://purl.org/dc/terms/accessRights": "access_level",
+    "http://purl.org/dc/terms/extent": "object_size",
     "http://www.w3.org/ns/dcat#keyword": "keywords",
 }
 _NAMES = (*(ns + "name" for ns in _SCHEMA), "http://xmlns.com/foaf/0.1/name")
@@ -97,6 +104,8 @@ _DETAILS = {
     "creator": _NAMES,
     "contributor": _NAMES,
     "right_holder": _NAMES,
+    "measured_variable": _NAMES,
+    "object_size": tuple(ns + "value" for ns in _SCHEMA),
     "publisher": (
         *_NAMES,
         *(ns + "url" for ns in _SCHEMA),
@@ -106,6 +115,10 @@ _DETAILS = {
     "object_content_identifier": tuple(
         ns + term for ns in _SCHEMA for term in ("contentUrl", "url")
     ),
+    "type": tuple(
+        ns + term for ns in _SCHEMA for term in ("encodingFormat", "fileFormat")
+    ),
+    "size": tuple(ns + term for ns in _SCHEMA for term in ("contentSize", "fileSize")),
     "related_resources": (
         *(ns + term for ns in _SCHEMA for term in ("url", "identifier")),
         *_NAMES,
@@ -206,6 +219,58 @@ def _related_resources(
     return related
 
 
+def _distribution_details(
+    identifier: str, location: str, graph: GraphIndex
+) -> tuple[dict[str, JsonValue], tuple[str, ...]]:
+    """Read each distribution's declarations without combining different files."""
+    fields: dict[str, JsonValue] = {}
+    sources: list[str] = []
+    for field in ("type", "size"):
+        entries = _linked_values(identifier, location, graph, _DETAILS[field])
+        values = [value for value, _ in entries]
+        if values:
+            fields[field] = values[0] if len(values) == 1 else values
+            sources.extend(path for _, paths in entries for path in paths)
+    return fields, tuple(sources)
+
+
+def _distributions(
+    node: dict[str, JsonValue], index: int, graph: GraphIndex
+) -> tuple[list[SourcedValue], tuple[str, ...]]:
+    """Pair download links with their declarations, keeping their sources separate."""
+    pending = [
+        (node[term], _pointer(index, term)) for term in _DISTRIBUTIONS if term in node
+    ]
+    pending.reverse()
+    found: list[SourcedValue] = []
+    sources: list[str] = []
+    while pending:
+        value, location = pending.pop()
+        if isinstance(value, list):
+            pending.extend(
+                (item, f"{location}/{i}")
+                for i, item in reversed(list(enumerate(value)))
+            )
+            continue
+        if isinstance(value, dict) and "@list" in value:
+            pending.append((value["@list"], location + "/@list"))
+            continue
+        urls = [
+            (url, paths)
+            for url, paths in _values(
+                value, location, graph, _DETAILS["object_content_identifier"]
+            )
+            if isinstance(url, str)
+        ]
+        details: dict[str, JsonValue] = {}
+        identifier = value.get("@id") if isinstance(value, dict) else None
+        if urls and isinstance(identifier, str):
+            details, paths = _distribution_details(identifier, location, graph)
+            sources.extend(paths)
+        found.extend(({"url": url, **details}, paths) for url, paths in urls)
+    return found, tuple(sources)
+
+
 def _access_free(values: list[JsonValue]) -> bool:
     """Require one unambiguous boolean value for isAccessibleForFree."""
     if any(not isinstance(value, bool) for value in values) or any(
@@ -287,17 +352,17 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
             path = f"{location}/{i}" if i is not None else location
             entry: JsonValue = {"@id": item} if term in ("@id", "@type") else item
             for value, paths in _values(entry, path, graph, properties):
-                if field == "object_content_identifier" and not isinstance(value, str):
-                    continue
-                normalized = (
-                    {"url": value} if field == "object_content_identifier" else value
-                )
+                normalized = value
                 if field == "object_type" and isinstance(normalized, str):
                     for ns in _SCHEMA:
                         normalized = normalized.removeprefix(ns)
                 cast("list[JsonValue]", fields.setdefault(field, [])).append(normalized)
                 sources[field] = (*sources.get(field, ()), *paths)
+    distributions, details = _distributions(node, index, graph)
+    if details:
+        sources["distribution_details"] = details
     derived = {
+        "object_content_identifier": distributions,
         "related_resources": _related_resources(node, index, graph),
         "provenance_namespaces": _provenance_namespaces(node, graph),
     }
@@ -329,6 +394,7 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
                 if not term.startswith("@")
                 and term not in _FIELDS
                 and term not in _RELATIONS
+                and term not in _DISTRIBUTIONS
                 and not term.startswith(_PROVENANCE)
             )
         ),

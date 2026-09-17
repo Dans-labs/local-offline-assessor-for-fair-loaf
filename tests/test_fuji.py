@@ -208,7 +208,9 @@ result = assess(AssessmentInput(metadata={
     'license': {'@id': 'https://example.org/custom-licence'},
     'conditionsOfAccess': 'Available on request.',
     'citation': ['A study by Alice', '10.5072/example', 'taxonomy:9606'],
-    'distribution': [{'contentUrl': {'@value': identifier}} for identifier in (
+    'variableMeasured': {'name': 'temperature'},
+    'distribution': [{'contentUrl': {'@value': identifier},
+        'encodingFormat': 'text/csv', 'contentSize': '123'} for identifier in (
         'https://example.org/data.csv', 'taxonomy:9606', 'ark:/12345/example',
         'https://w3id.org/example', 'hdl:12345/example', 'unrecognised',
         '550e8400-e29b-41d4-a716-446655440000', 'd41d8cd98f00b204e9800998ecf8427e'

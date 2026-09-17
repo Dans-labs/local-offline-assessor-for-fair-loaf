@@ -4,6 +4,7 @@
   "version": "3.5.1",
   "evaluators": [
     "fair_evaluator_data_access_level",
+    "fair_evaluator_data_content_metadata",
     "fair_evaluator_data_identifier_included",
     "fair_evaluator_data_provenance",
     "fair_evaluator_license",
@@ -42,6 +43,10 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator_data_access_level.py",
       "sha256": "a4dbd5eb9a30f6fea33e9f3680be58874b823ef564c04e6355061674ee1cebd6"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_data_content_metadata.py",
+      "sha256": "ed5b6e0756636611451136c428225062131d32beb9f034b5bd64d75d8ba84334"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator_data_identifier_included.py",
@@ -110,6 +115,18 @@
     {
       "path": "fuji_server/models/data_access_output.py",
       "sha256": "873a9feabc5e3f392e1309bee1dc246438ea200104e14fcbd3751f767154677d"
+    },
+    {
+      "path": "fuji_server/models/data_content_metadata.py",
+      "sha256": "5fb575bb264b1d2815e63531228b29e74d83467a52cdbf00706f4b410abb86c4"
+    },
+    {
+      "path": "fuji_server/models/data_content_metadata_output.py",
+      "sha256": "2597b447b90c8bc5bc85e625b0db2f5269125f1ec5699f92d25715bf4c89b317"
+    },
+    {
+      "path": "fuji_server/models/data_content_metadata_output_inner.py",
+      "sha256": "6dd7119e57146892a91c1113b2082abb91fda7558892a2b7a72af59e9fdcf0cd"
     },
     {
       "path": "fuji_server/models/data_provenance.py",
