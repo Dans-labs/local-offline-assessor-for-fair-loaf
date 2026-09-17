@@ -9,7 +9,8 @@
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_retrievable_metadata_data",
     "fair_evaluator_standardised_protocol_auth_metadata_data",
-    "fair_evaluator_standardised_protocol_metadata_data"
+    "fair_evaluator_standardised_protocol_metadata_data",
+    "fair_evaluator_unique_identifier_metadata"
   ],
   "license": "MIT",
   "constants": {
@@ -62,6 +63,14 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator_standardised_protocol_metadata_data.py",
       "sha256": "a281a6d6b7a93bfa7a6d2fb29f244bf19e50bf0b214e94fa53ab751a97a50d4a"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_unique_identifier_metadata.py",
+      "sha256": "3aede5d5c03436960203a6bef6ef3f0e4b841085ff316000950ea49c7e874b81"
+    },
+    {
+      "path": "fuji_server/helper/identifier_helper.py",
+      "sha256": "1840303f4094c0b56d311886deffd80e4491ed73e43b521e63b9bdb7a8727714"
     },
     {
       "path": "fuji_server/helper/metadata_collector.py",
@@ -158,6 +167,18 @@
     {
       "path": "fuji_server/models/standardised_protocol_output_inner.py",
       "sha256": "ce97363b4b20933dd6639e4fe98b7857cc1111b3cae11064325164ce4ae0e893"
+    },
+    {
+      "path": "fuji_server/models/uniqueness.py",
+      "sha256": "f57d06c9ce38657ff518a4a34e49ffa6de5a4ace2a49bb0e5c8d9dcc9ae48175"
+    },
+    {
+      "path": "fuji_server/models/uniqueness_output.py",
+      "sha256": "4fdc8bf0e5da8d18cb592929f25195f20fc96e8166d4f40cfc864e4cb29eb8eb"
+    },
+    {
+      "path": "fuji_server/models/uniqueness_output_inner.py",
+      "sha256": "16665fd00d49ebec80c3209f999548e89be2a3ff6d16c9bef64f65761d08d36e"
     },
     {
       "path": "fuji_server/util.py",

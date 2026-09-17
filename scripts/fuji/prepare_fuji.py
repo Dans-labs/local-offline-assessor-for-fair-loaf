@@ -32,12 +32,52 @@ _EXTERNAL_IMPORTS = {
     "re",
     "idutils",
     "Levenshtein",
+    "hashid",
+    "uuid",
 }
-# F3 does not use sockets; keep its timeout change out of the host application.
-_REMOVALS = {
+# Version-scoped edits keep service and network behaviour out of copied helpers.
+_REPLACEMENTS = {
     ("3.5.1", "evaluators.fair_evaluator_data_identifier_included"): (
-        "import socket\n",
-        "        socket.setdefaulttimeout(1)\n",
+        ("import socket\n", "", 1),
+        ("        socket.setdefaulttimeout(1)\n", "", 1),
+    ),
+    ("3.5.1", "evaluators.fair_evaluator_unique_identifier_metadata"): (
+        (
+            "IdentifierHelper(self.fuji.id)",
+            (
+                "IdentifierHelper(self.fuji.id, "
+                "identifiers_org_data=self.fuji.IDENTIFIERS_ORG_DATA)"
+            ),
+            3,
+        ),
+    ),
+    ("3.5.1", "helper.identifier_helper"): (
+        ("import urllib\n", "import urllib.parse\n", 1),
+        ("from fuji_server.helper.preprocessor import Preprocessor\n", "", 1),
+        (
+            (
+                "from fuji_server.helper.request_helper import "
+                "AcceptTypes, RequestHelper\n"
+            ),
+            "",
+            1,
+        ),
+        ("    IDENTIFIERS_ORG_DATA = Preprocessor.get_identifiers_org_data()\n", "", 1),
+        (
+            "    def __init__(self, idstring, logger=None):\n",
+            (
+                "    def __init__(self, idstring, logger=None, *, "
+                "identifiers_org_data):\n"
+                "        self.IDENTIFIERS_ORG_DATA = identifiers_org_data\n"
+            ),
+            1,
+        ),
+    ),
+}
+_REMOVED_METHODS = {
+    ("3.5.1", "helper.identifier_helper"): (
+        "IdentifierHelper.get_resolved_url",
+        "IdentifierHelper.get_identifier_info",
     ),
 }
 
@@ -174,6 +214,32 @@ def dependencies(source: str) -> set[str]:
     return internal
 
 
+def offline_source(source: str, module: str, version: str) -> str:
+    """Apply reviewed source edits and remove methods that perform resolution."""
+    key = (version, module)
+    methods = _REMOVED_METHODS.get(key, ())
+    lines = source.splitlines(keepends=True)
+    found = [
+        node
+        for cls in ast.parse(source).body
+        if isinstance(cls, ast.ClassDef)
+        for node in cls.body
+        if isinstance(node, ast.FunctionDef) and f"{cls.name}.{node.name}" in methods
+    ]
+    if len(found) != len(methods):
+        raise ValueError(f"Missing reviewed resolution methods in {module}")
+    for node in reversed(found):
+        del lines[node.lineno - 1 : node.end_lineno]
+    source = "".join(lines)
+    if methods:
+        source = source.rstrip() + "\n"
+    for old, new, count in _REPLACEMENTS.get(key, ()):
+        if source.count(old) != count:
+            raise ValueError(f"Missing reviewed source in {module}: {old.strip()}")
+        source = source.replace(old, new)
+    return source
+
+
 def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
     """Copy selected modules from the pinned Git commit."""
     namespace = "fair_offline_assessor._vendor.fuji.v" + recipe.version.replace(
@@ -184,6 +250,9 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
     patches: list[str] = []
     pending = {"evaluators." + name for name in recipe.evaluators}
     reviewed = pending | {"evaluators.fair_evaluator", "util"} | _CONSTANTS.keys()
+    reviewed.update(
+        module for version, module in _REPLACEMENTS if version == recipe.version
+    )
     seen: set[str] = set()
 
     def read(path: str) -> bytes:
@@ -204,13 +273,7 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
         path = module.replace(".", "/") + ".py"
         original = read("fuji_server/" + path).decode("utf-8")
         source = constants(original, module) if module in _CONSTANTS else original
-        rewritten = source
-        for removed in _REMOVALS.get((recipe.version, module), ()):
-            if rewritten.count(removed) != 1:
-                raise ValueError(
-                    f"Missing reviewed source line in {module}: {removed.strip()}"
-                )
-            rewritten = rewritten.replace(removed, "")
+        rewritten = offline_source(source, module, recipe.version)
         pending.update(dependencies(rewritten) - seen)
         rewritten = re.sub(
             r"(?m)^(\s*from )fuji_server(?=[. ])", r"\g<1>" + namespace, rewritten

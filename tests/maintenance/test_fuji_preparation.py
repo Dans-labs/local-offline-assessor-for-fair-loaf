@@ -106,6 +106,58 @@ def test_data_link_preparation_removes_only_the_reviewed_timeout(tmp_path, timeo
     assert socket.getdefaulttimeout() == previous
 
 
+@pytest.mark.parametrize("changed", [None, "constructor", "resolver"])
+def test_identifier_preparation_requires_local_catalogue_and_excludes_resolution(
+    tmp_path, changed
+):
+    prepare = runpy.run_path(str(SCRIPT))["prepare"]
+    repository, recipe, resources = source(
+        tmp_path,
+        extra="from fuji_server.helper.identifier_helper import IdentifierHelper\n",
+    )
+    helper = repository / "fuji_server/helper/identifier_helper.py"
+    helper.parent.mkdir()
+    content = """import urllib
+from fuji_server.helper.preprocessor import Preprocessor
+from fuji_server.helper.request_helper import AcceptTypes, RequestHelper
+
+class IdentifierHelper:
+    IDENTIFIERS_ORG_DATA = Preprocessor.get_identifiers_org_data()
+    def __init__(self, idstring, logger=None):
+        self.identifier = idstring
+    def get_resolved_url(self, pid_collector={}):
+        raise AssertionError("Network resolution")
+    def get_identifier_info(self, pidcollector={}, resolve=True):
+        return self.get_resolved_url(pidcollector)
+    def get_preferred_schema(self):
+        return self.IDENTIFIERS_ORG_DATA[self.identifier]
+"""
+    if changed == "constructor":
+        content = content.replace("logger=None", "logger=False")
+    elif changed == "resolver":
+        content = content.replace("def get_resolved_url", "def resolve_url")
+    helper.write_text(content)
+    recipe["commit"] = commit(repository)
+    manifest = resources / "manifest.json"
+    declaration = json.loads(manifest.read_bytes())
+    declaration["source"]["commit"] = recipe["commit"]
+    manifest.write_text(json.dumps(declaration))
+    target = tmp_path / "v3_5_1"
+    if changed:
+        with pytest.raises(ValueError, match="Missing reviewed"):
+            prepare(target, recipe, resources=resources)
+        assert not target.exists()
+        return
+    prepare(target, recipe, resources=resources)
+    generated = runpy.run_path(str(target / "helper/identifier_helper.py"))
+    instance = generated["IdentifierHelper"](
+        "example", identifiers_org_data={"example": "uri"}
+    )
+    assert instance.get_preferred_schema() == "uri"
+    with pytest.raises(AttributeError):
+        instance.get_resolved_url()
+
+
 @pytest.mark.parametrize("changed", ["code", "resource"])
 def test_preparation_copies_pinned_files_and_checks_without_writing(tmp_path, changed):
     prepare = runpy.run_path(str(SCRIPT))["prepare"]

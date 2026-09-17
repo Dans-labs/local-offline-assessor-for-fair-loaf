@@ -70,13 +70,14 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 7,
-        "indeterminate": 24,
+        "evaluated": 8,
+        "indeterminate": 23,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
     }
     evaluated = {
+        "FsF-F1-01MD-1",
         "FsF-F2-01M-2",
         "FsF-F2-01M-3",
         "FsF-F3-01M-2",
@@ -93,7 +94,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
             assert check.score is None
             assert check.reason_code == (
                 "missing_evidence"
-                if check.id in {"FsF-A1.1-01MD-2", "FsF-A1.2-01MD-2"}
+                if check.id in {"FsF-F1-01MD-2", "FsF-A1.1-01MD-2", "FsF-A1.2-01MD-2"}
                 else "not_implemented"
             )
     assert result.overall_score is None
@@ -103,6 +104,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert result.provenance.processor_version == version("PyLD")
     assert result.profile == library.load_profile(PROFILE).info
     assert {ref.id for ref in result.provenance.resources} == {
+        "fuji:identifiers",
         "fuji:metrics",
         "fuji:licenses",
         "fuji:access-rights",
@@ -153,7 +155,8 @@ def test_evidence_and_digests_are_reproducible(request_data):
 
 
 @pytest.mark.parametrize(
-    "problem", ["adapter", "definitions", "licenses", "access-rights", "protocols"]
+    "problem",
+    ["adapter", "definitions", "licenses", "access-rights", "protocols", "identifiers"],
 )
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
@@ -520,3 +523,64 @@ def test_protocols_use_supplied_urls_and_catalogue_capabilities(
         assert all("@id" not in ref.location for ref in checks[1].evidence)
     assert result.coverage.errors == 0
     assert request == original
+
+
+@pytest.mark.parametrize(
+    ("metadata_url", "data_ids", "outcomes"),
+    [
+        ("https://example.org/meta", ["https://example.org/data"], ("pass", "pass")),
+        ("10.5072/example", ["taxonomy:9606"], ("pass", "pass")),
+        (
+            "550e8400-e29b-41d4-a716-446655440000",
+            ["d41d8cd98f00b204e9800998ecf8427e"],
+            ("pass", "pass"),
+        ),
+        ("https://w3id.org/example", ["ark:/12345/example"], ("pass", "pass")),
+        ("unrecognised", ["unrecognised"], ("fail", "fail")),
+        (
+            "unrecognised",
+            ["unrecognised", "https://example.org/data"],
+            ("fail", "pass"),
+        ),
+        ("https://example.org/meta", [], ("pass", "indeterminate")),
+        (None, ["https://example.org/data"], ("indeterminate", "pass")),
+        (None, [], ("indeterminate", "indeterminate")),
+    ],
+)
+def test_identifier_syntax_uses_supplied_targets_and_preserves_zero_weight(
+    request_data, metadata_url, data_ids, outcomes
+):
+    request_data = request_data.model_copy(update={"metadata_url": metadata_url})
+    request_data.metadata["distribution"] = [
+        {"contentUrl": {"@value": value}} for value in data_ids
+    ]
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(item for item in result.metrics if item.id == "FsF-F1-01MD")
+    checks = [check for check in result.tests if check.metric == metric.id]
+    assert tuple(check.outcome for check in checks) == outcomes
+    assert metric.score.observed_earned == (outcomes[0] == "pass")
+    assert metric.score.maximum == 1
+    assert metric.score.complete == ("indeterminate" not in outcomes)
+    for check, maximum in zip(checks, (1, 0), strict=True):
+        if check.outcome == "indeterminate":
+            assert check.reason_code == "missing_evidence"
+            assert check.score is None
+            assert not check.evidence
+        else:
+            assert check.score.maximum == maximum
+            assert check.score.observed_earned == maximum * (check.outcome == "pass")
+            assert check.level.value == (3 if check.outcome == "pass" else 0)
+            assert check.evidence
+    if metadata_url:
+        assert len(checks[0].evidence) == 1
+        ref = checks[0].evidence[0]
+        assert (ref.resource, ref.location) == ("assessment_input", "/metadata_url")
+        assert ref.digest == result.provenance.input_digest
+    assert all(
+        any(term in ref.location for term in ("~1distribution/", "~1contentUrl/"))
+        for ref in checks[1].evidence
+    )
+    if data_ids:
+        assert any("~1contentUrl/" in ref.location for ref in checks[1].evidence)
+    assert all(ref.resource == "prepared_metadata" for ref in checks[1].evidence)
+    assert result.coverage.errors == 0

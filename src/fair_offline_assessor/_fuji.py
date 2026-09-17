@@ -30,8 +30,14 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_standardised_protocol_metadata_data as protocols,
 )
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_unique_identifier_metadata as identifiers,
+)
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import (
     FAIREvaluator,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.identifier_helper import (
+    IdentifierHelper,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
 from fair_offline_assessor.models import (
@@ -72,6 +78,13 @@ PROTOCOLS = ResourceRef(
     format="yaml",
     digest="8e7a8250868b2818f14f523d07438ce0b751d4e1af797a4f3f0550148aab1e4e",
 )
+IDENTIFIERS = ResourceRef(
+    id="fuji:identifiers",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="2625067ce4fef9fab00ad7d5a7568938a2b2e1573d60a3fd5657a2d60d1b068b",
+)
 
 
 @dataclass(frozen=True)
@@ -104,6 +117,15 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-F1-01MD": Evaluator(
+        identifiers.FAIREvaluatorUniqueIdentifierMetadata,
+        (),
+        (IDENTIFIERS,),
+        {
+            "FsF-F1-01MD-1": "metadata_url",
+            "FsF-F1-01MD-2": "object_content_identifier",
+        },
+    ),
     "FsF-F2-01M": Evaluator(core_metadata.FAIREvaluatorCoreMetadata, CORE_FIELDS),
     "FsF-F3-01M": Evaluator(
         data_links.FAIREvaluatorDataIdentifierIncluded, ("object_content_identifier",)
@@ -169,6 +191,15 @@ class Runner:
             },
             ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
             PROTOCOLS.id: {"STANDARD_PROTOCOLS": loaded[PROTOCOLS.id]},
+            IDENTIFIERS.id: {
+                "IDENTIFIERS_ORG_DATA": {
+                    item["prefix"]: {
+                        "pattern": item["pattern"],
+                        "url_pattern": item["resources"][0]["urlPattern"],
+                    }
+                    for item in loaded[IDENTIFIERS.id]["payload"]["namespaces"]
+                }
+            },
         }
 
     def _context(self, identifier: str, **evidence: object) -> SimpleNamespace:
@@ -208,6 +239,7 @@ class Runner:
             "metadata_sources": [],
             "landing_url": None,
             "origin_url": metadata_url,
+            "id": metadata_url,
             "pid_url": None,
             "content_identifier": {
                 item["url"]: item
@@ -222,6 +254,12 @@ class Runner:
         for resource in registration.resources:
             state.update(self._resources[resource.id])
         context = self._context(identifier, **state)
+        if IDENTIFIERS in registration.resources:
+            for item in context.content_identifier.values():
+                helper = IdentifierHelper(  # type: ignore[no-untyped-call]
+                    item["url"], identifiers_org_data=context.IDENTIFIERS_ORG_DATA
+                )
+                item["scheme"] = helper.preferred_schema
         checks = context.METRICS[identifier]["metric_tests"]
         available = {**prepared, "metadata_url": metadata_url}
         missing = {

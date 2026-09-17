@@ -9,6 +9,15 @@
   },
   "files": [
     {
+      "id": "fuji:identifiers",
+      "path": "identifiers_org_resolver_data.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/data/identifiers_org_resolver_data.yaml"
+      }
+    },
+    {
       "id": "fuji:metrics",
       "path": "metrics_v0.8.yaml",
       "kind": "reference",
