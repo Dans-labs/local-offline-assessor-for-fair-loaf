@@ -51,6 +51,16 @@ _REPLACEMENTS = {
             3,
         ),
     ),
+    ("3.5.1", "evaluators.fair_evaluator_related_resources"): (
+        (
+            'IdentifierHelper(relation.get("related_resource"))',
+            (
+                'IdentifierHelper(relation.get("related_resource"), '
+                "identifiers_org_data=self.fuji.IDENTIFIERS_ORG_DATA)"
+            ),
+            1,
+        ),
+    ),
     ("3.5.1", "helper.identifier_helper"): (
         ("import urllib\n", "import urllib.parse\n", 1),
         ("from fuji_server.helper.preprocessor import Preprocessor\n", "", 1),

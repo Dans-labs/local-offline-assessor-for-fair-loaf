@@ -205,6 +205,7 @@ result = assess(AssessmentInput(metadata={
     'creator': {'@id': 'https://example.org/person'},
     'license': {'@id': 'https://example.org/custom-licence'},
     'conditionsOfAccess': 'Available on request.',
+    'citation': ['A study by Alice', '10.5072/example', 'taxonomy:9606'],
     'distribution': [{'contentUrl': {'@value': identifier}} for identifier in (
         'https://example.org/data.csv', 'taxonomy:9606', 'ark:/12345/example',
         'https://w3id.org/example', 'hdl:12345/example', 'unrecognised',

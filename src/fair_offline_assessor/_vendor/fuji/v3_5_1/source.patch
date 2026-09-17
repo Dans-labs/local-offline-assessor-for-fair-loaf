@@ -92,6 +92,32 @@
  
  
  class FAIREvaluatorCoreMetadata(FAIREvaluator):
+--- a/fuji_server/evaluators/fair_evaluator_related_resources.py
++++ b/evaluators/fair_evaluator_related_resources.py
+@@ -2,10 +2,10 @@
+ #
+ # SPDX-License-Identifier: MIT
+ 
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.helper.identifier_helper import IdentifierHelper
+-from fuji_server.models.related_resource import RelatedResource
+-from fuji_server.models.related_resource_output import RelatedResourceOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.helper.identifier_helper import IdentifierHelper
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.related_resource import RelatedResource
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.related_resource_output import RelatedResourceOutput
+ 
+ 
+ class FAIREvaluatorRelatedResources(FAIREvaluator):
+@@ -77,7 +77,7 @@
+                 for relation in self.fuji.related_resources:
+                     if isinstance(relation.get("related_resource"), list):
+                         relation["related_resource"] = relation.get("related_resource")[0]
+-                    relation_identifier = IdentifierHelper(relation.get("related_resource"))
++                    relation_identifier = IdentifierHelper(relation.get("related_resource"), identifiers_org_data=self.fuji.IDENTIFIERS_ORG_DATA)
+                     if relation_identifier.is_persistent or "url" in relation_identifier.identifier_schemes:
+                         test_status = True
+             if test_status:
 --- a/fuji_server/evaluators/fair_evaluator_retrievable_metadata_data.py
 +++ b/evaluators/fair_evaluator_retrievable_metadata_data.py
 @@ -2,10 +2,10 @@
@@ -525,6 +551,57 @@
  
  
  class OutputCoreMetadataFound(Model):
+--- a/fuji_server/models/related_resource.py
++++ b/models/related_resource.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+-from fuji_server.models.related_resource_output import RelatedResourceOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.related_resource_output import RelatedResourceOutput
+ 
+ 
+ class RelatedResource(Model):
+--- a/fuji_server/models/related_resource_output.py
++++ b/models/related_resource_output.py
+@@ -6,9 +6,9 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.related_resource_output_inner import RelatedResourceOutputInner  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.related_resource_output_inner import RelatedResourceOutputInner  # noqa: F401
+ 
+ 
+ class RelatedResourceOutput(Model):
+--- a/fuji_server/models/related_resource_output_inner.py
++++ b/models/related_resource_output_inner.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class RelatedResourceOutputInner(Model):
 --- a/fuji_server/models/retrievable.py
 +++ b/models/retrievable.py
 @@ -6,13 +6,13 @@

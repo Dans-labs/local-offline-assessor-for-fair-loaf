@@ -22,6 +22,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_minimal_metadata as core_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_related_resources as related_resources,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_retrievable_metadata_data as retrieval,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -117,6 +120,11 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-I3-01M": Evaluator(
+        related_resources.FAIREvaluatorRelatedResources,
+        ("related_resources",),
+        (IDENTIFIERS,),
+    ),
     "FsF-F1-01MD": Evaluator(
         identifiers.FAIREvaluatorUniqueIdentifierMetadata,
         (),
@@ -236,6 +244,7 @@ class Runner:
         }
         state: dict[str, object] = {
             "metadata_merged": prepared,
+            "related_resources": prepared.get("related_resources", []),
             "metadata_sources": [],
             "landing_url": None,
             "origin_url": metadata_url,
@@ -254,7 +263,7 @@ class Runner:
         for resource in registration.resources:
             state.update(self._resources[resource.id])
         context = self._context(identifier, **state)
-        if IDENTIFIERS in registration.resources:
+        if identifier == "FsF-F1-01MD":
             for item in context.content_identifier.values():
                 helper = IdentifierHelper(  # type: ignore[no-untyped-call]
                     item["url"], identifiers_org_data=context.IDENTIFIERS_ORG_DATA

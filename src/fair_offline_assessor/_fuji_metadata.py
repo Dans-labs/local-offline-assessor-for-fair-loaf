@@ -54,6 +54,33 @@ _FIELDS = {
     "http://www.w3.org/ns/dcat#keyword": "keywords",
 }
 _NAMES = (*(ns + "name" for ns in _SCHEMA), "http://xmlns.com/foaf/0.1/name")
+_RELATIONS = {
+    ns + term
+    for ns in _SCHEMA
+    for term in (
+        "isPartOf",
+        "includedInDataCatalog",
+        "subjectOf",
+        "isBasedOn",
+        "sameAs",
+        "citation",
+    )
+} | {
+    "http://purl.org/dc/terms/" + term
+    for term in (
+        "references",
+        "source",
+        "isVersionOf",
+        "isReferencedBy",
+        "isPartOf",
+        "hasVersion",
+        "replaces",
+        "hasPart",
+        "isReplacedBy",
+        "requires",
+        "isRequiredBy",
+    )
+}
 _DETAILS = {
     "license": tuple(ns + "url" for ns in _SCHEMA),
     "creator": _NAMES,
@@ -65,6 +92,10 @@ _DETAILS = {
     "object_identifier": tuple(ns + "value" for ns in _SCHEMA),
     "object_content_identifier": tuple(
         ns + term for ns in _SCHEMA for term in ("contentUrl", "url")
+    ),
+    "related_resources": (
+        *(ns + term for ns in _SCHEMA for term in ("url", "identifier")),
+        *_NAMES,
     ),
 }
 
@@ -86,7 +117,12 @@ def _pointer(index: int, term: str) -> str:
 
 
 def _values(
-    value: JsonValue, location: str, graph: GraphIndex, properties: tuple[str, ...] = ()
+    value: JsonValue,
+    location: str,
+    graph: GraphIndex,
+    properties: tuple[str, ...] = (),
+    *,
+    prefer_id: bool = False,
 ) -> list[SourcedValue]:
     """Read literals or identifiers, following supported local properties once."""
     if isinstance(value, dict):
@@ -94,7 +130,13 @@ def _values(
             return [
                 found
                 for i, item in enumerate(cast("list[JsonValue]", value["@list"]))
-                for found in _values(item, f"{location}/@list/{i}", graph, properties)
+                for found in _values(
+                    item,
+                    f"{location}/@list/{i}",
+                    graph,
+                    properties,
+                    prefer_id=prefer_id,
+                )
             ]
         if "@value" in value:
             value = value["@value"]
@@ -102,6 +144,8 @@ def _values(
             identifier = value.get("@id")
             if not isinstance(identifier, str):
                 return []
+            if prefer_id and not identifier.startswith("_:"):
+                properties = ()
             found = _linked_values(identifier, location, graph, properties)
             if found:
                 return found
@@ -126,6 +170,39 @@ def _linked_values(
         for i, item in enumerate(cast("list[JsonValue]", node.get(term, [])))
         for value, paths in _values(item, f"{_pointer(index, term)}/{i}", graph)
     ]
+
+
+def _related_resources(
+    node: dict[str, JsonValue], index: int, graph: GraphIndex
+) -> list[SourcedValue]:
+    """Keep typed references, using local details only for anonymous resources."""
+    related: list[SourcedValue] = []
+    for term, items in node.items():
+        if term not in _RELATIONS:
+            continue
+        for i, item in enumerate(cast("list[JsonValue]", items)):
+            location = f"{_pointer(index, term)}/{i}"
+            values = _values(
+                item, location, graph, _DETAILS["related_resources"], prefer_id=True
+            )
+            related.extend(
+                ({"related_resource": value, "relation_type": term}, paths)
+                for value, paths in values
+                if isinstance(value, str)
+            )
+    return related
+
+
+def _access_free(values: list[JsonValue]) -> bool:
+    """Require one unambiguous boolean value for isAccessibleForFree."""
+    if any(not isinstance(value, bool) for value in values) or any(
+        value != values[0] for value in values
+    ):
+        raise InputError(
+            "invalid_access_free",
+            "isAccessibleForFree must contain one unambiguous boolean value",
+        )
+    return cast("bool", values[0])
 
 
 def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
@@ -157,16 +234,16 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
                         normalized = normalized.removeprefix(ns)
                 cast("list[JsonValue]", fields.setdefault(field, [])).append(normalized)
                 sources[field] = (*sources.get(field, ()), *paths)
+    relations = _related_resources(node, index, graph)
+    if relations:
+        fields["related_resources"] = [value for value, _ in relations]
+        sources["related_resources"] = tuple(
+            path for _, paths in relations for path in paths
+        )
     if "access_free" in fields:
-        values = cast("list[JsonValue]", fields["access_free"])
-        if any(not isinstance(value, bool) for value in values) or any(
-            value != values[0] for value in values
-        ):
-            raise InputError(
-                "invalid_access_free",
-                "isAccessibleForFree must contain one unambiguous boolean value",
-            )
-        fields["access_free"] = values[0]
+        fields["access_free"] = _access_free(
+            cast("list[JsonValue]", fields["access_free"])
+        )
     return FujiMetadata(
         fields=fields,
         sources=sources,
@@ -174,7 +251,9 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
             sorted(
                 term
                 for term in node
-                if not term.startswith("@") and term not in _FIELDS
+                if not term.startswith("@")
+                and term not in _FIELDS
+                and term not in _RELATIONS
             )
         ),
     )

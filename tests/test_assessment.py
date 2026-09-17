@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 8,
-        "indeterminate": 23,
+        "evaluated": 10,
+        "indeterminate": 21,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -85,6 +85,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "FsF-R1.1-01M-1",
         "FsF-A1.1-01MD-1",
         "FsF-A1.2-01MD-1",
+        "FsF-I3-01M-1",
+        "FsF-I3-01M-2",
     }
     assert {
         check.id for check in result.tests if check.outcome in {"pass", "fail"}
@@ -584,3 +586,58 @@ def test_identifier_syntax_uses_supplied_targets_and_preserves_zero_weight(
         assert any("~1contentUrl/" in ref.location for ref in checks[1].evidence)
     assert all(ref.resource == "prepared_metadata" for ref in checks[1].evidence)
     assert result.coverage.errors == 0
+
+
+@pytest.mark.parametrize(
+    ("term", "value", "outcomes", "maturity"),
+    [
+        ("citation", "A study by Alice", ("pass", "fail"), 2),
+        ("isBasedOn", {"@id": "https://example.org/source"}, ("pass", "pass"), 3),
+        ("sameAs", {"@id": "https://doi.org/10.5072/example"}, ("pass", "pass"), 3),
+        ("http://purl.org/dc/terms/source", "taxonomy:9606", ("pass", "pass"), 3),
+        ("citation", "550e8400-e29b-41d4-a716-446655440000", ("pass", "fail"), 2),
+        ("citation", ["A study by Alice", "10.5072/example"], ("pass", "pass"), 3),
+        ("citation", None, ("fail", "fail"), 0),
+        ("citation", [" ", False, 0, {"@id": "_:missing"}], ("fail", "fail"), 0),
+        (
+            "urn:unrecognised:relation",
+            "https://example.org/source",
+            ("fail", "fail"),
+            0,
+        ),
+    ],
+)
+def test_related_resources_keep_native_alternative_scoring(
+    request_data, term, value, outcomes, maturity
+):
+    request_data.metadata[term] = value
+    original = request_data.model_copy(deep=True)
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(item for item in result.metrics if item.id == "FsF-I3-01M")
+    checks = [check for check in result.tests if check.metric == metric.id]
+    assert tuple(check.outcome for check in checks) == outcomes
+    assert metric.outcome == outcomes[0]
+    assert metric.score.observed_earned == (2 if maturity else 0)
+    assert metric.score.maximum == 2
+    assert metric.score.complete
+    assert metric.level.value == maturity
+    for check in checks:
+        assert check.score.observed_earned == (2 if check.outcome == "pass" else 0)
+        assert check.score.maximum == 2
+        assert bool(check.evidence) == bool(maturity)
+        assert all(
+            term.replace("~", "~0").replace("/", "~1") in ref.location
+            for ref in check.evidence
+        )
+    assert result.coverage.errors == 0
+    assert request_data == original
+
+
+def test_related_resources_do_not_use_distribution_identifiers(request_data):
+    request_data.metadata.update(
+        citation="https://example.org/paper",
+        distribution={"contentUrl": {"@value": "https://["}},
+    )
+    result = library.assess(request_data, profile=PROFILE)
+    related = [check for check in result.tests if check.metric == "FsF-I3-01M"]
+    assert [check.outcome for check in related] == ["pass", "pass"]

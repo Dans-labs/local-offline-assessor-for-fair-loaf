@@ -217,3 +217,62 @@ def test_distribution_links_keep_local_sources_and_multiple_downloads(profile):
     assert {"@id": "https://example.org/b.csv"} in values
     assert not prepared.unmapped
     assert selected == original
+
+
+def test_related_resources_keep_relation_types_and_local_graph_sources(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "https://schema.org/",
+                "basedOn": "https://schema.org/isBasedOn",
+            },
+            "@graph": [
+                {
+                    "@id": "urn:data",
+                    "@type": "Dataset",
+                    "basedOn": {
+                        "@list": [
+                            {"@id": "_:source"},
+                            {"@id": "_:foreign"},
+                            {"@id": "https://example.org/derived"},
+                        ]
+                    },
+                    "citation": {"@id": "https://example.org/paper"},
+                    "sameAs": {"@id": "https://example.org/copy"},
+                },
+                {"@id": "_:source", "name": {"@value": "Bodem", "@language": "nl"}},
+                {"@id": "https://example.org/paper", "name": "Keep the paper ID"},
+                {"@id": "urn:unrelated", "citation": "https://example.org/ignored"},
+                {
+                    "@id": "urn:other-graph",
+                    "@graph": [
+                        {"@id": "_:foreign", "url": "https://example.org/foreign"}
+                    ],
+                },
+            ],
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert {
+        (entry["relation_type"], entry["related_resource"])
+        for entry in prepared.fields["related_resources"]
+    } == {
+        ("https://schema.org/isBasedOn", "Bodem"),
+        ("https://schema.org/isBasedOn", "https://example.org/derived"),
+        ("https://schema.org/citation", "https://example.org/paper"),
+        ("https://schema.org/sameAs", "https://example.org/copy"),
+    }
+    assert prepared.fields["object_identifier"] == [
+        "urn:data",
+        "https://example.org/copy",
+    ]
+    values = [
+        at_pointer(selected.graph, pointer)
+        for pointer in prepared.sources["related_resources"]
+    ]
+    assert {"@value": "Bodem", "@language": "nl"} in values
+    assert {"@id": "https://example.org/paper"} in values
+    assert not prepared.unmapped
+    assert selected == original
