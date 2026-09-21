@@ -9,6 +9,15 @@
   },
   "files": [
     {
+      "id": "fuji:file-formats",
+      "path": "file_formats.yaml",
+      "kind": "reference",
+      "format": "yaml",
+      "source": {
+        "path": "fuji_server/data/file_formats.yaml"
+      }
+    },
+    {
       "id": "fuji:identifiers",
       "path": "identifiers_org_resolver_data.yaml",
       "kind": "reference",

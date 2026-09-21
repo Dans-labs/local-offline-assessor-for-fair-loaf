@@ -7,6 +7,7 @@
     "fair_evaluator_data_content_metadata",
     "fair_evaluator_data_identifier_included",
     "fair_evaluator_data_provenance",
+    "fair_evaluator_file_format",
     "fair_evaluator_license",
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_related_resources",

@@ -6,6 +6,6 @@
     "adapter": "fuji",
     "engine_requires": ">=0.1,<0.2",
     "adapter_version": "1.0.0",
-    "digest": "4bfb2add5f5de96b9a045174b0150e530d21e85df4dbb87395a0ce9b73abd3db"
+    "digest": "cbf17febfba93d31341cb71810fdccb1464b2c62d189e0007a11d9dc8bd0acfd"
   }
 ]

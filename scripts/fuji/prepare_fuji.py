@@ -39,6 +39,7 @@ _EXTERNAL_IMPORTS = {
     "Levenshtein",
     "hashid",
     "uuid",
+    "mimetypes",
 }
 # Version-scoped edits keep service and network behaviour out of copied helpers.
 _REPLACEMENTS = {

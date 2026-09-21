@@ -221,28 +221,29 @@ def _related_resources(
 
 def _distribution_details(
     identifier: str, location: str, graph: GraphIndex
-) -> tuple[dict[str, JsonValue], tuple[str, ...]]:
+) -> tuple[dict[str, JsonValue], dict[str, tuple[str, ...]]]:
     """Read each distribution's declarations without combining different files."""
     fields: dict[str, JsonValue] = {}
-    sources: list[str] = []
+    sources: dict[str, tuple[str, ...]] = {}
     for field in ("type", "size"):
         entries = _linked_values(identifier, location, graph, _DETAILS[field])
         values = [value for value, _ in entries]
         if values:
             fields[field] = values[0] if len(values) == 1 else values
-            sources.extend(path for _, paths in entries for path in paths)
-    return fields, tuple(sources)
+            sources[field] = tuple(path for _, paths in entries for path in paths)
+    return fields, sources
 
 
 def _distributions(
     node: dict[str, JsonValue], index: int, graph: GraphIndex
-) -> tuple[list[SourcedValue], tuple[str, ...]]:
+) -> tuple[dict[str, list[SourcedValue]], tuple[str, ...]]:
     """Pair download links with their declarations, keeping their sources separate."""
     pending = [
         (node[term], _pointer(index, term)) for term in _DISTRIBUTIONS if term in node
     ]
     pending.reverse()
     found: list[SourcedValue] = []
+    formats: list[SourcedValue] = []
     sources: list[str] = []
     while pending:
         value, location = pending.pop()
@@ -263,12 +264,20 @@ def _distributions(
             if isinstance(url, str)
         ]
         details: dict[str, JsonValue] = {}
+        detail_sources: dict[str, tuple[str, ...]] = {}
         identifier = value.get("@id") if isinstance(value, dict) else None
         if urls and isinstance(identifier, str):
-            details, paths = _distribution_details(identifier, location, graph)
-            sources.extend(paths)
+            details, detail_sources = _distribution_details(identifier, location, graph)
+            sources.extend(path for paths in detail_sources.values() for path in paths)
         found.extend(({"url": url, **details}, paths) for url, paths in urls)
-    return found, tuple(sources)
+        types = details.get("type", [])
+        formats.extend(
+            ({"url": url, "type": mime}, (*paths, *detail_sources.get("type", ())))
+            for url, paths in urls
+            for mime in (types if isinstance(types, list) else [types])
+            if isinstance(mime, str) and mime.strip()
+        )
+    return {"object_content_identifier": found, "file_formats": formats}, tuple(sources)
 
 
 def _access_free(values: list[JsonValue]) -> bool:
@@ -362,7 +371,7 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
     if details:
         sources["distribution_details"] = details
     derived = {
-        "object_content_identifier": distributions,
+        **distributions,
         "related_resources": _related_resources(node, index, graph),
         "provenance_namespaces": _provenance_namespaces(node, graph),
     }

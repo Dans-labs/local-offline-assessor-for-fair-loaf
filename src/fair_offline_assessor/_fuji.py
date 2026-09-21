@@ -22,6 +22,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_provenance as provenance,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_file_format as file_formats,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_license as license_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -94,6 +97,13 @@ IDENTIFIERS = ResourceRef(
     format="yaml",
     digest="2625067ce4fef9fab00ad7d5a7568938a2b2e1573d60a3fd5657a2d60d1b068b",
 )
+FILE_FORMATS = ResourceRef(
+    id="fuji:file-formats",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="f60f8c8faf96318e9782a0d098610a2c399d7c07d32e23c089c0d3996790b925",
+)
 
 
 @dataclass(frozen=True)
@@ -127,6 +137,12 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-R1.3-02D": Evaluator(
+        file_formats.FAIREvaluatorFileFormat,
+        (),
+        (FILE_FORMATS,),
+        {"FsF-R1.3-02D-1": "file_formats"},
+    ),
     "FsF-R1-01M": Evaluator(
         data_content.FAIREvaluatorDataContentMetadata,
         (),
@@ -225,6 +241,19 @@ class Runner:
             },
             ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
             PROTOCOLS.id: {"STANDARD_PROTOCOLS": loaded[PROTOCOLS.id]},
+            FILE_FORMATS.id: {
+                name: {
+                    mime: entry["domain"][0] if entry.get("domain") else None
+                    for entry in loaded[FILE_FORMATS.id].values()
+                    if reason in entry["reason"]
+                    for mime in entry["mime"]
+                }
+                for name, reason in (
+                    ("SCIENCE_FILE_FORMATS", "scientific format"),
+                    ("LONG_TERM_FILE_FORMATS", "long term format"),
+                    ("OPEN_FILE_FORMATS", "open format"),
+                )
+            },
             IDENTIFIERS.id: {
                 "IDENTIFIERS_ORG_DATA": {
                     item["prefix"]: {
@@ -297,6 +326,12 @@ class Runner:
         for resource in registration.resources:
             state.update(self._resources[resource.id])
         context = self._context(identifier, **state)
+        if identifier == "FsF-R1.3-02D":
+            # Only declared formats are available without captured content.
+            context.content_identifier = {}
+            context.metadata_merged["object_content_identifier"] = (
+                context.metadata_merged.get("file_formats", [])
+            )
         if identifier == "FsF-F1-01MD":
             for item in context.content_identifier.values():
                 helper = IdentifierHelper(  # type: ignore[no-untyped-call]

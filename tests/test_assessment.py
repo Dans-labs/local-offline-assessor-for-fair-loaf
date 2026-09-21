@@ -101,7 +101,13 @@ def test_public_assessment_reports_core_results_and_full_coverage(
             assert check.score is None
             assert check.reason_code == (
                 "missing_evidence"
-                if check.id in {"FsF-F1-01MD-2", "FsF-A1.1-01MD-2", "FsF-A1.2-01MD-2"}
+                if check.id
+                in {
+                    "FsF-F1-01MD-2",
+                    "FsF-A1.1-01MD-2",
+                    "FsF-A1.2-01MD-2",
+                    "FsF-R1.3-02D-1",
+                }
                 else "not_implemented"
             )
     assert result.overall_score is None
@@ -111,6 +117,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert result.provenance.processor_version == version("PyLD")
     assert result.profile == library.load_profile(PROFILE).info
     assert {ref.id for ref in result.provenance.resources} == {
+        "fuji:file-formats",
         "fuji:identifiers",
         "fuji:metrics",
         "fuji:licenses",
@@ -163,7 +170,15 @@ def test_evidence_and_digests_are_reproducible(request_data):
 
 @pytest.mark.parametrize(
     "problem",
-    ["adapter", "definitions", "licenses", "access-rights", "protocols", "identifiers"],
+    [
+        "adapter",
+        "definitions",
+        "licenses",
+        "access-rights",
+        "protocols",
+        "identifiers",
+        "file-formats",
+    ],
 )
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
