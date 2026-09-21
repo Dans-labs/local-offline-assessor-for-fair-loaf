@@ -53,6 +53,16 @@ _EXTERNAL_IMPORTS = {
 }
 # Version-scoped edits keep service and network behaviour out of copied helpers.
 _REPLACEMENTS = {
+    ("3.5.1", "evaluators.fair_evaluator_persistent_identifier_metadata_data"): (
+        (
+            "from fuji_server import Persistence, PersistenceOutput\n",
+            (
+                "from fuji_server.models.persistence import Persistence\n"
+                "from fuji_server.models.persistence_output import PersistenceOutput\n"
+            ),
+            1,
+        ),
+    ),
     ("3.5.1", "helper.linked_vocab_helper"): (
         ("import json\n", "", 1),
         ("from pathlib import Path\n", "", 1),

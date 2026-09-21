@@ -67,11 +67,12 @@ def _unmeasured(
     identifier = definition["metric_identifier"]
     # F-UJI metrics 0.8 omits fair_principle on its F4 metric.
     principle = definition.get("fair_principle", identifier.split("-")[1])
-    reason = "evaluator_error" if outcome == "error" else "not_implemented"
+    reason = "evaluator_error" if outcome == "error" else "unsupported_check"
     message = (
         "F-UJI could not complete this check."
         if outcome == "error"
-        else "This check is not implemented yet."
+        else "This check requires HTTP or HTML evidence, "
+        "which this release does not support."
     )
     return (
         MetricResult(id=identifier, principles=(principle,), outcome=outcome),

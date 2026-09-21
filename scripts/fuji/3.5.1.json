@@ -11,6 +11,7 @@
     "fair_evaluator_file_format",
     "fair_evaluator_license",
     "fair_evaluator_minimal_metadata",
+    "fair_evaluator_persistent_identifier_metadata_data",
     "fair_evaluator_related_resources",
     "fair_evaluator_retrievable_metadata_data",
     "fair_evaluator_semantic_vocabulary",

@@ -215,8 +215,11 @@ result = assess(AssessmentInput(metadata={
         'https://w3id.org/example', 'hdl:12345/example', 'unrecognised',
         '550e8400-e29b-41d4-a716-446655440000', 'd41d8cd98f00b204e9800998ecf8427e'
     )]
-}, metadata_url='https://example.org/meta'), profile='fusji-offline@3.5.1')
+}, metadata_url='https://doi.org/10.5072/example'), profile='fusji-offline@3.5.1')
 assert result.status == 'completed'
+outcomes = {check.id: check.outcome for check in result.tests}
+assert outcomes['FsF-F1-02MD-1'] == 'pass'
+assert outcomes['FsF-F1-02MD-4'] == 'pass'
 assert not attempts
 """
     subprocess.run([sys.executable, "-c", script], check=True, timeout=10)  # noqa: S603

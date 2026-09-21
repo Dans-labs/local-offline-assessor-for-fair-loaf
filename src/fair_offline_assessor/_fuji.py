@@ -35,6 +35,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_minimal_metadata as core_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_persistent_identifier_metadata_data as persistence,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_related_resources as related_resources,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -161,9 +164,20 @@ class Evaluator:
     # Per-check fields must be supplied and provide that check's evidence.
     check_fields: Mapping[str, str] = field(default_factory=dict)
     check_evidence: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    unsupported_checks: tuple[str, ...] = ()
 
 
 EVALUATORS = {
+    "FsF-F1-02MD": Evaluator(
+        persistence.FAIREvaluatorPersistentIdentifierMetadataData,
+        (),
+        (IDENTIFIERS,),
+        {
+            "FsF-F1-02MD-1": "metadata_url",
+            "FsF-F1-02MD-4": "object_content_identifier",
+        },
+        unsupported_checks=("FsF-F1-02MD-2", "FsF-F1-02MD-5"),
+    ),
     "FsF-I2-01M": Evaluator(
         semantic_vocabulary.FAIREvaluatorSemanticVocabulary,
         ("namespaces", "linked_uris"),
@@ -404,24 +418,36 @@ class Runner:
             context.metadata_merged["object_content_identifier"] = (
                 context.metadata_merged.get("file_formats", [])
             )
-        if identifier == "FsF-F1-01MD":
+        if identifier in {"FsF-F1-01MD", "FsF-F1-02MD"}:
             for item in context.content_identifier.values():
-                helper = IdentifierHelper(  # type: ignore[no-untyped-call]
-                    item["url"], identifiers_org_data=context.IDENTIFIERS_ORG_DATA
-                )
-                item["scheme"] = helper.preferred_schema
+                item.update(_identifier(item["url"], context.IDENTIFIERS_ORG_DATA))
+        if identifier == "FsF-F1-02MD":
+            context.pid_collector = (
+                {
+                    metadata_url: {
+                        **_identifier(metadata_url, context.IDENTIFIERS_ORG_DATA),
+                        "pid": metadata_url,
+                        # Upstream trusts the explicit input PID before resolution.
+                        "verified": True,
+                    }
+                }
+                if metadata_url
+                else {}
+            )
         checks = context.METRICS[identifier]["metric_tests"]
         available = {**prepared, "metadata_url": metadata_url}
         missing = {
             check
             for check, required in registration.check_fields.items()
             if not available.get(required)
-        }
+        } | set(registration.unsupported_checks)
         context.METRICS[identifier]["metric_tests"] = [
             check for check in checks if check["metric_test_identifier"] not in missing
         ]
         evaluator = registration.implementation(context)
-        return _evaluate(evaluator, checks=checks)
+        return _evaluate(
+            evaluator, checks=checks, unsupported_checks=registration.unsupported_checks
+        )
 
     def evaluate_retrievability(
         self,
@@ -455,8 +481,17 @@ class Runner:
         return _evaluate(evaluator, checks=checks)
 
 
+def _identifier(value: str, catalogue: Mapping[str, object]) -> dict[str, JsonValue]:
+    """Recognise identifier schemes without resolving them."""
+    helper = IdentifierHelper(value, identifiers_org_data=catalogue)  # type: ignore[no-untyped-call]
+    return {"scheme": helper.preferred_schema, "is_persistent": helper.is_persistent}
+
+
 def _evaluate(
-    evaluator: FAIREvaluator, *, checks: Sequence[CheckDefinition]
+    evaluator: FAIREvaluator,
+    *,
+    checks: Sequence[CheckDefinition],
+    unsupported_checks: tuple[str, ...] = (),
 ) -> MetricEvaluation:
     """Run F-UJI and convert its checks and metric result."""
     native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
@@ -471,8 +506,13 @@ def _evaluate(
                     id=check_id,
                     metric=identifier,
                     outcome="indeterminate",
-                    reason_code="missing_evidence",
-                    message="No conclusive evidence supplied.",
+                    reason_code="unsupported_check"
+                    if check_id in unsupported_checks
+                    else "missing_evidence",
+                    message="This check requires HTTP or HTML evidence, "
+                    "which this release does not support."
+                    if check_id in unsupported_checks
+                    else "No conclusive evidence supplied.",
                 )
             )
             continue

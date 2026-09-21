@@ -70,14 +70,15 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 18,
-        "indeterminate": 13,
+        "evaluated": 19,
+        "indeterminate": 12,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
     }
     evaluated = {
         "FsF-F1-01MD-1",
+        "FsF-F1-02MD-1",
         "FsF-F2-01M-2",
         "FsF-F2-01M-3",
         "FsF-F3-01M-2",
@@ -107,12 +108,20 @@ def test_public_assessment_reports_core_results_and_full_coverage(
                 if check.id
                 in {
                     "FsF-F1-01MD-2",
+                    "FsF-F1-02MD-4",
                     "FsF-A1.1-01MD-2",
                     "FsF-A1.2-01MD-2",
                     "FsF-R1.3-02D-1",
                 }
-                else "not_implemented"
+                else "unsupported_check"
             )
+            if check.reason_code == "unsupported_check":
+                assert check.message == (
+                    "This check requires HTTP or HTML evidence, "
+                    "which this release does not support."
+                )
+                metric = next(m for m in result.metrics if m.id == check.metric)
+                assert metric.score is None or not metric.score.complete
     assert result.overall_score is None
     assert result.principle_scores == {}
     assert result.status == "completed"
