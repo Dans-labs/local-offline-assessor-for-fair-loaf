@@ -49,9 +49,37 @@ _EXTERNAL_IMPORTS = {
     "mimetypes",
     "rapidfuzz",
     "tldextract",
+    "logging",
 }
 # Version-scoped edits keep service and network behaviour out of copied helpers.
 _REPLACEMENTS = {
+    ("3.5.1", "helper.linked_vocab_helper"): (
+        ("import json\n", "", 1),
+        ("from pathlib import Path\n", "", 1),
+        (
+            "from tldextract import extract\n",
+            (
+                "from tldextract import TLDExtract\n\n"
+                "extract = TLDExtract(suffix_list_urls=(), cache_dir=None)\n"
+            ),
+            1,
+        ),
+        ("    fuji_server_dir = Path(__file__).parent.parent  # project_root\n", "", 1),
+        ('    linked_vocabs_dir = fuji_server_dir / "data/linked_vocabs"\n', "", 1),
+        (
+            "    def __init__(self, linked_vocab_index={}):",
+            "    def __init__(self, linked_vocab_index):",
+            1,
+        ),
+        (
+            (
+                "        if not self.linked_vocab_dict:\n"
+                "            self.set_linked_vocab_dict()\n"
+            ),
+            "",
+            1,
+        ),
+    ),
     ("3.5.1", "evaluators.fair_evaluator_community_metadata"): (
         ("from tldextract import extract\n", "", 1),
         (
@@ -138,6 +166,9 @@ _REPLACEMENTS = {
     ),
 }
 _REMOVED_METHODS = {
+    ("3.5.1", "helper.linked_vocab_helper"): (
+        "LinkedVocabHelper.set_linked_vocab_dict",
+    ),
     ("3.5.1", "evaluators.fair_evaluator_community_metadata"): tuple(
         "FAIREvaluatorCommunityMetadata." + name
         for name in (
@@ -193,7 +224,7 @@ def read_source(repository: Path, commit: str, path: str) -> bytes:
     return git(repository, "cat-file", "blob", f"{commit}:{path}")
 
 
-def resource_files(root: Path, recipe: Recipe) -> dict[str, str]:
+def resource_files(root: Path, recipe: Recipe) -> dict[str, dict[str, str]]:
     """Read resource paths from the manifest and verify their source pin."""
     manifest = json.loads((root / "manifest.json").read_bytes())
     if manifest["version"] != recipe.version:
@@ -219,8 +250,54 @@ def resource_files(root: Path, recipe: Recipe) -> dict[str, str]:
             raise ValueError(f"Conflicting resource path: {name}")
         if (root / name).resolve() != root.resolve() / name:
             raise ValueError(f"Symlinked resource path: {name}")
-        files[name] = source["path"]
+        files[name] = source
     return files
+
+
+def reference_content(
+    repository: Path, recipe: Recipe, source: dict[str, str]
+) -> bytes:
+    """Copy a reference or bundle the pinned semantic vocabulary registries."""
+    if not source.get("transform"):
+        return read_source(repository, recipe.commit, source["path"])
+    if source["transform"] != "semantic-vocabularies" or recipe.version != "3.5.1":
+        raise ValueError(f"Unreviewed resource transformation: {source['transform']}")
+    root = source["path"]
+    paths = sorted(
+        path
+        for path in git(
+            repository,
+            "ls-tree",
+            "--name-only",
+            recipe.commit,
+            "--",
+            root + "/linked_vocabs/",
+        )
+        .decode()
+        .splitlines()
+        if path.endswith(".json")
+    )
+    if not paths:
+        raise ValueError("No vocabulary registries found")
+    files = {
+        path: read_source(repository, recipe.commit, path)
+        for path in [root + "/default_namespaces.txt", *paths]
+    }
+    bundle = {
+        "sources": {
+            path: sha256(content).hexdigest() for path, content in files.items()
+        },
+        "default_namespaces": [
+            line.rstrip().rstrip("/#")
+            for line in files[root + "/default_namespaces.txt"].decode().splitlines()
+        ],
+        "vocabularies": {
+            key: entry
+            for path in paths
+            for key, entry in json.loads(files[path]).items()
+        },
+    }
+    return (json.dumps(bundle, indent=2) + "\n").encode()
 
 
 def constants(source: str, module: str) -> str:
@@ -447,8 +524,8 @@ def prepare(
             raise ValueError("Fetched Git commit differs from the recipe")
         outputs = generate(repository, recipe)
         references = {
-            name: read_source(repository, recipe.commit, path)
-            for name, path in files.items()
+            name: reference_content(repository, recipe, source)
+            for name, source in files.items()
         }
     if check:
         current = {

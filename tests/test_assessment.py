@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 17,
-        "indeterminate": 14,
+        "evaluated": 18,
+        "indeterminate": 13,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -85,6 +85,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "FsF-R1.1-01M-1",
         "FsF-A1.1-01MD-1",
         "FsF-A1.2-01MD-1",
+        "FsF-I2-01M-2",
         "FsF-I3-01M-1",
         "FsF-I3-01M-2",
         "FsF-R1.2-01M-1",
@@ -121,6 +122,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert {ref.id for ref in result.provenance.resources} == {
         "fuji:file-formats",
         "fuji:metadata-standards",
+        "fuji:vocabularies",
         "fuji:identifiers",
         "fuji:metrics",
         "fuji:licenses",
@@ -182,6 +184,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
         "identifiers",
         "file-formats",
         "metadata-standards",
+        "vocabularies",
     ],
 )
 def test_configuration_is_checked_before_input(problem):
@@ -400,14 +403,16 @@ def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value
 
 
 def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatch):
-    original = _fuji.yaml.safe_load
     parsed = []
 
-    def read(content):
-        parsed.append(content)
-        return original(content)
+    for module, name in ((_fuji.yaml, "safe_load"), (_fuji.json, "loads")):
+        original = getattr(module, name)
 
-    monkeypatch.setattr(_fuji.yaml, "safe_load", read)
+        def read(content, *args, _loader=original, **kwargs):
+            parsed.append(content)
+            return _loader(content, *args, **kwargs)
+
+        monkeypatch.setattr(module, name, read)
     first = library.assess(request_data, profile=PROFILE)
     second = library.assess(request_data, profile=PROFILE)
     assert first == second

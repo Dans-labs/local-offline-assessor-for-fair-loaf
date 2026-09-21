@@ -13,9 +13,12 @@
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_related_resources",
     "fair_evaluator_retrievable_metadata_data",
+    "fair_evaluator_semantic_vocabulary",
     "fair_evaluator_standardised_protocol_auth_metadata_data",
     "fair_evaluator_standardised_protocol_metadata_data",
     "fair_evaluator_unique_identifier_metadata"
   ],
-  "helpers": ["harvester.metadata_harvester"]
+  "helpers": [
+    "harvester.metadata_harvester"
+  ]
 }

@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
@@ -40,6 +41,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_retrievable_metadata_data as retrieval,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_semantic_vocabulary as semantic_vocabulary,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_standardised_protocol_auth_metadata_data as authentication,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -56,6 +60,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.harvester.metadata_harvester impo
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.identifier_helper import (
     IdentifierHelper,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.linked_vocab_helper import (
+    LinkedVocabHelper,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
 from fair_offline_assessor.models import (
@@ -117,6 +124,13 @@ METADATA_STANDARDS = ResourceRef(
     format="yaml",
     digest="b97353e2efefc0a0d790f5ae38fa0ade5dfdf954462e3b37ecf7b6d69a48e0e2",
 )
+VOCABULARIES = ResourceRef(
+    id="fuji:vocabularies",
+    version="3.5.1",
+    kind="reference",
+    format="json",
+    digest="32c150af2d0397c407105fbcf626326de96516e9414c840a8e7ab37b2c2e07d5",
+)
 
 
 @dataclass(frozen=True)
@@ -150,6 +164,11 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-I2-01M": Evaluator(
+        semantic_vocabulary.FAIREvaluatorSemanticVocabulary,
+        ("namespaces", "linked_uris"),
+        (VOCABULARIES,),
+    ),
     "FsF-R1.3-01M": Evaluator(
         community_metadata.FAIREvaluatorCommunityMetadata,
         ("namespaces",),
@@ -244,7 +263,11 @@ class Runner:
                     "unsupported_definitions",
                     f"Unsupported F-UJI resource: {reference.id}",
                 )
-            loaded[reference.id] = yaml.safe_load(content)
+            loaded[reference.id] = (
+                json.loads(content)
+                if reference.format == "json"
+                else yaml.safe_load(content)
+            )
         self.metrics = {
             metric["metric_identifier"]: metric
             for metric in cast(
@@ -259,7 +282,15 @@ class Runner:
             for key, entry in loaded[METADATA_STANDARDS.id].items()
             for uri in entry["urls"]
         }
+        vocabularies = loaded[VOCABULARIES.id]
+        vocabulary_helper = LinkedVocabHelper({})  # type: ignore[no-untyped-call]
+        vocabulary_helper.linked_vocab_dict = vocabularies["vocabularies"]
+        vocabulary_helper.set_linked_vocab_index()  # type: ignore[no-untyped-call]
         self._resources = {
+            VOCABULARIES.id: {
+                "LINKED_VOCAB_INDEX": vocabulary_helper.linked_vocab_index,
+                "DEFAULT_NAMESPACES": vocabularies["default_namespaces"],
+            },
             METADATA_STANDARDS.id: {"metadata_harvester": standards},
             LICENSES.id: {
                 "SPDX_LICENSES": licences,
@@ -332,6 +363,7 @@ class Runner:
                 else "namespaces",
                 [],
             ),
+            "linked_namespace_uri": [],
             "metadata_sources": [],
             "landing_url": None,
             "origin_url": metadata_url,
@@ -357,6 +389,15 @@ class Runner:
         for resource in registration.resources:
             state.update(self._resources[resource.id])
         context = self._context(identifier, **state)
+        if identifier == "FsF-I2-01M":
+            vocabulary_helper = LinkedVocabHelper(context.LINKED_VOCAB_INDEX)  # type: ignore[no-untyped-call]
+            context.linked_namespace_uri = list(
+                dict.fromkeys(
+                    entry["namespace"]
+                    for uri in cast("list[str]", prepared.get("linked_uris", []))
+                    if (entry := vocabulary_helper.get_linked_vocab_by_iri(uri))  # type: ignore[no-untyped-call]
+                )
+            )
         if identifier == "FsF-R1.3-02D":
             # Only declared formats are available without captured content.
             context.content_identifier = {}

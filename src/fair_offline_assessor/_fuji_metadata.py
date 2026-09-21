@@ -341,6 +341,33 @@ def _namespaces(node: dict[str, JsonValue], graph: GraphIndex) -> list[SourcedVa
     return [(namespace, tuple(paths)) for namespace, paths in found.items()]
 
 
+def _linked_uris(node: dict[str, JsonValue], graph: GraphIndex) -> list[SourcedValue]:
+    """Read object IRIs and types, excluding literal text and other graphs."""
+    found: dict[str, list[str]] = {}
+    pending: list[tuple[JsonValue, str]] = []
+    for index, linked in _local_nodes(node, graph):
+        for i, uri in enumerate(cast("list[str]", linked.get("@type", []))):
+            if not uri.startswith("_:"):
+                found.setdefault(uri, []).append(f"/{index}/@type/{i}")
+        pending.extend(
+            (values, _pointer(index, term))
+            for term, values in linked.items()
+            if not term.startswith("@")
+        )
+    while pending:
+        value, path = pending.pop()
+        if isinstance(value, list):
+            pending.extend((item, f"{path}/{i}") for i, item in enumerate(value))
+        elif isinstance(value, dict):
+            if "@list" in value:
+                pending.append((value["@list"], path + "/@list"))
+            elif isinstance(
+                identifier := value.get("@id"), str
+            ) and not identifier.startswith("_:"):
+                found.setdefault(identifier, []).append(path)
+    return [(uri, tuple(paths)) for uri, paths in found.items()]
+
+
 def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
     """Map selected metadata into F-UJI fields, retaining all supplied values."""
     graph = {
@@ -374,6 +401,7 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
         **distributions,
         "related_resources": _related_resources(node, index, graph),
         "namespaces": namespaces,
+        "linked_uris": _linked_uris(node, graph),
         "provenance_namespaces": [
             entry for entry in namespaces if entry[0] in _PROVENANCE
         ],

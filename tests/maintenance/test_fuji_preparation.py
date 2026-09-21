@@ -4,6 +4,7 @@ import runpy
 import socket
 import subprocess
 import sys
+from hashlib import sha256
 from pathlib import Path
 from shutil import copytree, ignore_patterns
 
@@ -319,3 +320,48 @@ def test_invalid_resource_leaves_existing_files_untouched(tmp_path, problem):
         prepare(target, recipe, resources=resources)
     after = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
     assert after == before
+
+
+def test_vocabulary_bundle_records_sources_and_merges_in_filename_order(tmp_path):
+    prepare = runpy.run_path(str(SCRIPT))["prepare"]
+    repository, recipe, resources = source(tmp_path)
+    data = repository / "fuji_server/data"
+    (data / "default_namespaces.txt").write_text("http://schema.org/\n")
+    registries = data / "linked_vocabs"
+    registries.mkdir()
+    for name, value in (("z", "last"), ("a", "first")):
+        (registries / f"{name}.json").write_text(json.dumps({"shared": value}))
+    recipe["commit"] = commit(repository)
+    manifest = resources / "manifest.json"
+    declaration = json.loads(manifest.read_bytes())
+    declaration["source"]["commit"] = recipe["commit"]
+    declaration["files"] = [
+        {
+            "id": "fuji:vocabularies",
+            "path": "vocabularies.json",
+            "kind": "reference",
+            "format": "json",
+            "source": {
+                "path": "fuji_server/data",
+                "transform": "semantic-vocabularies",
+            },
+        }
+    ]
+    manifest.write_text(json.dumps(declaration))
+    target = tmp_path / "v3_5_1"
+    prepare(target, recipe, resources=resources)
+    bundle = json.loads((resources / "vocabularies.json").read_bytes())
+    assert bundle["default_namespaces"] == ["http://schema.org"]
+    assert bundle["vocabularies"] == {"shared": "last"}
+    assert bundle["sources"] == {
+        str(path.relative_to(repository)): sha256(path.read_bytes()).hexdigest()
+        for path in (
+            data / "default_namespaces.txt",
+            registries / "a.json",
+            registries / "z.json",
+        )
+    }
+    prepare(target, recipe, resources=resources, check=True)
+    (resources / "vocabularies.json").write_text("{}")
+    with pytest.raises(ValueError, match="Stale"):
+        prepare(target, recipe, resources=resources, check=True)

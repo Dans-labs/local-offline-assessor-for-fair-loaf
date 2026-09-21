@@ -353,6 +353,24 @@
     "aliases": []
   },
   {
+    "id": "fuji:vocabularies",
+    "version": "3.5.1",
+    "kind": "reference",
+    "format": "json",
+    "digest": "32c150af2d0397c407105fbcf626326de96516e9414c840a8e7ab37b2c2e07d5",
+    "path": "assessors/fuji/3.5.1/vocabularies.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/pangaea-data-publisher/fuji",
+      "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+      "version": "3.5.1",
+      "metric_version": "0.8",
+      "path": "fuji_server/data",
+      "transform": "semantic-vocabularies"
+    },
+    "aliases": []
+  },
+  {
     "id": "schemaorg:context",
     "version": "30.0",
     "kind": "context",
