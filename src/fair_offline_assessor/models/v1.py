@@ -1,3 +1,5 @@
+from http import HTTPStatus
+from itertools import pairwise
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
@@ -13,6 +15,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+from fair_offline_assessor.models._http import CaptureUrl, redirect_url, request_url
 
 Points = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
 Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
@@ -117,7 +121,7 @@ class ProfileInfo(ProfileIdentity):
 
 class HttpExchange(Model):
     method: Literal["GET", "HEAD"]
-    url: str
+    url: CaptureUrl
     request_headers: tuple[tuple[str, str], ...] = ()
     status: int = Field(ge=100, le=599, strict=True)
     headers: tuple[tuple[str, str], ...] = ()
@@ -126,9 +130,41 @@ class HttpExchange(Model):
 
 class Capture(Model):
     id: str = Field(min_length=1)
-    resource_url: str
+    resource_url: CaptureUrl
     captured_at: AwareDatetime
     exchanges: tuple[HttpExchange, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def connected_exchanges(self) -> Self:
+        """Require each request to follow the captured resource or redirect."""
+        if request_url(self.resource_url) != request_url(self.exchanges[0].url):
+            raise ValueError("First request URL differs from the captured resource")
+        redirects = {
+            HTTPStatus.MULTIPLE_CHOICES,
+            HTTPStatus.MOVED_PERMANENTLY,
+            HTTPStatus.FOUND,
+            HTTPStatus.SEE_OTHER,
+            HTTPStatus.TEMPORARY_REDIRECT,
+            HTTPStatus.PERMANENT_REDIRECT,
+        }
+        for previous, current in pairwise(self.exchanges):
+            locations = [
+                value for name, value in previous.headers if name.lower() == "location"
+            ]
+            if previous.status not in redirects or len(locations) != 1:
+                raise ValueError("Each followed redirect needs one Location header")
+            if redirect_url(previous.url, locations[0]) != request_url(current.url):
+                raise ValueError("Request URL differs from the preceding Location")
+            if (
+                previous.status
+                in {
+                    HTTPStatus.TEMPORARY_REDIRECT,
+                    HTTPStatus.PERMANENT_REDIRECT,
+                }
+                and current.method != previous.method
+            ):
+                raise ValueError("307 and 308 redirects must preserve the method")
+        return self
 
 
 class AssessmentInput(Model):
@@ -137,6 +173,14 @@ class AssessmentInput(Model):
     metadata_url: str | None = None
     captures: tuple[Capture, ...] = ()
     local_contexts: dict[str, JsonObject] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def unique_captures(self) -> Self:
+        """Reject duplicate capture identifiers."""
+        identifiers = [capture.id for capture in self.captures]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Duplicate capture identifier")
+        return self
 
 
 class EvidenceRef(Model):
