@@ -1,3 +1,244 @@
+--- a/fuji_server/evaluators/fair_evaluator_community_metadata.py
++++ b/evaluators/fair_evaluator_community_metadata.py
+@@ -2,14 +2,10 @@
+ #
+ # SPDX-License-Identifier: MIT
+ 
+-from tldextract import extract
+-
+-from fuji_server.evaluators.fair_evaluator import FAIREvaluator
+-from fuji_server.helper.metadata_provider_csw import OGCCSWMetadataProvider
+-from fuji_server.helper.metadata_provider_oai import OAIMetadataProvider
+-from fuji_server.helper.metadata_provider_sparql import SPARQLMetadataProvider
+-from fuji_server.models.community_endorsed_standard import CommunityEndorsedStandard
+-from fuji_server.models.community_endorsed_standard_output_inner import CommunityEndorsedStandardOutputInner
++
++from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.community_endorsed_standard import CommunityEndorsedStandard
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.community_endorsed_standard_output_inner import CommunityEndorsedStandardOutputInner
+ 
+ 
+ class FAIREvaluatorCommunityMetadata(FAIREvaluator):
+@@ -34,30 +30,6 @@
+         self.found_metadata_standards = []
+         self.valid_metadata_standards = []
+ 
+-    def validate_service_url(self):
+-        # checks if service url and landing page url have same domain in order to avoid manipulations
+-        if self.fuji.metadata_service_url:
+-            service_url_parts = extract(self.fuji.metadata_service_url)
+-            landing_url_parts = extract(self.fuji.landing_url)
+-            service_domain = service_url_parts.domain + "." + service_url_parts.suffix
+-            landing_domain = landing_url_parts.domain + "." + landing_url_parts.suffix
+-            if landing_domain == service_domain:
+-                return True
+-            else:
+-                self.logger.warning(
+-                    "FsF-R1.3-01M : Service URL domain/subdomain does not match with landing page domain -: {}".format(
+-                        service_domain,
+-                    )
+-                )
+-                (
+-                    self.fuji.metadata_service_url,
+-                    self.fuji.csw_endpoint,
+-                    self.fuji.oaipmh_endpoint,
+-                    self.fuji.sparql_endpoint,
+-                ) = (None, None, None, None)
+-                return False
+-        else:
+-            return False
+ 
+     def retrieve_metadata_standards_from_namespaces(self):
+         nsstandards = []
+@@ -79,161 +51,10 @@
+                 )
+             )
+ 
+-    def retrieve_metadata_standards_from_sparql(self):
+-        if self.fuji.sparql_endpoint:
+-            self.logger.info(
+-                "{} : Use SPARQL endpoint to retrieve standards used by the repository -: {}".format(
+-                    "FsF-R1.3-01M", self.fuji.sparql_endpoint
+-                )
+-            )
+-            if self.fuji.uri_validator(self.fuji.sparql_endpoint):
+-                sparql_provider = SPARQLMetadataProvider(
+-                    endpoint=self.fuji.sparql_endpoint, logger=self.logger, metric_id="FsF-R1.3-01M"
+-                )
+-                standards_uris = sparql_provider.getMetadataStandards()
+-                self.fuji.namespace_uri.extend(sparql_provider.getNamespaces())
+-                stds = []
+-                if standards_uris:
+-                    for sturi in list(set(standards_uris.values())):
+-                        sinfo = self.get_metadata_standards_info(sturi, "sparql")
+-                        if sinfo:
+-                            self.found_metadata_standards.append(sinfo)
+-                            if sinfo.get("type") == "disciplinary":
+-                                stds.append(sinfo.get("name"))
+-                if stds:
+-                    self.logger.log(
+-                        self.fuji.LOG_SUCCESS,
+-                        "{} : Found metadata standards that are listed in SPARQL endpoint -: {}".format(
+-                            "FsF-R1.3-01M", str(stds)
+-                        ),
+-                    )
+-            else:
+-                self.logger.info("{} : Invalid SPARQL endpoint".format("FsF-R1.3-01M"))
+-
+-    def retrieve_metadata_standards_from_csw(self):
+-        if self.fuji.csw_endpoint:
+-            self.logger.info(
+-                "{} : Use OGC CSW endpoint to retrieve standards used by the repository -: {}".format(
+-                    "FsF-R1.3-01M", self.fuji.csw_endpoint
+-                )
+-            )
+-            if self.fuji.uri_validator(self.fuji.csw_endpoint):
+-                csw_provider = OGCCSWMetadataProvider(
+-                    endpoint=self.fuji.csw_endpoint, logger=self.logger, metric_id="FsF-R1.3-01M"
+-                )
+-                standards_uris = csw_provider.getMetadataStandards()
+-                self.fuji.namespace_uri.extend(csw_provider.getNamespaces())
+-                stds = []
+-                if standards_uris:
+-                    for sturi in list(set(standards_uris.values())):
+-                        sinfo = self.get_metadata_standards_info(sturi, "csw")
+-                        if sinfo:
+-                            self.found_metadata_standards.append(sinfo)
+-                            if sinfo.get("type") == "disciplinary":
+-                                stds.append(sinfo.get("name"))
+-                if stds:
+-                    self.logger.info(
+-                        "{} : Found metadata standards that are listed in OGC CSW endpoint -: {}".format(
+-                            "FsF-R1.3-01M", str(stds)
+-                        )
+-                    )
+-            else:
+-                self.logger.info("{} : Invalid OGC CSW endpoint".format("FsF-R1.3-01M"))
+-
+-    def retrieve_metadata_standards_from_oai_pmh(self):
+-        if self.fuji.oaipmh_endpoint:
+-            self.logger.info(
+-                "{} : Use OAI-PMH endpoint to retrieve standards used by the repository -: {}".format(
+-                    "FsF-R1.3-01M", self.fuji.oaipmh_endpoint
+-                )
+-            )
+-            if self.fuji.uri_validator(self.fuji.oaipmh_endpoint):
+-                oai_provider = OAIMetadataProvider(
+-                    endpoint=self.fuji.oaipmh_endpoint, logger=self.logger, metric_id="FsF-R1.3-01M"
+-                )
+-                standards_uris = oai_provider.getMetadataStandards()
+-                self.fuji.namespace_uri.extend(oai_provider.getNamespaces())
+-                stds = []
+-                if standards_uris:
+-                    for sturi in list(set(standards_uris.values())):
+-                        sinfo = self.get_metadata_standards_info(sturi, "oai-pmh")
+-                        if sinfo:
+-                            self.found_metadata_standards.append(sinfo)
+-                            if sinfo.get("type") == "disciplinary":
+-                                stds.append(sinfo.get("name"))
+-                if stds:
+-                    self.logger.info(
+-                        "{} : Found metadata standards that are listed in OAI-PMH endpoint -: {}".format(
+-                            "FsF-R1.3-01M", str(stds)
+-                        )
+-                    )
+-            else:
+-                self.logger.info("{} : Invalid endpoint".format("FsF-R1.3-01M"))
+-        return True
+-
+-    def retrieve_metadata_standards_from_re3data(self):
+-        if self.fuji.metadata_merged.get("datacite_client"):
+-            self.logger.info(
+-                "FsF-R1.3-01M : Trying to retrieve metadata info from re3data/datacite services using client id -: "
+-                + str(self.fuji.metadata_merged.get("datacite_client"))
+-            )
+-            if self.fuji.pid_scheme:
+-                repoHelper = self.fuji.repo_helper
+-                if not self.fuji.metadata_service_url:
+-                    self.logger.info(
+-                        "{} : Inferring metadata service endpoint (OAI, SPARQL) information and listed metadata formats through re3data/datacite services".format(
+-                            "FsF-R1.3-01M"
+-                        )
+-                    )
+-                    self.fuji.oaipmh_endpoint = repoHelper.getRe3MetadataAPIs().get("OAI-PMH")
+-                    self.fuji.sparql_endpoint = repoHelper.getRe3MetadataAPIs().get("SPARQL")
+-                    if self.fuji.oaipmh_endpoint or self.fuji.sparql_endpoint:
+-                        self.logger.info(
+-                            "{} : Found metadata service endpoint (OAI, SPARQL) listed in re3data record -: {}".format(
+-                                "FsF-R1.3-01M", (self.fuji.oaipmh_endpoint, self.fuji.sparql_endpoint)
+-                            )
+-                        )
+-                stds = []
+-                for sturi in repoHelper.getRe3MetadataStandards():
+-                    sinfo = self.get_metadata_standards_info(sturi, "re3data")
+-                    # print('OAI URI ', sturi, sinfo)
+-                    if sinfo:
+-                        self.found_metadata_standards.append(sinfo)
+-                        if sinfo.get("name") not in stds:
+-                            stds.append(sinfo.get("name"))
+-                self.logger.info(
+-                    "{} : Metadata standards listed in re3data record -: {}".format("FsF-R1.3-01M", str(stds))
+-                )
+-        else:
+-            self.logger.info(
+-                "FsF-R1.3-01M : No Datacite client id found, therefore skipping re3data metadata retrieval"
+-            )
+-            # verify the service url by domain matching
+-        self.validate_service_url()
+-
+-    def retrieve_metadata_standards_from_apis(self):
+-        if self.fuji.landing_url is not None:
+-            self.logger.info("FsF-R1.3-01M : Retrieving API and Standards")
+-            if self.fuji.metadata_service_url not in [None, ""]:
+-                self.logger.info(
+-                    "FsF-R1.3-01M : Metadata service endpoint ("
+-                    + str(self.fuji.metadata_service_type)
+-                    + ") provided as part of the assessment request -: "
+-                    + str(self.fuji.metadata_service_url)
+-                )
+-            self.retrieve_metadata_standards_from_re3data()
+-            # retrieve metadata standards info from oai-pmh
+-            self.retrieve_metadata_standards_from_oai_pmh()
+-            # retrieve metadata standards info from OGC CSW
+-            self.retrieve_metadata_standards_from_csw()
+-            # retrieve metadata standards info from SPARQL endpoint
+-            self.retrieve_metadata_standards_from_sparql()
+-        else:
+-            self.logger.warning(
+-                "{} : Skipped external ressources (e.g. OAI, re3data) checks since landing page could not be resolved".format(
+-                    "FsF-R1.3-01M"
+-                )
+-            )
++
++
++
++
+ 
+     def filter_community_metadata_standards(self, testid, found_metadata_standards):
+         test_requirements = []
+@@ -389,7 +210,6 @@
+         self.community_standards_output: list[CommunityEndorsedStandardOutputInner] = []
+ 
+         self.retrieve_metadata_standards_from_namespaces()
+-        self.retrieve_metadata_standards_from_apis()
+         # print('FOUND STANDARDS: ',self.found_metadata_standards)
+         # print('VALID STANDARDS: ',self.valid_metadata_standards)
+         self.result = CommunityEndorsedStandard(
+--- a/fuji_server/evaluators/fair_evaluator.py
++++ b/evaluators/fair_evaluator.py
+@@ -2,9 +2,9 @@
+ #
+ # SPDX-License-Identifier: MIT
+ 
+-from fuji_server.helper.metadata_mapper import Mapper
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+ 
+ 
+ class FAIREvaluator:
 --- a/fuji_server/evaluators/fair_evaluator_data_access_level.py
 +++ b/evaluators/fair_evaluator_data_access_level.py
 @@ -4,10 +4,10 @@
@@ -15,21 +256,6 @@
  
  
  class FAIREvaluatorDataAccessLevel(FAIREvaluator):
---- a/fuji_server/evaluators/fair_evaluator.py
-+++ b/evaluators/fair_evaluator.py
-@@ -2,9 +2,9 @@
- #
- # SPDX-License-Identifier: MIT
- 
--from fuji_server.helper.metadata_mapper import Mapper
--from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
--from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
-+from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
- 
- 
- class FAIREvaluator:
 --- a/fuji_server/evaluators/fair_evaluator_data_content_metadata.py
 +++ b/evaluators/fair_evaluator_data_content_metadata.py
 @@ -4,10 +4,10 @@
@@ -268,6 +494,19 @@
              found_ids.extend(idhelper.identifier_schemes)
              self.logger.info(self.metric_identifier + f" :Starting assessment on identifier: {self.fuji.id}")
              if len(found_ids) > 0:
+--- a/fuji_server/harvester/metadata_harvester.py
++++ b/harvester/metadata_harvester.py
+@@ -3,7 +3,9 @@
+ # SPDX-License-Identifier: MIT
+ 
+ from rapidfuzz import fuzz, process
+-from tldextract import extract
++from tldextract import TLDExtract
++
++extract = TLDExtract(suffix_list_urls=(), cache_dir=None)
+ 
+ 
+ class MetadataHarvester:
 --- a/fuji_server/helper/identifier_helper.py
 +++ b/helper/identifier_helper.py
 @@ -3,14 +3,12 @@
@@ -346,6 +585,68 @@
 -            "resolved_url": resolved_url,
 -            "status_list": status_list,
 -        }
+--- a/fuji_server/models/community_endorsed_standard.py
++++ b/models/community_endorsed_standard.py
+@@ -6,13 +6,13 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.community_endorsed_standard_output import CommunityEndorsedStandardOutput
+-from fuji_server.models.debug import Debug
+-from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
+-from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
+-from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.community_endorsed_standard_output import CommunityEndorsedStandardOutput
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
+ 
+ 
+ class CommunityEndorsedStandard(Model):
+--- a/fuji_server/models/base_model_.py
++++ b/models/base_model_.py
+@@ -7,7 +7,7 @@
+ 
+ import six
+ 
+-from fuji_server import util
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
+ 
+ T = typing.TypeVar("T")
+ 
+--- a/fuji_server/models/community_endorsed_standard_output.py
++++ b/models/community_endorsed_standard_output.py
+@@ -6,9 +6,9 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
+-from fuji_server.models.community_endorsed_standard_output_inner import (
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.community_endorsed_standard_output_inner import (
+     CommunityEndorsedStandardOutputInner,  # noqa: F401
+ )
+ 
+--- a/fuji_server/models/community_endorsed_standard_output_inner.py
++++ b/models/community_endorsed_standard_output_inner.py
+@@ -6,8 +6,8 @@
+ 
+ from datetime import date, datetime  # noqa: F401
+ 
+-from fuji_server import util
+-from fuji_server.models.base_model_ import Model
++from fair_offline_assessor._vendor.fuji.v3_5_1 import util
++from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
+ 
+ 
+ class CommunityEndorsedStandardOutputInner(Model):
 --- a/fuji_server/models/core_metadata.py
 +++ b/models/core_metadata.py
 @@ -6,13 +6,13 @@
@@ -369,17 +670,6 @@
  
  
  class CoreMetadata(Model):
---- a/fuji_server/models/base_model_.py
-+++ b/models/base_model_.py
-@@ -7,7 +7,7 @@
- 
- import six
- 
--from fuji_server import util
-+from fair_offline_assessor._vendor.fuji.v3_5_1 import util
- 
- T = typing.TypeVar("T")
- 
 --- a/fuji_server/models/core_metadata_output.py
 +++ b/models/core_metadata_output.py
 @@ -6,9 +6,9 @@

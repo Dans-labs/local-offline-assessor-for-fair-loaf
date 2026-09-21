@@ -25,6 +25,13 @@ _CONSTANTS = {
     ),
     "helper.metadata_collector": ("MetadataOfferingMethods", ()),
 }
+_METHODS = {
+    "harvester.metadata_harvester": (
+        "MetadataHarvester",
+        ("lookup_metadatastandard_by_uri", "get_metadata_standard_info"),
+        ("rapidfuzz", "tldextract"),
+    ),
+}
 _EXTERNAL_IMPORTS = {
     "datetime",
     "enum",
@@ -40,9 +47,49 @@ _EXTERNAL_IMPORTS = {
     "hashid",
     "uuid",
     "mimetypes",
+    "rapidfuzz",
+    "tldextract",
 }
 # Version-scoped edits keep service and network behaviour out of copied helpers.
 _REPLACEMENTS = {
+    ("3.5.1", "evaluators.fair_evaluator_community_metadata"): (
+        ("from tldextract import extract\n", "", 1),
+        (
+            (
+                "from fuji_server.helper.metadata_provider_csw import "
+                "OGCCSWMetadataProvider\n"
+            ),
+            "",
+            1,
+        ),
+        (
+            (
+                "from fuji_server.helper.metadata_provider_oai import "
+                "OAIMetadataProvider\n"
+            ),
+            "",
+            1,
+        ),
+        (
+            (
+                "from fuji_server.helper.metadata_provider_sparql import "
+                "SPARQLMetadataProvider\n"
+            ),
+            "",
+            1,
+        ),
+        ("        self.retrieve_metadata_standards_from_apis()\n", "", 1),
+    ),
+    ("3.5.1", "harvester.metadata_harvester"): (
+        (
+            "from tldextract import extract\n",
+            (
+                "from tldextract import TLDExtract\n\n"
+                "extract = TLDExtract(suffix_list_urls=(), cache_dir=None)\n"
+            ),
+            1,
+        ),
+    ),
     ("3.5.1", "evaluators.fair_evaluator_data_identifier_included"): (
         ("import socket\n", "", 1),
         ("        socket.setdefaulttimeout(1)\n", "", 1),
@@ -91,6 +138,17 @@ _REPLACEMENTS = {
     ),
 }
 _REMOVED_METHODS = {
+    ("3.5.1", "evaluators.fair_evaluator_community_metadata"): tuple(
+        "FAIREvaluatorCommunityMetadata." + name
+        for name in (
+            "validate_service_url",
+            "retrieve_metadata_standards_from_sparql",
+            "retrieve_metadata_standards_from_csw",
+            "retrieve_metadata_standards_from_oai_pmh",
+            "retrieve_metadata_standards_from_re3data",
+            "retrieve_metadata_standards_from_apis",
+        )
+    ),
     ("3.5.1", "helper.identifier_helper"): (
         "IdentifierHelper.get_resolved_url",
         "IdentifierHelper.get_identifier_info",
@@ -104,6 +162,7 @@ class Recipe(BaseModel):
     commit: str = Field(pattern=r"^[0-9a-f]{40}$")
     version: str = Field(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
     evaluators: tuple[str, ...] = Field(min_length=1)
+    helpers: tuple[str, ...] = ()
 
 
 def git(repository: Path, *arguments: str) -> bytes:
@@ -199,6 +258,35 @@ def constants(source: str, module: str) -> str:
     )
 
 
+def methods(source: str, module: str) -> str:
+    """Extract reviewed lookup methods without loading the harvester."""
+    name, members, imports = _METHODS[module]
+    tree = ast.parse(source)
+    selected = [
+        node
+        for cls in tree.body
+        if isinstance(cls, ast.ClassDef) and cls.name == name
+        for node in cls.body
+        if isinstance(node, ast.FunctionDef) and node.name in members
+    ]
+    if len(selected) != len(members):
+        raise ValueError(f"Missing upstream methods: {module}.{name}")
+    prefix = "".join(source.splitlines(keepends=True)[:4])
+    prefix += "\n".join(
+        ast.get_source_segment(source, node) or ""
+        for node in tree.body
+        if isinstance(node, ast.ImportFrom) and node.module in imports
+    )
+    return (
+        prefix
+        + f"\n\n\nclass {name}:\n"
+        + "\n\n".join(
+            "    " + (ast.get_source_segment(source, node) or "") for node in selected
+        )
+        + "\n"
+    )
+
+
 def dependencies(source: str) -> set[str]:
     """Collect static imports and reject dependencies that have not been reviewed."""
     internal = set()
@@ -265,7 +353,13 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
     records = []
     patches: list[str] = []
     pending = {"evaluators." + name for name in recipe.evaluators}
-    reviewed = pending | {"evaluators.fair_evaluator", "util"} | _CONSTANTS.keys()
+    reviewed = (
+        pending
+        | {"evaluators.fair_evaluator", "util"}
+        | _CONSTANTS.keys()
+        | _METHODS.keys()
+    )
+    pending.update(recipe.helpers)
     reviewed.update(
         module for version, module in _REPLACEMENTS if version == recipe.version
     )
@@ -289,6 +383,8 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
         path = module.replace(".", "/") + ".py"
         original = read("fuji_server/" + path).decode("utf-8")
         source = constants(original, module) if module in _CONSTANTS else original
+        if module in _METHODS:
+            source = methods(original, module)
         rewritten = offline_source(source, module, recipe.version)
         pending.update(dependencies(rewritten) - seen)
         rewritten = re.sub(
@@ -310,6 +406,7 @@ def generate(repository: Path, recipe: Recipe) -> dict[str, bytes]:
     provenance = recipe.model_dump(mode="json") | {
         "license": "MIT",
         "constants": _CONSTANTS,
+        "methods": _METHODS,
         "files": sorted(records, key=lambda item: item["path"]),
     }
     outputs["upstream.json"] = (json.dumps(provenance, indent=2) + "\n").encode()

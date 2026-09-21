@@ -7,6 +7,10 @@
   "engine_requires": ">=0.1,<0.2",
   "resources": [
     {
+      "id": "fuji:metadata-standards",
+      "version": "3.5.1"
+    },
+    {
       "id": "fuji:file-formats",
       "version": "3.5.1"
     },

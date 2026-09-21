@@ -302,6 +302,23 @@
     "aliases": []
   },
   {
+    "id": "fuji:metadata-standards",
+    "version": "3.5.1",
+    "kind": "reference",
+    "format": "yaml",
+    "digest": "b97353e2efefc0a0d790f5ae38fa0ade5dfdf954462e3b37ecf7b6d69a48e0e2",
+    "path": "assessors/fuji/3.5.1/metadata_standards.yaml",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/pangaea-data-publisher/fuji",
+      "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+      "version": "3.5.1",
+      "metric_version": "0.8",
+      "path": "fuji_server/data/metadata_standards.yaml"
+    },
+    "aliases": []
+  },
+  {
     "id": "fuji:metrics",
     "version": "3.5.1",
     "kind": "reference",

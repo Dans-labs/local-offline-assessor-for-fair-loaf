@@ -46,7 +46,11 @@ def test_provenance_fields_keep_local_names_and_dates(profile):
         }
     )
     prepared = prepare_metadata(select_dataset(request, profile))
-    assert prepared.fields == {"object_type": ["Dataset"], **expected}
+    assert prepared.fields == {
+        "object_type": ["Dataset"],
+        "namespaces": ["http://purl.org/dc/terms/", "http://schema.org/"],
+        **expected,
+    }
     assert not prepared.unmapped
 
 
@@ -121,6 +125,7 @@ def test_maps_core_fields_into_the_existing_fuji_evaluator(profile):
         "creator": ["Alice"],
         "publisher": ["Archive"],
         "publication_date": ["2026-01-01"],
+        "namespaces": ["http://schema.org/"],
     }
     result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
     assert result.metric.score.observed_earned == 2
@@ -180,7 +185,10 @@ def test_empty_values_and_blank_identifiers_do_not_earn_points(profile, empty):
         }
     )
     prepared = prepare_metadata(select_dataset(request, profile))
-    assert prepared.fields == {"object_type": ["Dataset"]}
+    assert prepared.fields == {
+        "object_type": ["Dataset"],
+        "namespaces": ["http://schema.org/"],
+    }
     result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
     assert result.metric.score.observed_earned == 0
 

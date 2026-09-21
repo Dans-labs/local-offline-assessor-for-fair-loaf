@@ -31,7 +31,9 @@ dependencies = [
     "pydantic>=2.12,<3",
     "PyLD>=3.3,<4",
     "PyYAML>=6",
+    "rapidfuzz>=3,<4",
     "six>=1.17",
+    "tldextract==5.3.2",  # Pin the suffix list used for namespace matching.
 ]
 
 [dependency-groups]

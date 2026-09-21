@@ -70,8 +70,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         metric for metric in result.metrics if metric.id == "FsF-F4-01M"
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
-        "evaluated": 15,
-        "indeterminate": 16,
+        "evaluated": 17,
+        "indeterminate": 14,
         "errors": 0,
         "not_applicable": 0,
         "total": 31,
@@ -92,6 +92,8 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "FsF-R1-01M-1",
         "FsF-R1-01M-2",
         "FsF-R1-01M-3",
+        "FsF-R1.3-01M-1",
+        "FsF-R1.3-01M-3",
     }
     assert {
         check.id for check in result.tests if check.outcome in {"pass", "fail"}
@@ -118,6 +120,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     assert result.profile == library.load_profile(PROFILE).info
     assert {ref.id for ref in result.provenance.resources} == {
         "fuji:file-formats",
+        "fuji:metadata-standards",
         "fuji:identifiers",
         "fuji:metrics",
         "fuji:licenses",
@@ -178,6 +181,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
         "protocols",
         "identifiers",
         "file-formats",
+        "metadata-standards",
     ],
 )
 def test_configuration_is_checked_before_input(problem):

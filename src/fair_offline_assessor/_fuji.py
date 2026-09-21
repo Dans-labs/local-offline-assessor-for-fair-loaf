@@ -10,6 +10,9 @@ import yaml
 from pydantic import JsonValue
 
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
+    fair_evaluator_community_metadata as community_metadata,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_data_access_level as access_metadata,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -47,6 +50,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import (
     FAIREvaluator,
+)
+from fair_offline_assessor._vendor.fuji.v3_5_1.harvester.metadata_harvester import (
+    MetadataHarvester,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.identifier_helper import (
     IdentifierHelper,
@@ -104,6 +110,13 @@ FILE_FORMATS = ResourceRef(
     format="yaml",
     digest="f60f8c8faf96318e9782a0d098610a2c399d7c07d32e23c089c0d3996790b925",
 )
+METADATA_STANDARDS = ResourceRef(
+    id="fuji:metadata-standards",
+    version="3.5.1",
+    kind="reference",
+    format="yaml",
+    digest="b97353e2efefc0a0d790f5ae38fa0ade5dfdf954462e3b37ecf7b6d69a48e0e2",
+)
 
 
 @dataclass(frozen=True)
@@ -137,6 +150,11 @@ class Evaluator:
 
 
 EVALUATORS = {
+    "FsF-R1.3-01M": Evaluator(
+        community_metadata.FAIREvaluatorCommunityMetadata,
+        ("namespaces",),
+        (METADATA_STANDARDS,),
+    ),
     "FsF-R1.3-02D": Evaluator(
         file_formats.FAIREvaluatorFileFormat,
         (),
@@ -234,7 +252,15 @@ class Runner:
             )
         }
         licences = loaded[LICENSES.id]
+        standards = MetadataHarvester()
+        standards.COMMUNITY_METADATA_STANDARDS = loaded[METADATA_STANDARDS.id]  # type: ignore[attr-defined]
+        standards.COMMUNITY_METADATA_STANDARDS_URIS = {  # type: ignore[attr-defined]
+            uri.strip().strip("#/"): key
+            for key, entry in loaded[METADATA_STANDARDS.id].items()
+            for uri in entry["urls"]
+        }
         self._resources = {
+            METADATA_STANDARDS.id: {"metadata_harvester": standards},
             LICENSES.id: {
                 "SPDX_LICENSES": licences,
                 "SPDX_LICENSE_NAMES": [item["name"] for item in licences],
@@ -300,7 +326,12 @@ class Runner:
         state: dict[str, object] = {
             "metadata_merged": prepared,
             "related_resources": prepared.get("related_resources", []),
-            "namespace_uri": prepared.get("provenance_namespaces", []),
+            "namespace_uri": prepared.get(
+                "provenance_namespaces"
+                if identifier == "FsF-R1.2-01M"
+                else "namespaces",
+                [],
+            ),
             "metadata_sources": [],
             "landing_url": None,
             "origin_url": metadata_url,

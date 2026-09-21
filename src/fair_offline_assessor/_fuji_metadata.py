@@ -320,10 +320,8 @@ def _local_nodes(
                 )
 
 
-def _provenance_namespaces(
-    node: dict[str, JsonValue], graph: GraphIndex
-) -> list[SourcedValue]:
-    """Locate PROV/PAV predicates and types actually used by the dataset."""
+def _namespaces(node: dict[str, JsonValue], graph: GraphIndex) -> list[SourcedValue]:
+    """Locate namespaces of predicates and types used by the dataset."""
     found: dict[str, list[str]] = {}
     for index, linked in _local_nodes(node, graph):
         terms = [
@@ -336,9 +334,10 @@ def _provenance_namespaces(
             for i, term in enumerate(cast("list[str]", linked.get("@type", [])))
         )
         for term, path in terms:
-            for namespace in _PROVENANCE:
-                if term.startswith(namespace) and term != namespace:
-                    found.setdefault(namespace, []).append(path)
+            separator = "#" if "#" in term else "/" if "/" in term else ":"
+            prefix, _, local = term.rpartition(separator)
+            if prefix and local:
+                found.setdefault(prefix + separator, []).append(path)
     return [(namespace, tuple(paths)) for namespace, paths in found.items()]
 
 
@@ -370,10 +369,14 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
     distributions, details = _distributions(node, index, graph)
     if details:
         sources["distribution_details"] = details
+    namespaces = _namespaces(node, graph)
     derived = {
         **distributions,
         "related_resources": _related_resources(node, index, graph),
-        "provenance_namespaces": _provenance_namespaces(node, graph),
+        "namespaces": namespaces,
+        "provenance_namespaces": [
+            entry for entry in namespaces if entry[0] in _PROVENANCE
+        ],
     }
     fields.update(
         {

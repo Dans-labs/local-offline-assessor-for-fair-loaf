@@ -3,6 +3,7 @@
   "commit": "9227fabb7f047475714f2e7622798b855c883f72",
   "version": "3.5.1",
   "evaluators": [
+    "fair_evaluator_community_metadata",
     "fair_evaluator_data_access_level",
     "fair_evaluator_data_content_metadata",
     "fair_evaluator_data_identifier_included",
@@ -15,5 +16,6 @@
     "fair_evaluator_standardised_protocol_auth_metadata_data",
     "fair_evaluator_standardised_protocol_metadata_data",
     "fair_evaluator_unique_identifier_metadata"
-  ]
+  ],
+  "helpers": ["harvester.metadata_harvester"]
 }

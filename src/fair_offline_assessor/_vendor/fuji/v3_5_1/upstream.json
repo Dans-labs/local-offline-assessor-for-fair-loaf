@@ -3,6 +3,7 @@
   "commit": "9227fabb7f047475714f2e7622798b855c883f72",
   "version": "3.5.1",
   "evaluators": [
+    "fair_evaluator_community_metadata",
     "fair_evaluator_data_access_level",
     "fair_evaluator_data_content_metadata",
     "fair_evaluator_data_identifier_included",
@@ -15,6 +16,9 @@
     "fair_evaluator_standardised_protocol_auth_metadata_data",
     "fair_evaluator_standardised_protocol_metadata_data",
     "fair_evaluator_unique_identifier_metadata"
+  ],
+  "helpers": [
+    "harvester.metadata_harvester"
   ],
   "license": "MIT",
   "constants": {
@@ -32,6 +36,19 @@
       []
     ]
   },
+  "methods": {
+    "harvester.metadata_harvester": [
+      "MetadataHarvester",
+      [
+        "lookup_metadatastandard_by_uri",
+        "get_metadata_standard_info"
+      ],
+      [
+        "rapidfuzz",
+        "tldextract"
+      ]
+    ]
+  },
   "files": [
     {
       "path": "LICENSE",
@@ -40,6 +57,10 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator.py",
       "sha256": "b3c30d022e911f5047f7b6bbe19855803406dbae5289ecb27d016bf84e21e078"
+    },
+    {
+      "path": "fuji_server/evaluators/fair_evaluator_community_metadata.py",
+      "sha256": "489b105349107985546643ac2ee4f1f5e7844edefeec15c2c3094e5450ede590"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator_data_access_level.py",
@@ -90,6 +111,10 @@
       "sha256": "3aede5d5c03436960203a6bef6ef3f0e4b841085ff316000950ea49c7e874b81"
     },
     {
+      "path": "fuji_server/harvester/metadata_harvester.py",
+      "sha256": "957694e99b0e5816d306a98004b1db26e17f24283a4427eeff3680d937f6930e"
+    },
+    {
       "path": "fuji_server/helper/identifier_helper.py",
       "sha256": "1840303f4094c0b56d311886deffd80e4491ed73e43b521e63b9bdb7a8727714"
     },
@@ -104,6 +129,18 @@
     {
       "path": "fuji_server/models/base_model_.py",
       "sha256": "f5069146126f499990140c274adaed20bea01111dc1ce06edc73356fb82391f1"
+    },
+    {
+      "path": "fuji_server/models/community_endorsed_standard.py",
+      "sha256": "2923610ce95f6d20dec0d9582f154a7c573ac6d47550d1e8ae18018ea61c1591"
+    },
+    {
+      "path": "fuji_server/models/community_endorsed_standard_output.py",
+      "sha256": "701b696375afaff6124ec4ddf8d3449c41f01845820b29770bdc78b0299992f5"
+    },
+    {
+      "path": "fuji_server/models/community_endorsed_standard_output_inner.py",
+      "sha256": "6bb265d25c2dc6ce36c08bff8c4470b2bb14f8b81cfe393a9115f99fcfe27458"
     },
     {
       "path": "fuji_server/models/core_metadata.py",
