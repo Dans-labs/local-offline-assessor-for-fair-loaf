@@ -1,6 +1,6 @@
 import logging
 
-from fair_offline_assessor.assessment import assess
+from fair_offline_assessor.assessment import Assessor, assess
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
@@ -18,6 +18,7 @@ from fair_offline_assessor.profiles import (
 __all__ = [
     "AssessmentInput",
     "AssessmentResult",
+    "Assessor",
     "BundledProfileProvider",
     "InputError",
     "ProfileBundle",
