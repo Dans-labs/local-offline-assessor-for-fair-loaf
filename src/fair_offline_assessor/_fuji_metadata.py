@@ -1,11 +1,12 @@
 from collections.abc import Iterator
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import cast
 
 from pydantic import JsonValue
 
 from fair_offline_assessor._metadata import SelectedDataset
-from fair_offline_assessor.models import InputError
+from fair_offline_assessor.models import Diagnostic, InputError
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
 _PROVENANCE = ("http://www.w3.org/ns/prov#", "http://purl.org/pav/")
@@ -135,6 +136,7 @@ class FujiMetadata:
     # JSON pointers into SelectedDataset.graph retain the original literal details.
     sources: dict[str, tuple[str, ...]]
     unmapped: tuple[str, ...]
+    invalid: dict[str, Diagnostic] = dataclass_field(default_factory=dict)
 
 
 def _pointer(index: int, term: str) -> str:
@@ -420,13 +422,21 @@ def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
             if values
         }
     )
+    invalid = {}
     if "access_free" in fields:
-        fields["access_free"] = _access_free(
-            cast("list[JsonValue]", fields["access_free"])
-        )
+        try:
+            fields["access_free"] = _access_free(
+                cast("list[JsonValue]", fields["access_free"])
+            )
+        except InputError as exc:
+            fields.pop("access_free")
+            invalid["access_free"] = Diagnostic(
+                code=exc.code, message=str(exc), location="/metadata"
+            )
     return FujiMetadata(
         fields=fields,
         sources=sources,
+        invalid=invalid,
         unmapped=tuple(
             sorted(
                 term

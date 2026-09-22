@@ -1,11 +1,13 @@
 import json
 import logging
+from collections.abc import Mapping
 from hashlib import sha256
 from importlib.metadata import version
 from typing import Literal, cast
 
 from fair_offline_assessor import _fuji
 from fair_offline_assessor._fuji_metadata import FujiMetadata, prepare_metadata
+from fair_offline_assessor._input import PreparedInput, prepare_input
 from fair_offline_assessor._metadata import SelectedDataset, select_dataset
 from fair_offline_assessor.models import (
     AssessmentInput,
@@ -62,6 +64,7 @@ def _unmeasured(
     definition: _fuji.MetricDefinition,
     *,
     outcome: Literal["indeterminate", "error"] = "indeterminate",
+    issues: Mapping[str, Diagnostic] | None = None,
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Keep unavailable checks and execution errors visible without assigning points."""
     identifier = definition["metric_identifier"]
@@ -81,8 +84,12 @@ def _unmeasured(
                 id=check["metric_test_identifier"],
                 metric=identifier,
                 outcome=outcome,
-                reason_code=reason,
-                message=message,
+                reason_code=issues[check["metric_test_identifier"]].code
+                if issues
+                else reason,
+                message=issues[check["metric_test_identifier"]].message
+                if issues
+                else message,
             )
             for check in definition["metric_tests"]
         ),
@@ -95,16 +102,43 @@ def _assess_metric(
     metadata: FujiMetadata,
     evidence: dict[str, tuple[EvidenceRef, ...]],
     *,
-    metadata_url: str | None,
+    supplied: PreparedInput,
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
     identifier = definition["metric_identifier"]
     registration = _fuji.EVALUATORS.get(identifier)
     if registration is None:
         return _unmeasured(definition)
+    fields_by_check = {}
+    blocked = {}
+    for check_definition in definition["metric_tests"]:
+        check_id = check_definition["metric_test_identifier"]
+        fields = registration.fields
+        if check_id in registration.check_fields:
+            fields = (registration.check_fields[check_id],)
+        fields = registration.check_evidence.get(check_id, fields)
+        fields_by_check[check_id] = fields
+        if check_id in registration.unsupported_checks:
+            continue
+        issue = (
+            supplied.invalid.get("metadata_url")
+            if fields == ("metadata_url",)
+            else supplied.invalid.get("metadata") or supplied.invalid.get("subject")
+        )
+        issue = issue or next(
+            (metadata.invalid[field] for field in fields if field in metadata.invalid),
+            None,
+        )
+        if issue is not None:
+            blocked[check_id] = issue
+    if len(blocked) == len(definition["metric_tests"]):
+        return _unmeasured(definition, issues=blocked)
     try:
         evaluation = runner.evaluate(
-            identifier, metadata.fields, metadata_url=metadata_url
+            identifier,
+            metadata.fields,
+            metadata_url=supplied.request.metadata_url,
+            blocked=blocked,
         )
     except (InputError, ProfileError):
         raise
@@ -113,10 +147,7 @@ def _assess_metric(
         return _unmeasured(definition, outcome="error")
     checks = []
     for check in evaluation.tests:
-        fields = registration.fields
-        if check.id in registration.check_fields:
-            fields = (registration.check_fields[check.id],)
-        fields = registration.check_evidence.get(check.id, fields)
+        fields = fields_by_check[check.id]
         refs = dict.fromkeys(ref for field in fields for ref in evidence.get(field, ()))
         checks.append(check.model_copy(update={"evidence": tuple(refs)}))
     return evaluation.metric, tuple(checks)
@@ -128,13 +159,25 @@ class FujiAdapter:
     definitions: tuple[ResourceRef, ...] = _fuji.REFERENCES
 
     def assess(
-        self, request: AssessmentInput, profile: LoadedProfile
+        self, request: AssessmentInput | Mapping[str, object], profile: LoadedProfile
     ) -> AssessmentResult:
         """Prepare supplied JSON-LD and run the supported F-UJI metrics."""
-        input_digest = _digest(request.model_dump(mode="json"))
-        dataset = select_dataset(request, profile)
-        metadata = prepare_metadata(dataset)
-        evidence = _evidence(dataset, metadata.sources)
+        supplied = prepare_input(request)
+        request = supplied.request
+        input_digest = supplied.digest
+        metadata = FujiMetadata({}, {}, ())
+        evidence = {}
+        if not supplied.invalid.keys() & {"metadata", "subject"}:
+            try:
+                dataset = select_dataset(request, profile)
+                metadata = prepare_metadata(dataset)
+                evidence = _evidence(dataset, metadata.sources)
+            except InputError as exc:
+                supplied.invalid["metadata"] = Diagnostic(
+                    code=exc.code,
+                    message=str(exc),
+                    location=exc.location or "/metadata",
+                )
         if request.metadata_url:
             evidence["metadata_url"] = (
                 EvidenceRef(
@@ -152,15 +195,19 @@ class FujiAdapter:
                 runner,
                 metadata,
                 evidence,
-                metadata_url=request.metadata_url,
+                supplied=supplied,
             )
             metrics.append(metric)
             tests.extend(checks)
         diagnostics = [
-            Diagnostic(
-                code="unmapped_term", message=f"No F-UJI field mapping for {term}."
-            )
-            for term in metadata.unmapped
+            *supplied.invalid.values(),
+            *metadata.invalid.values(),
+            *(
+                Diagnostic(
+                    code="unmapped_term", message=f"No F-UJI field mapping for {term}."
+                )
+                for term in metadata.unmapped
+            ),
         ]
         if request.captures:
             diagnostics.append(

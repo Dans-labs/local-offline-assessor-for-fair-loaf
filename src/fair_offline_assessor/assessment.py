@@ -1,3 +1,7 @@
+from collections.abc import Mapping
+
+from pydantic import JsonValue
+
 from fair_offline_assessor._fuji_assessment import FujiAdapter
 from fair_offline_assessor.adapters import resolve_adapter
 from fair_offline_assessor.models import (
@@ -38,25 +42,28 @@ class Assessor:
     def assess(
         self,
         *,
-        metadata: JsonObject | list[JsonObject],
+        metadata: JsonValue,
         subject: str | None = None,
         metadata_url: str | None = None,
         captures: tuple[Capture, ...] = (),
         local_contexts: dict[str, JsonObject] | None = None,
     ) -> AssessmentResult:
         """Assess supplied JSON-LD and optional evidence without fetching URLs."""
-        request = AssessmentInput(
-            metadata=metadata,
-            subject=subject,
-            metadata_url=metadata_url,
-            captures=captures,
-            local_contexts=local_contexts if local_contexts is not None else {},
-        )
+        request = {
+            "metadata": metadata,
+            "subject": subject,
+            "metadata_url": metadata_url,
+            "captures": captures,
+            "local_contexts": local_contexts if local_contexts is not None else {},
+        }
         return self._adapter.assess(request, self._profile)
 
 
 def assess(
-    request: AssessmentInput, *, profile: str, provider: ProfileProvider | None = None
+    request: AssessmentInput | Mapping[str, object],
+    *,
+    profile: str,
+    provider: ProfileProvider | None = None,
 ) -> AssessmentResult:
     """Assess supplied evidence offline using an exact profile ID@version."""
     loaded = load_profile(profile, provider=provider)

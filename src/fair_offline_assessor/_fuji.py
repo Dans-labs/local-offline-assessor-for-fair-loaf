@@ -70,6 +70,7 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.helper.linked_vocab_helper import
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
 from fair_offline_assessor.models import (
     CheckResult,
+    Diagnostic,
     MaturityLevel,
     MetricResult,
     ProfileError,
@@ -357,6 +358,7 @@ class Runner:
         metadata: Mapping[str, JsonValue],
         *,
         metadata_url: str | None = None,
+        blocked: Mapping[str, Diagnostic] | None = None,
     ) -> MetricEvaluation:
         """Run a registered metadata evaluator with its required resources."""
         registration = EVALUATORS[identifier]
@@ -436,17 +438,24 @@ class Runner:
             )
         checks = context.METRICS[identifier]["metric_tests"]
         available = {**prepared, "metadata_url": metadata_url}
-        missing = {
-            check
-            for check, required in registration.check_fields.items()
-            if not available.get(required)
-        } | set(registration.unsupported_checks)
+        missing = (
+            {
+                check
+                for check, required in registration.check_fields.items()
+                if not available.get(required)
+            }
+            | set(registration.unsupported_checks)
+            | set(blocked or {})
+        )
         context.METRICS[identifier]["metric_tests"] = [
             check for check in checks if check["metric_test_identifier"] not in missing
         ]
         evaluator = registration.implementation(context)
         return _evaluate(
-            evaluator, checks=checks, unsupported_checks=registration.unsupported_checks
+            evaluator,
+            checks=checks,
+            unsupported_checks=registration.unsupported_checks,
+            blocked=blocked,
         )
 
     def evaluate_retrievability(
@@ -492,6 +501,7 @@ def _evaluate(
     *,
     checks: Sequence[CheckDefinition],
     unsupported_checks: tuple[str, ...] = (),
+    blocked: Mapping[str, Diagnostic] | None = None,
 ) -> MetricEvaluation:
     """Run F-UJI and convert its checks and metric result."""
     native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
@@ -500,6 +510,7 @@ def _evaluate(
     results = []
     for test in checks:
         check_id = test["metric_test_identifier"]
+        issue = (blocked or {}).get(check_id)
         if check_id not in evaluator.metric_tests:
             results.append(
                 CheckResult(
@@ -508,10 +519,14 @@ def _evaluate(
                     outcome="indeterminate",
                     reason_code="unsupported_check"
                     if check_id in unsupported_checks
+                    else issue.code
+                    if issue is not None
                     else "missing_evidence",
                     message="This check requires HTTP or HTML evidence, "
                     "which this release does not support."
                     if check_id in unsupported_checks
+                    else issue.message
+                    if issue is not None
                     else "No conclusive evidence supplied.",
                 )
             )

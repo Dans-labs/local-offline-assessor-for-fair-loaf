@@ -6,7 +6,7 @@ from importlib.metadata import version
 import pytest
 
 import fair_offline_assessor as library
-from fair_offline_assessor import AssessmentInput, InputError, ProfileError, _fuji
+from fair_offline_assessor import AssessmentInput, ProfileError, _fuji
 
 PROFILE = "fusji-offline@3.5.1"
 
@@ -256,9 +256,13 @@ def test_configuration_is_checked_before_input(problem):
     ],
 )
 def test_input_errors_do_not_become_failed_checks(metadata, code):
-    with pytest.raises(InputError) as error:
-        library.assess(AssessmentInput(metadata=metadata), profile=PROFILE)
-    assert error.value.code == code
+    result = library.assess(AssessmentInput(metadata=metadata), profile=PROFILE)
+    assert code in {note.code for note in result.diagnostics}
+    check = next(check for check in result.tests if check.id == "FsF-R1.1-01M-1")
+    assert check.outcome == "indeterminate"
+    assert check.reason_code == code
+    assert check.score is None
+    assert result.coverage.evaluated == result.coverage.errors == 0
 
 
 def test_evaluator_errors_are_findings_without_internal_details(
@@ -406,9 +410,15 @@ def test_access_information_preserves_fuji_scoring(
 @pytest.mark.parametrize("value", ["false", [True, False]])
 def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value):
     request_data.metadata["isAccessibleForFree"] = value
-    with pytest.raises(InputError) as error:
-        library.assess(request_data, profile=PROFILE)
-    assert error.value.code == "invalid_access_free"
+    request_data.metadata["license"] = "MIT"
+    result = library.assess(request_data, profile=PROFILE)
+    check = next(check for check in result.tests if check.id == "FsF-A1-01M-1")
+    assert check.outcome == "indeterminate"
+    assert check.reason_code == "invalid_access_free"
+    assert check.score is None
+    assert "invalid_access_free" in {note.code for note in result.diagnostics}
+    assert next(c for c in result.tests if c.id == "FsF-R1.1-01M-1").outcome == "pass"
+    assert result.coverage.errors == 0
 
 
 def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatch):

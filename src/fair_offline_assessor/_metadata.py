@@ -96,6 +96,8 @@ def expand_metadata(
         raise InputError(
             "invalid_jsonld", f"Invalid JSON-LD metadata: {exc.code}"
         ) from exc
+    except ValueError as exc:
+        raise InputError("invalid_jsonld", "Cannot interpret JSON-LD metadata") from exc
 
 
 def select_dataset(request: AssessmentInput, profile: LoadedProfile) -> SelectedDataset:

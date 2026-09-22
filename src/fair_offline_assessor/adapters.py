@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Protocol
 
 from fair_offline_assessor.models import (
@@ -15,7 +16,7 @@ class AssessorAdapter(Protocol):
     definitions: tuple[ResourceRef, ...]
 
     def assess(
-        self, request: AssessmentInput, profile: LoadedProfile
+        self, request: AssessmentInput | Mapping[str, object], profile: LoadedProfile
     ) -> AssessmentResult:
         """Assess supplied evidence using this implementation's checks and scoring."""
         ...

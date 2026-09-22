@@ -174,13 +174,14 @@ class AssessmentInput(Model):
     captures: tuple[Capture, ...] = ()
     local_contexts: dict[str, JsonObject] = Field(default_factory=dict)
 
-    @model_validator(mode="after")
-    def unique_captures(self) -> Self:
+    @field_validator("captures")
+    @classmethod
+    def unique_captures(cls, captures: tuple[Capture, ...]) -> tuple[Capture, ...]:
         """Reject duplicate capture identifiers."""
-        identifiers = [capture.id for capture in self.captures]
+        identifiers = [capture.id for capture in captures]
         if len(identifiers) != len(set(identifiers)):
             raise ValueError("Duplicate capture identifier")
-        return self
+        return captures
 
 
 class EvidenceRef(Model):
