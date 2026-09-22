@@ -1,0 +1,7 @@
+LICENSE.md
+package-lock.json
+.next/
+out/
+node_modules/
+next-env.d.ts
+*.tsbuildinfo
