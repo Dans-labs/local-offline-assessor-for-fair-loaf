@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Offline FAIR assessment using versioned metric profiles"
 readme = "README.md"
 requires-python = ">=3.12"
-license = "Apache-2.0 AND CC-BY-SA-3.0 AND CC-BY-4.0 AND LicenseRef-W3C-2023 AND MIT"
+license = "Apache-2.0 AND CC-BY-SA-3.0 AND MIT"
 license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
 authors = [
     { name = "Data Archiving and Networked Services (DANS)" },
@@ -38,7 +38,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "lxml>=6",
     "mypy>=1.15",
     "pytest>=8",
     "pytest-socket>=0.7",

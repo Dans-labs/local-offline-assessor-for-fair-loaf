@@ -44,7 +44,7 @@
     }
   ],
   "limitations": [
-    "Assessment uses only supplied JSON-LD metadata and captured evidence.",
+    "Assessment uses only supplied JSON-LD metadata and identifiers.",
     "Checks requiring unavailable evidence remain unevaluated."
   ],
   "adapter_version": "1.0.0"

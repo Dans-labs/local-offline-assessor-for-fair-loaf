@@ -13,7 +13,6 @@
     "fair_evaluator_minimal_metadata",
     "fair_evaluator_persistent_identifier_metadata_data",
     "fair_evaluator_related_resources",
-    "fair_evaluator_retrievable_metadata_data",
     "fair_evaluator_semantic_vocabulary",
     "fair_evaluator_standardised_protocol_auth_metadata_data",
     "fair_evaluator_standardised_protocol_metadata_data",
@@ -99,10 +98,6 @@
     {
       "path": "fuji_server/evaluators/fair_evaluator_related_resources.py",
       "sha256": "c5e40c7f54b9e749341c5df9dcd094a955dad2e175f1eb66179f7e3da8406557"
-    },
-    {
-      "path": "fuji_server/evaluators/fair_evaluator_retrievable_metadata_data.py",
-      "sha256": "69ca0b0870883e72a5d708e24396dd0651e2c2f2acde47d060aac27821fed335"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator_semantic_vocabulary.py",
@@ -275,18 +270,6 @@
     {
       "path": "fuji_server/models/related_resource_output_inner.py",
       "sha256": "2402282872e68d8c1766e346f5d1e26e0772fa6fa1ca57c1fb3ebd4ec075ad1d"
-    },
-    {
-      "path": "fuji_server/models/retrievable.py",
-      "sha256": "76645c24de69c4a8a6e80f620fbb4f721a284c38dd17deb9861436d44b6934a7"
-    },
-    {
-      "path": "fuji_server/models/retrievable_output.py",
-      "sha256": "4f6730f3d1a639f08f87990460db7326c7bea2e90dd84e3afdbc2992bc313d86"
-    },
-    {
-      "path": "fuji_server/models/retrievable_output_inner.py",
-      "sha256": "dcdc63d4f48a8e6961227837c43d45e3b0de420d9a76fea3b11582a34323be9b"
     },
     {
       "path": "fuji_server/models/semantic_vocabulary.py",

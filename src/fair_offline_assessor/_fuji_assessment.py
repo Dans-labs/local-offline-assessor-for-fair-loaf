@@ -6,9 +6,13 @@ from importlib.metadata import version
 from typing import Literal, cast
 
 from fair_offline_assessor import _fuji
-from fair_offline_assessor._fuji_metadata import FujiMetadata, prepare_metadata
+from fair_offline_assessor._fuji_metadata import (
+    FujiMetadata,
+    prepare_metadata,
+    select_dataset,
+)
 from fair_offline_assessor._input import PreparedInput, prepare_input
-from fair_offline_assessor._metadata import SelectedDataset, select_dataset
+from fair_offline_assessor._metadata import SelectedResource
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
@@ -42,7 +46,7 @@ def _digest(value: object) -> str:
 
 
 def _evidence(
-    dataset: SelectedDataset, sources: dict[str, tuple[str, ...]]
+    dataset: SelectedResource, sources: dict[str, tuple[str, ...]]
 ) -> dict[str, tuple[EvidenceRef, ...]]:
     """Locate mapped values in the prepared graph, including linked records."""
     digest = _digest(dataset.graph)
@@ -209,13 +213,6 @@ class FujiAdapter:
                 for term in metadata.unmapped
             ),
         ]
-        if request.captures:
-            diagnostics.append(
-                Diagnostic(
-                    code="captures_not_supported",
-                    message="Captured HTTP evidence is not assessed yet.",
-                )
-            )
         return AssessmentResult(
             profile=profile.info,
             provenance=Provenance(

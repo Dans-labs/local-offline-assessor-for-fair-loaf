@@ -5,8 +5,9 @@ from typing import cast
 
 from pydantic import JsonValue
 
-from fair_offline_assessor._metadata import SelectedDataset
-from fair_offline_assessor.models import Diagnostic, InputError
+from fair_offline_assessor._metadata import SelectedResource, select_resource
+from fair_offline_assessor.models import AssessmentInput, Diagnostic, InputError
+from fair_offline_assessor.profiles import LoadedProfile
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
 _PROVENANCE = ("http://www.w3.org/ns/prov#", "http://purl.org/pav/")
@@ -133,10 +134,30 @@ type SourcedValue = tuple[JsonValue, tuple[str, ...]]
 @dataclass(frozen=True)
 class FujiMetadata:
     fields: dict[str, JsonValue]
-    # JSON pointers into SelectedDataset.graph retain the original literal details.
+    # JSON pointers into SelectedResource.graph retain the original literal details.
     sources: dict[str, tuple[str, ...]]
     unmapped: tuple[str, ...]
     invalid: dict[str, Diagnostic] = dataclass_field(default_factory=dict)
+
+
+def select_dataset(
+    request: AssessmentInput, profile: LoadedProfile
+) -> SelectedResource:
+    """Select the requested subject or the sole Schema.org Dataset."""
+    try:
+        return select_resource(
+            request, profile, resource_types=tuple(ns + "Dataset" for ns in _SCHEMA)
+        )
+    except InputError as exc:
+        if exc.code == "resource_not_found":
+            raise InputError(
+                "dataset_not_found", "No Schema.org Dataset found; supply subject"
+            ) from exc
+        if exc.code == "ambiguous_resource":
+            raise InputError(
+                "ambiguous_dataset", "Multiple datasets found; supply subject"
+            ) from exc
+        raise
 
 
 def _pointer(index: int, term: str) -> str:
@@ -370,7 +391,7 @@ def _linked_uris(node: dict[str, JsonValue], graph: GraphIndex) -> list[SourcedV
     return [(uri, tuple(paths)) for uri, paths in found.items()]
 
 
-def prepare_metadata(dataset: SelectedDataset) -> FujiMetadata:
+def prepare_metadata(dataset: SelectedResource) -> FujiMetadata:
     """Map selected metadata into F-UJI fields, retaining all supplied values."""
     graph = {
         cast("str", node["@id"]): (i, node) for i, node in enumerate(dataset.graph)

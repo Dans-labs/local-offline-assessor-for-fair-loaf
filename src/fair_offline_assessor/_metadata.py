@@ -16,7 +16,7 @@ from fair_offline_assessor.profiles import LoadedProfile
 
 
 @dataclass(frozen=True)
-class SelectedDataset:
+class SelectedResource:
     node: dict[str, JsonValue]
     graph: list[dict[str, JsonValue]]
 
@@ -100,8 +100,13 @@ def expand_metadata(
         raise InputError("invalid_jsonld", "Cannot interpret JSON-LD metadata") from exc
 
 
-def select_dataset(request: AssessmentInput, profile: LoadedProfile) -> SelectedDataset:
-    """Select the requested subject or the sole Schema.org Dataset and its graph."""
+def select_resource(
+    request: AssessmentInput,
+    profile: LoadedProfile,
+    *,
+    resource_types: tuple[str, ...],
+) -> SelectedResource:
+    """Select an explicit subject or the sole matching resource and its graph."""
     expanded = expand_metadata(request, profile)
     loader = FrozenDocumentLoader(documents={})
     issuer = jsonld.IdentifierIssuer("_:b")
@@ -133,14 +138,14 @@ def select_dataset(request: AssessmentInput, profile: LoadedProfile) -> Selected
         ),
     ]
     matches = [
-        SelectedDataset(node, graph)
+        SelectedResource(node, graph)
         for graph in graphs
         for node in graph
         if (
             node.get("@id") == subject
             if subject is not None
             else any(
-                kind in ("http://schema.org/Dataset", "https://schema.org/Dataset")
+                kind in resource_types
                 for kind in cast("list[str]", node.get("@type", []))
             )
         )
@@ -151,10 +156,12 @@ def select_dataset(request: AssessmentInput, profile: LoadedProfile) -> Selected
                 "subject_not_found", f"Subject not found: {request.subject}"
             )
         raise InputError(
-            "dataset_not_found", "No Schema.org Dataset found; supply subject"
+            "resource_not_found", "No matching resource found; supply subject"
         )
     if len(matches) > 1:
         if subject is not None:
             raise InputError("ambiguous_subject", "Subject occurs in multiple graphs")
-        raise InputError("ambiguous_dataset", "Multiple datasets found; supply subject")
+        raise InputError(
+            "ambiguous_resource", "Multiple resources found; supply subject"
+        )
     return matches[0]

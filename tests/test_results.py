@@ -34,8 +34,8 @@ def result_data():
                 "id": "negotiated",
                 "metric": "I1",
                 "outcome": "indeterminate",
-                "reason_code": "missing_capture",
-                "message": "No capture supplied.",
+                "reason_code": "missing_evidence",
+                "message": "No evidence supplied.",
             },
         ],
     }

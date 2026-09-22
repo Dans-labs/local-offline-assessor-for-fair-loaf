@@ -45,7 +45,6 @@ def test_unusable_metadata_keeps_identifier_checks_and_input_provenance(metadata
 @pytest.mark.parametrize(
     ("field", "value", "metadata_usable"),
     [
-        ("captures", [{"id": "incomplete"}], True),
         ("local_contexts", {"urn:unused": 1}, True),
         ("metadata_url", 42, True),
         ("metadata_url", "\ud800", True),

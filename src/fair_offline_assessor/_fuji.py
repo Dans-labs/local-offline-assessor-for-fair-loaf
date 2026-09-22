@@ -41,9 +41,6 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_related_resources as related_resources,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
-    fair_evaluator_retrievable_metadata_data as retrieval,
-)
-from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
     fair_evaluator_semantic_vocabulary as semantic_vocabulary,
 )
 from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators import (
@@ -415,7 +412,7 @@ class Runner:
                 )
             )
         if identifier == "FsF-R1.3-02D":
-            # Only declared formats are available without captured content.
+            # Only declared formats are available.
             context.content_identifier = {}
             context.metadata_merged["object_content_identifier"] = (
                 context.metadata_merged.get("file_formats", [])
@@ -457,37 +454,6 @@ class Runner:
             unsupported_checks=registration.unsupported_checks,
             blocked=blocked,
         )
-
-    def evaluate_retrievability(
-        self,
-        *,
-        metadata: Sequence[Mapping[str, JsonValue]] | None = None,
-        data: Mapping[str, Mapping[str, JsonValue]] | None = None,
-    ) -> MetricEvaluation:
-        """Run retrieval checks on bound observations; None means missing evidence.
-
-        Empty collections mean an observed failure. Metadata needs a successful GET
-        with a parsed body describing the subject.
-        """
-        identifier = "FsF-A1-02MD"
-        context = self._context(
-            identifier,
-            metadata_unmerged=metadata if metadata is not None else [],
-            content_identifier=data if data is not None else {},
-        )
-        metric = context.METRICS[identifier]
-        available = {
-            identifier + suffix
-            for suffix, evidence in (("-1", metadata), ("-2", data))
-            if evidence is not None
-        }
-        checks = metric["metric_tests"]
-        # Both upstream branches guard their work with isTestDefined().
-        metric["metric_tests"] = [
-            test for test in checks if test["metric_test_identifier"] in available
-        ]
-        evaluator = retrieval.FAIREvaluatorMetadataDataRetrievable(context)  # type: ignore[no-untyped-call]
-        return _evaluate(evaluator, checks=checks)
 
 
 def _identifier(value: str, catalogue: Mapping[str, object]) -> dict[str, JsonValue]:

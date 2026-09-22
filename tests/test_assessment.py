@@ -289,34 +289,18 @@ def test_evaluator_errors_are_findings_without_internal_details(
     assert "private implementation details" not in result.model_dump_json()
 
 
-def test_unused_metadata_and_captures_are_reported(request_data):
+def test_unused_metadata_and_removed_capture_input_are_reported(request_data):
     request_data.metadata["urn:custom"] = "Extra"
-    request = AssessmentInput(
-        **{
-            **request_data.model_dump(),
-            "captures": [
-                {
-                    "id": "capture",
-                    "resource_url": "https://example.org/data",
-                    "captured_at": "2026-01-01T00:00:00Z",
-                    "exchanges": [
-                        {
-                            "method": "GET",
-                            "url": "https://example.org/data",
-                            "status": 200,
-                        }
-                    ],
-                }
-            ],
-        }
-    )
+    request = {**request_data.model_dump(), "captures": []}
     result = library.assess(
         request, profile=PROFILE, provider=library.BundledProfileProvider()
     )
     assert {note.code for note in result.diagnostics} == {
         "unmapped_term",
-        "captures_not_supported",
+        "invalid_captures",
     }
+    assert any(note.location == "/captures" for note in result.diagnostics)
+    assert next(c for c in result.tests if c.id == "FsF-F2-01M-2").outcome == "pass"
     assert result.status == "completed"
 
 

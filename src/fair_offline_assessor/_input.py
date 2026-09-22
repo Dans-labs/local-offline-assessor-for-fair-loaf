@@ -22,7 +22,6 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
         "metadata": {},
         "subject": None,
         "metadata_url": None,
-        "captures": (),
         "local_contexts": {},
     }
     original = defaults | (
@@ -58,7 +57,7 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
                 location="/metadata",
             )
     values["metadata"] = {} if "metadata" in invalid else metadata
-    for name in ("subject", "metadata_url", "captures", "local_contexts"):
+    for name in ("subject", "metadata_url", "local_contexts"):
         try:
             json.dumps(
                 to_jsonable_python(values[name]), allow_nan=False, ensure_ascii=False

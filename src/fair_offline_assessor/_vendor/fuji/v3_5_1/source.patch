@@ -415,23 +415,6 @@
                      if relation_identifier.is_persistent or "url" in relation_identifier.identifier_schemes:
                          test_status = True
              if test_status:
---- a/fuji_server/evaluators/fair_evaluator_retrievable_metadata_data.py
-+++ b/evaluators/fair_evaluator_retrievable_metadata_data.py
-@@ -2,10 +2,10 @@
- #
- # SPDX-License-Identifier: MIT
- 
--from fuji_server.evaluators.fair_evaluator import FAIREvaluator
--from fuji_server.models.retrievable import Retrievable
--from fuji_server.models.retrievable_output import RetrievableOutput
--from fuji_server.models.retrievable_output_inner import RetrievableOutputInner
-+from fair_offline_assessor._vendor.fuji.v3_5_1.evaluators.fair_evaluator import FAIREvaluator
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.retrievable import Retrievable
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.retrievable_output import RetrievableOutput
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.retrievable_output_inner import RetrievableOutputInner
- 
- 
- class FAIREvaluatorMetadataDataRetrievable(FAIREvaluator):
 --- a/fuji_server/evaluators/fair_evaluator_semantic_vocabulary.py
 +++ b/evaluators/fair_evaluator_semantic_vocabulary.py
 @@ -4,10 +4,10 @@
@@ -1238,57 +1221,6 @@
  
  
  class RelatedResourceOutputInner(Model):
---- a/fuji_server/models/retrievable.py
-+++ b/models/retrievable.py
-@@ -6,13 +6,13 @@
- 
- from datetime import date, datetime  # noqa: F401
- 
--from fuji_server import util
--from fuji_server.models.base_model_ import Model
--from fuji_server.models.debug import Debug
--from fuji_server.models.fair_result_common import FAIRResultCommon  # noqa: F401
--from fuji_server.models.fair_result_common_score import FAIRResultCommonScore
--from fuji_server.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
--from fuji_server.models.retrievable_output import RetrievableOutput
-+from fair_offline_assessor._vendor.fuji.v3_5_1 import util
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.debug import Debug
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common import FAIRResultCommon  # noqa: F401
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_common_score import FAIRResultCommonScore
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.fair_result_evaluation_criterium import FAIRResultEvaluationCriterium
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.retrievable_output import RetrievableOutput
- 
- 
- class Retrievable(Model):
---- a/fuji_server/models/retrievable_output.py
-+++ b/models/retrievable_output.py
-@@ -6,9 +6,9 @@
- 
- from datetime import date, datetime  # noqa: F401
- 
--from fuji_server import util
--from fuji_server.models.base_model_ import Model
--from fuji_server.models.retrievable_output_inner import RetrievableOutputInner
-+from fair_offline_assessor._vendor.fuji.v3_5_1 import util
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.retrievable_output_inner import RetrievableOutputInner
- 
- 
- class RetrievableOutput(Model):
---- a/fuji_server/models/retrievable_output_inner.py
-+++ b/models/retrievable_output_inner.py
-@@ -6,8 +6,8 @@
- 
- from datetime import date, datetime  # noqa: F401
- 
--from fuji_server import util
--from fuji_server.models.base_model_ import Model
-+from fair_offline_assessor._vendor.fuji.v3_5_1 import util
-+from fair_offline_assessor._vendor.fuji.v3_5_1.models.base_model_ import Model
- 
- 
- class RetrievableOutputInner(Model):
 --- a/fuji_server/models/semantic_vocabulary.py
 +++ b/models/semantic_vocabulary.py
 @@ -6,13 +6,13 @@

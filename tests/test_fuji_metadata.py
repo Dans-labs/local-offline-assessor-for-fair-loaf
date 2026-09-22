@@ -3,8 +3,7 @@ from copy import deepcopy
 import pytest
 
 from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_metadata import prepare_metadata
-from fair_offline_assessor._metadata import select_dataset
+from fair_offline_assessor._fuji_metadata import prepare_metadata, select_dataset
 
 
 @pytest.fixture

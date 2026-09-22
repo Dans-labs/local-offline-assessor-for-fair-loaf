@@ -18,20 +18,6 @@ def test_assessor_matches_profile_entry_point_with_all_evidence(name, version):
         subject="https://example.org/second",
         metadata_url="https://example.org/metadata",
         local_contexts={"urn:context": {"@context": {"@vocab": "https://schema.org/"}}},
-        captures=[
-            {
-                "id": "metadata",
-                "resource_url": "https://example.org/metadata",
-                "captured_at": "2026-01-01T00:00:00Z",
-                "exchanges": [
-                    {
-                        "method": "GET",
-                        "url": "https://example.org/metadata",
-                        "status": 200,
-                    }
-                ],
-            }
-        ],
     )
     evidence = request.model_dump()
     assessor = library.Assessor(name, version=version)

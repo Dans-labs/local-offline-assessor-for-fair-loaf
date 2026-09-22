@@ -145,19 +145,6 @@
     "EvidenceRef": {
       "additionalProperties": false,
       "properties": {
-        "captured_at": {
-          "anyOf": [
-            {
-              "format": "date-time",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Captured At"
-        },
         "digest": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Digest",
@@ -341,14 +328,6 @@
     "Provenance": {
       "additionalProperties": false,
       "properties": {
-        "captures": {
-          "additionalProperties": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "title": "Captures",
-          "type": "object"
-        },
         "engine_version": {
           "title": "Engine Version",
           "type": "string"

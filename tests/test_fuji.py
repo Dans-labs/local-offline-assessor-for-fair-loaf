@@ -7,8 +7,7 @@ from copy import deepcopy
 import pytest
 
 from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_metadata import prepare_metadata
-from fair_offline_assessor._metadata import select_dataset
+from fair_offline_assessor._fuji_metadata import prepare_metadata, select_dataset
 from fair_offline_assessor.models import ProfileError
 
 
@@ -105,72 +104,6 @@ def test_other_metric_definitions_are_rejected():
     assert error.value.code == "unsupported_definitions"
 
 
-@pytest.mark.parametrize(
-    ("status", "outcome", "earned"),
-    [(None, "indeterminate", 0), (200, "pass", 1), (404, "fail", 0)],
-)
-def test_retrieval_distinguishes_missing_evidence_from_failure(
-    runner, status, outcome, earned
-):
-    data = (
-        None
-        if status is None
-        else {
-            "https://example.org/data.csv": {
-                "url": "https://example.org/data.csv",
-                "scheme": "https",
-                "status_code": status,
-            }
-        }
-    )
-    original = deepcopy(data)
-    result = runner.evaluate_retrievability(data=data)
-    assert data == original
-    assert [check.outcome for check in result.tests] == ["indeterminate", outcome]
-    assert result.tests[0].score is None
-    assert result.tests[0].reason_code == "missing_evidence"
-    assert "FsF-A1-02MD-1" not in result.native["metric_tests"]
-    assert result.metric.score.observed_earned == earned
-    assert result.metric.score.maximum == 2
-    assert result.metric.score.percent is None
-    assert result.metric.outcome == ("pass" if earned else "indeterminate")
-
-
-@pytest.mark.parametrize(
-    ("found", "status", "earned"), [(True, 200, 2), (True, 404, 1), (False, 404, 0)]
-)
-def test_retrieval_preserves_upstream_scoring_when_evidence_is_complete(
-    runner, found, status, earned
-):
-    result = runner.evaluate_retrievability(
-        metadata=[
-            {
-                "url": "https://example.org/metadata.jsonld",
-                "metadata": metadata(),
-                "schema": "https://schema.org/",
-                "offering_method": "content_negotiation",
-            }
-        ]
-        if found
-        else [],
-        data={
-            "https://example.org/data.csv": {
-                "url": "https://example.org/data.csv",
-                "scheme": "https",
-                "status_code": status,
-            }
-        },
-    )
-    assert [check.outcome for check in result.tests] == [
-        "pass" if found else "fail",
-        "pass" if status == 200 else "fail",
-    ]
-    assert result.metric.outcome == ("pass" if earned else "fail")
-    assert result.metric.score.percent == earned * 50
-    assert result.metric.level.value == (3 if earned else 0)
-    assert result.native["score"] == {"earned": earned, "total": 2}
-
-
 def test_fresh_import_and_evaluation_do_not_access_the_network():
     script = """
 import sys
@@ -192,13 +125,6 @@ from fair_offline_assessor._fuji import Runner
 runner = Runner(load_profile('fusji-offline@3.5.1').resources)
 core = runner.evaluate('FsF-F2-01M', {})
 assert core.metric.score.observed_earned == 0
-missing = runner.evaluate_retrievability()
-assert missing.tests[0].outcome == 'indeterminate'
-for status in (200, 404):
-    result = runner.evaluate_retrievability(data={
-        'https://example.org/data': {'url': 'https://example.org/data',
-            'scheme': 'https', 'status_code': status}})
-    assert result.tests[1].outcome == ('pass' if status == 200 else 'fail')
 assert not any(name.startswith('fuji_server') for name in sys.modules)
 result = assess(AssessmentInput(metadata={
     '@context': 'https://schema.org', '@type': 'Dataset', 'name': 'Example',
