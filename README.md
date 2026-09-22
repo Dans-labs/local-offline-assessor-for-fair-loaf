@@ -1,74 +1,34 @@
 # fair-offline-assessor
 
-A Python library for assessing FAIR principles using metadata you provide.
-The library does not resolve URLs or fetch missing evidence.
+Assess JSON-LD dataset metadata against F-UJI checks without network access.
 
-The current profile is `fusji-offline@3.5.1`. It uses F-UJI 3.5.1 and metrics 0.8.
-A profile specifies which assessor and resource versions to use.
+## Installation
+
+Requires Python 3.12+. Add to a [uv](https://docs.astral.sh/uv/) project:
+
+```sh
+uv add git+ssh://git@github.com/akeldamas/fair-offline-assessor.git
+```
 
 ## Usage
 
 ```python
-from fair_offline_assessor import AssessmentInput, assess
+from fair_offline_assessor import Assessor
 
-request = AssessmentInput(
+result = Assessor("FUJI").assess(
     metadata={
         "@context": "https://schema.org",
-        "@id": "https://example.org/dataset",
         "@type": "Dataset",
-        "name": "Soil measurements",
-        "description": "Soil measurements collected during a field survey.",
-        "creator": "Alice Example",
-        "publisher": "Example Archive",
-        "datePublished": "2026-01-01",
-        "keywords": ["soil"],
-        "distribution": {"contentUrl": "https://example.org/soil.csv"},
+        "@id": "https://example.org/datasets/1",
+        "name": "Example dataset",
         "license": "https://creativecommons.org/licenses/by/4.0/",
-        "conditionsOfAccess": "Available on request.",
     }
 )
-result = assess(request, profile="fusji-offline@3.5.1")
+
 print(result.model_dump_json(indent=2))
 ```
 
-Currently, F2 core metadata, F3 data links, R1.1 licence and A1 access information
-run: 5 of 31 checks. The other 26 are returned as `indeterminate`. There is no overall score.
-`result.coverage` reports how many checks ran. HTTP captures are not assessed yet.
+Results include check outcomes, scores and diagnostics. Checks requiring HTTP or
+HTML evidence are marked `indeterminate`.
 
-Data links come from Schema.org `distribution` entries: `contentUrl`, `url`, or a
-distribution's identifier. Links are not fetched; the dataset's own URL does not
-satisfy this check.
-
-The licence check tests whether licence information is present; it does not require
-an SPDX-listed licence. Licence URLs are not fetched. For licence text in the
-Schema.org context, use `"license": {"@value": "Your licence terms"}`.
-
-Access information can use `conditionsOfAccess`, Dublin Core `accessRights` or
-`rights`, and `isAccessibleForFree`. Use JSON booleans for `isAccessibleForFree`;
-conflicting values raise `InputError`. With this field alone, F-UJI 3.5.1 reports a
-passing metric but a failed check and zero points. We preserve its scoring.
-
-A single Schema.org Dataset is selected automatically. Set `subject` to its
-expanded identifier when there are several. Supply additional context documents
-through `local_contexts`, keyed by URL. Use absolute URLs for `@import` entries.
-
-Invalid input raises `InputError`; unavailable or incompatible profiles raise
-`ProfileError`. Evaluator failures appear as `error` findings. Evidence locations
-are JSON pointers into the prepared JSON-LD graph.
-
-## Development
-
-Use Python 3.12+ and uv. Run these commands from the repository root:
-
-```sh
-uv sync
-uv run pytest
-uv run ruff check .
-uv run mypy src scripts
-uv run python scripts/resources/prepare_resources.py --check
-```
-
-Update instructions are kept with the tools:
-
-- [F-UJI source code](scripts/fuji/README.md)
-- [Profiles, reference files and JSON Schemas](scripts/resources/README.md)
+[Issues](https://github.com/akeldamas/fair-offline-assessor/issues) · [License](LICENSE) · [Third-party notices](NOTICE)
