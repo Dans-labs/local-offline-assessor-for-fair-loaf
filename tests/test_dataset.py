@@ -24,6 +24,20 @@ def test_resource_selection_uses_supplied_types(profile):
 
 
 @pytest.mark.parametrize(
+    "namespace", ["http://www.w3.org/ns/dcat#", "http://purl.org/dc/dcmitype/"]
+)
+def test_selects_datasets_from_rdf_vocabularies(profile, namespace):
+    request = AssessmentInput(
+        metadata={
+            "@id": "urn:data",
+            "@type": namespace + "Dataset",
+            "http://purl.org/dc/terms/title": "Soil",
+        }
+    )
+    assert select_dataset(request, profile).node["@id"] == "urn:data"
+
+
+@pytest.mark.parametrize(
     "shape", ["single", "graph", "nested", "named_graph", "aliased"]
 )
 def test_selects_dataset_without_selecting_its_author(profile, shape):
@@ -104,6 +118,11 @@ def test_subject_selects_record_with_or_without_a_dataset_type(profile, types):
         ([{"@type": "Person"}], None, "dataset_not_found"),
         ([{"@type": "urn:Dataset"}], None, "dataset_not_found"),
         ([{"@type": "Dataset"}, {"@type": "Dataset"}], None, "ambiguous_dataset"),
+        (
+            [{"@type": "Dataset"}, {"@type": "http://www.w3.org/ns/dcat#Dataset"}],
+            None,
+            "ambiguous_dataset",
+        ),
         ([{"@id": "urn:data", "@type": "Dataset"}], "urn:missing", "subject_not_found"),
         ([{"@id": "_:record", "@type": "Dataset"}], "_:b0", "subject_not_found"),
         (

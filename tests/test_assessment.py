@@ -29,6 +29,138 @@ def request_data():
     )
 
 
+def test_dcat_and_dublin_core_evidence_reaches_fuji_checks():
+    result = library.Assessor("FUJI").assess(
+        metadata={
+            "@context": {
+                "@vocab": "http://purl.org/dc/terms/",
+                "dcat": "http://www.w3.org/ns/dcat#",
+            },
+            "@id": "urn:data",
+            "@type": "dcat:Dataset",
+            "title": "Example",
+            "creator": "Alice",
+            "publisher": "Archive",
+            "issued": "2026-01-01",
+            "description": "Soil measurements",
+            "subject": ["soil"],
+            "license": "MIT",
+            "dcat:distribution": {
+                "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
+                "dcat:mediaType": "text/csv",
+                "dcat:byteSize": 12,
+            },
+        }
+    )
+    checks = {check.id: check for check in result.tests}
+    for identifier in (
+        "FsF-F2-01M-2",
+        "FsF-F2-01M-3",
+        "FsF-F3-01M-2",
+        "FsF-R1-01M-2",
+        "FsF-R1.3-02D-1",
+        "FsF-R1.1-01M-1",
+    ):
+        assert checks[identifier].outcome == "pass"
+    assert any("downloadURL" in ref.location for ref in checks["FsF-F3-01M-2"].evidence)
+    assert not result.diagnostics
+
+
+def test_dcat_distribution_licence_reaches_fuji_with_its_source():
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://www.w3.org/ns/dcat#",
+                "license": "http://purl.org/dc/terms/license",
+            },
+            "@id": "urn:data",
+            "@type": "Dataset",
+            "distribution": {
+                "@id": "urn:file",
+                "downloadURL": {"@id": "https://example.org/data.csv"},
+                "license": {"@id": "https://creativecommons.org/licenses/by/4.0/"},
+            },
+        }
+    )
+    original = request.model_copy(deep=True)
+    result = library.Assessor("FUJI").assess(metadata=request.metadata)
+    check = next(c for c in result.tests if c.id == "FsF-R1.1-01M-1")
+    assert check.outcome == "pass"
+    assert check.score.observed_earned == 1
+    assert {ref.subject for ref in check.evidence} == {"urn:data", "urn:file"}
+    assert any("license" in ref.location for ref in check.evidence)
+    assert not result.diagnostics
+    assert request == original
+
+
+@pytest.mark.parametrize(
+    ("dataset", "term", "value", "outcome"),
+    [
+        (
+            {},
+            "accessRights",
+            {"@id": "http://purl.org/coar/access_right/c_abf2"},
+            "pass",
+        ),
+        ({}, "rights", "Available on request.", "pass"),
+        ({"accessRights": "Restricted"}, "accessRights", "Public", "pass"),
+        ({"schema:isAccessibleForFree": False}, "accessRights", "Public", "fail"),
+        ({}, "accessRights", {"title": "Ask the archive"}, "indeterminate"),
+    ],
+)
+def test_dcat_access_fallback_keeps_dataset_priority_and_sources(
+    dataset, term, value, outcome
+):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://purl.org/dc/terms/",
+                "dcat": "http://www.w3.org/ns/dcat#",
+                "schema": "https://schema.org/",
+            },
+            "@id": "urn:data",
+            "@type": "dcat:Dataset",
+            **dataset,
+            "dcat:distribution": {
+                "@list": [
+                    {
+                        "@id": "urn:empty",
+                        "dcat:downloadURL": {"@id": "https://example.org/empty.csv"},
+                    },
+                    {
+                        "@id": "urn:file",
+                        "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
+                        term: value,
+                    },
+                ]
+            },
+        }
+    )
+    original = request.model_copy(deep=True)
+    result = library.Assessor("FUJI").assess(metadata=request.metadata)
+    check = next(c for c in result.tests if c.id == "FsF-A1-01M-1")
+    assert check.outcome == outcome
+    if outcome == "indeterminate":
+        assert check.score is None
+        assert check.reason_code == "unsupported_structure"
+        assert any(
+            n.code == check.reason_code
+            and any(ref.location == n.location for ref in check.evidence)
+            for n in result.diagnostics
+        )
+    else:
+        assert check.score.observed_earned == (1 if outcome == "pass" else 0)
+        assert not result.diagnostics
+    if dataset:
+        assert {ref.subject for ref in check.evidence} == {"urn:data"}
+    else:
+        assert any(
+            ref.subject == "urn:file" and term in ref.location for ref in check.evidence
+        )
+    assert result.coverage.errors == 0
+    assert request == original
+
+
 @pytest.mark.parametrize("identified", [True, False])
 def test_public_assessment_reports_core_results_and_full_coverage(
     request_data, identified
@@ -314,7 +446,6 @@ def test_unused_metadata_and_removed_capture_input_are_reported(request_data):
         ("http://purl.org/dc/terms/license", "MIT License", "pass"),
         ("license", None, "fail"),
         ("license", [{"@value": ""}, {"@value": "  "}, 0, False], "fail"),
-        ("license", {"@id": "_:unknown"}, "fail"),
     ],
 )
 def test_licence_presence_uses_supplied_values_without_requiring_spdx(
@@ -391,7 +522,14 @@ def test_access_information_preserves_fuji_scoring(
     assert request_data == original
 
 
-@pytest.mark.parametrize("value", ["false", [True, False]])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "false",
+        [True, False],
+        {"@value": "", "@type": "http://www.w3.org/2001/XMLSchema#boolean"},
+    ],
+)
 def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value):
     request_data.metadata["isAccessibleForFree"] = value
     request_data.metadata["license"] = "MIT"
@@ -432,9 +570,6 @@ def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatc
         ({"url": "https://example.org/data.csv"}, "pass"),
         ({"@id": "https://example.org/data.csv"}, "pass"),
         (None, "fail"),
-        ({"name": "Data file"}, "fail"),
-        ({"@id": "_:missing"}, "fail"),
-        ({"contentUrl": [{"@value": "  "}, False, 0]}, "fail"),
     ],
 )
 def test_data_links_use_distributions_without_counting_the_dataset_url(
@@ -630,7 +765,6 @@ def test_identifier_syntax_uses_supplied_targets_and_preserves_zero_weight(
         ("citation", "550e8400-e29b-41d4-a716-446655440000", ("pass", "fail"), 2),
         ("citation", ["A study by Alice", "10.5072/example"], ("pass", "pass"), 3),
         ("citation", None, ("fail", "fail"), 0),
-        ("citation", [" ", False, 0, {"@id": "_:missing"}], ("fail", "fail"), 0),
         (
             "urn:unrecognised:relation",
             "https://example.org/source",
@@ -673,3 +807,34 @@ def test_related_resources_do_not_use_distribution_identifiers(request_data):
     result = library.assess(request_data, profile=PROFILE)
     related = [check for check in result.tests if check.metric == "FsF-I3-01M"]
     assert [check.outcome for check in related] == ["pass", "pass"]
+
+
+@pytest.mark.parametrize(
+    ("term", "value", "metric_id"),
+    [
+        ("license", {"@id": "_:unknown"}, "FsF-R1.1-01M"),
+        ("distribution", {"name": "Data file"}, "FsF-F3-01M"),
+        ("distribution", {"@id": "_:missing"}, "FsF-F3-01M"),
+        ("distribution", {"contentUrl": [{"@value": "  "}, False, 0]}, "FsF-F3-01M"),
+        ("citation", [" ", False, 0, {"@id": "_:missing"}], "FsF-I3-01M"),
+    ],
+)
+def test_unreadable_values_are_findings_instead_of_missing_metadata(
+    request_data, term, value, metric_id
+):
+    request_data.metadata[term] = value
+    original = request_data.model_copy(deep=True)
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(m for m in result.metrics if m.id == metric_id)
+    checks = [c for c in result.tests if c.metric == metric_id]
+    assert metric.outcome == "indeterminate"
+    assert metric.score is None
+    assert all(
+        c.reason_code == "unsupported_structure" and c.score is None for c in checks
+    )
+    assert {n.location for n in result.diagnostics} <= {
+        ref.location for c in checks for ref in c.evidence
+    }
+    assert result.diagnostics
+    assert result.coverage.errors == 0
+    assert request_data == original

@@ -100,6 +100,25 @@ def _unmeasured(
     )
 
 
+def _run_metric(
+    definition: _fuji.MetricDefinition,
+    runner: _fuji.Runner,
+    supplied: PreparedInput,
+    metadata: FujiMetadata,
+    blocked: dict[str, Diagnostic],
+) -> tuple[MetricResult, tuple[CheckResult, ...]]:
+    """Run available checks with F-UJI's scoring."""
+    if len(blocked) == len(definition["metric_tests"]):
+        return _unmeasured(definition, issues=blocked)
+    result = runner.evaluate(
+        definition["metric_identifier"],
+        metadata.fields,
+        metadata_url=supplied.request.metadata_url,
+        blocked=blocked,
+    )
+    return result.metric, result.tests
+
+
 def _assess_metric(
     definition: _fuji.MetricDefinition,
     runner: _fuji.Runner,
@@ -115,12 +134,15 @@ def _assess_metric(
         return _unmeasured(definition)
     fields_by_check = {}
     blocked = {}
+    partial: dict[str, Diagnostic] = {}
     for check_definition in definition["metric_tests"]:
         check_id = check_definition["metric_test_identifier"]
-        fields = registration.fields
-        if check_id in registration.check_fields:
-            fields = (registration.check_fields[check_id],)
-        fields = registration.check_evidence.get(check_id, fields)
+        fields = registration.check_evidence.get(
+            check_id,
+            (registration.check_fields[check_id],)
+            if check_id in registration.check_fields
+            else registration.fields,
+        )
         fields_by_check[check_id] = fields
         if check_id in registration.unsupported_checks:
             continue
@@ -135,26 +157,34 @@ def _assess_metric(
         )
         if issue is not None:
             blocked[check_id] = issue
-    if len(blocked) == len(definition["metric_tests"]):
-        return _unmeasured(definition, issues=blocked)
+        elif note := next(
+            (note for field in fields for note in metadata.unreadable.get(field, ())),
+            None,
+        ):
+            target = partial if check_id in registration.partial_passes else blocked
+            target[check_id] = note
     try:
-        evaluation = runner.evaluate(
-            identifier,
-            metadata.fields,
-            metadata_url=supplied.request.metadata_url,
-            blocked=blocked,
-        )
+        metric, results = _run_metric(definition, runner, supplied, metadata, blocked)
+        inconclusive = {
+            check.id: partial[check.id]
+            for check in results
+            if check.id in partial and check.outcome != "pass"
+        }
+        if inconclusive:
+            metric, results = _run_metric(
+                definition, runner, supplied, metadata, {**blocked, **inconclusive}
+            )
     except (InputError, ProfileError):
         raise
     except Exception:
         logging.getLogger(__name__).debug("F-UJI evaluation failed", exc_info=True)
         return _unmeasured(definition, outcome="error")
     checks = []
-    for check in evaluation.tests:
+    for check in results:
         fields = fields_by_check[check.id]
         refs = dict.fromkeys(ref for field in fields for ref in evidence.get(field, ()))
         checks.append(check.model_copy(update={"evidence": tuple(refs)}))
-    return evaluation.metric, tuple(checks)
+    return metric, tuple(checks)
 
 
 class FujiAdapter:
@@ -206,6 +236,9 @@ class FujiAdapter:
         diagnostics = [
             *supplied.invalid.values(),
             *metadata.invalid.values(),
+            *dict.fromkeys(
+                note for notes in metadata.unreadable.values() for note in notes
+            ),
             *(
                 Diagnostic(
                     code="unmapped_term", message=f"No F-UJI field mapping for {term}."

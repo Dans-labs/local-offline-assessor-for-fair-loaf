@@ -229,6 +229,88 @@ def test_literal_values_keep_zero_false_and_multiple_languages(profile):
     }
 
 
+@pytest.mark.parametrize(
+    ("lexical", "expected"),
+    [("true", True), ("1", True), ("false", False), ("0", False)],
+)
+def test_typed_booleans_preserve_original_evidence(profile, lexical, expected):
+    literal = {"@value": lexical, "@type": "http://www.w3.org/2001/XMLSchema#boolean"}
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "isAccessibleForFree": literal,
+        }
+    )
+    original = request.model_copy(deep=True)
+    selected = select_dataset(request, profile)
+    graph = deepcopy(selected.graph)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["access_free"] is expected
+    assert not prepared.invalid
+    assert [
+        at_pointer(selected.graph, path) for path in prepared.sources["access_free"]
+    ] == [literal]
+    assert selected.graph == graph
+    assert request == original
+
+
+def test_unreadable_list_and_linked_literals_keep_paths_and_original_graph(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "name": {"@list": ["Title", {"name": "Nested title"}]},
+            "creator": {"name": {"@value": {"label": "Alice"}, "@type": "@json"}},
+            "distribution": {
+                "contentUrl": "https://example.org/data",
+                "encodingFormat": 42,
+            },
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["title"] == ["Title"]
+    assert "creator" not in prepared.fields
+    assert set(prepared.unreadable) == {
+        "title",
+        "creator",
+        "file_formats",
+        "distribution_details",
+    }
+    for field, notes in prepared.unreadable.items():
+        assert len(notes) == 1
+        assert notes[0].location in prepared.sources[field]
+        assert isinstance(at_pointer(selected.graph, notes[0].location), dict)
+    assert selected == original
+
+
+@pytest.mark.parametrize("dataset_license", [None, "MIT"])
+def test_distribution_licence_findings_respect_dataset_priority(
+    profile, dataset_license
+):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://purl.org/dc/terms/",
+                "dcat": "http://www.w3.org/ns/dcat#",
+            },
+            "@type": "dcat:Dataset",
+            "license": dataset_license,
+            "dcat:distribution": {
+                "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
+                "license": {"title": "Reuse terms"},
+            },
+        }
+    )
+    prepared = prepare_metadata(select_dataset(request, profile))
+    assert bool(prepared.unreadable.get("license")) == (dataset_license is None)
+    assert prepared.fields.get("license") == (
+        [dataset_license] if dataset_license else None
+    )
+
+
 def test_links_are_not_fetched_or_followed_outside_the_selected_graph(profile):
     request = AssessmentInput(
         metadata={
@@ -363,6 +445,116 @@ def test_distribution_descriptors_stay_with_their_files_and_sources(profile):
         "encodingFormat" not in path and "contentSize" not in path
         for path in prepared.sources["object_content_identifier"]
     )
+    assert selected == original
+
+
+@pytest.mark.parametrize("format_term", ["dcat:mediaType", "dc:format", "dct:format"])
+def test_dcat_distributions_keep_formats_sizes_and_sources(profile, format_term):
+    request = AssessmentInput(
+        subject="urn:data",
+        metadata={
+            "@context": {
+                "dcat": "http://www.w3.org/ns/dcat#",
+                "dc": "http://purl.org/dc/elements/1.1/",
+                "dct": "http://purl.org/dc/terms/",
+            },
+            "@id": "urn:data",
+            "@type": "dcat:Dataset",
+            "dcat:distribution": [
+                {
+                    "@id": "urn:a",
+                    "dcat:downloadURL": {"@id": "https://example.org/a"},
+                    format_term: {
+                        "@id": "https://www.iana.org/assignments/media-types/text/csv"
+                    },
+                    "dcat:byteSize": 12,
+                },
+                {
+                    "@id": "urn:b",
+                    "dcat:accessURL": {"@id": "https://example.org/b"},
+                    format_term: {
+                        "@id": "https://example.org/formats/application/json"
+                    },
+                    "dcat:byteSize": 24,
+                },
+            ],
+        },
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    assert prepared.fields["object_content_identifier"] == [
+        {"url": "https://example.org/a", "type": "text/csv", "size": 12},
+        {
+            "url": "https://example.org/b",
+            "type": "https://example.org/formats/application/json",
+            "size": 24,
+        },
+    ]
+    sources = [
+        at_pointer(selected.graph, path) for path in prepared.sources["file_formats"]
+    ]
+    assert {"@id": "https://www.iana.org/assignments/media-types/text/csv"} in sources
+    assert {"@id": "https://example.org/a"} in sources
+    assert not prepared.unmapped
+    assert selected == original
+
+
+def test_dcat_distribution_ids_do_not_become_download_links(profile):
+    request = AssessmentInput(
+        subject="urn:data",
+        metadata={
+            "@context": {"@vocab": "http://www.w3.org/ns/dcat#"},
+            "@id": "urn:data",
+            "@type": "Dataset",
+            "distribution": {"@id": "https://example.org/distribution"},
+            "@graph": [
+                {
+                    "@id": "https://example.org/distribution",
+                    "downloadURL": {"@id": "https://example.org/foreign"},
+                }
+            ],
+        },
+    )
+    prepared = prepare_metadata(select_dataset(request, profile))
+    assert "object_content_identifier" not in prepared.fields
+
+
+@pytest.mark.parametrize("dataset_license", [None, "MIT License"])
+def test_dcat_licence_fallback_keeps_dataset_priority_and_sources(
+    profile, dataset_license
+):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://purl.org/dc/terms/",
+                "dcat": "http://www.w3.org/ns/dcat#",
+            },
+            "@id": "urn:data",
+            "@type": "dcat:Dataset",
+            "license": dataset_license,
+            "dcat:distribution": {
+                "@list": [
+                    {
+                        "@id": f"urn:file-{i}",
+                        "dcat:downloadURL": {"@id": f"https://example.org/{i}.csv"},
+                        "license": license_value,
+                    }
+                    for i, license_value in enumerate([None, "CC-BY-4.0", "CC0-1.0"])
+                ]
+            },
+        }
+    )
+    selected = select_dataset(request, profile)
+    original = deepcopy(selected)
+    prepared = prepare_metadata(selected)
+    expected = dataset_license or "CC-BY-4.0"
+    assert prepared.fields["license"] == [expected]
+    assert [
+        at_pointer(selected.graph, path) for path in prepared.sources["license"]
+    ] == ([{"@id": "urn:file-1"}] if dataset_license is None else []) + [
+        {"@value": expected}
+    ]
     assert selected == original
 
 

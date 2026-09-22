@@ -10,8 +10,15 @@ from fair_offline_assessor.models import AssessmentInput, Diagnostic, InputError
 from fair_offline_assessor.profiles import LoadedProfile
 
 _SCHEMA = ("http://schema.org/", "https://schema.org/")
+_BOOLEAN_VALUES = {"true": True, "1": True, "false": False, "0": False}
+_DCAT = "http://www.w3.org/ns/dcat#"
+_DATASET_TYPES = (
+    *(ns + "Dataset" for ns in _SCHEMA),
+    _DCAT + "Dataset",
+    "http://purl.org/dc/dcmitype/Dataset",
+)
 _PROVENANCE = ("http://www.w3.org/ns/prov#", "http://purl.org/pav/")
-_DISTRIBUTIONS = tuple(ns + "distribution" for ns in _SCHEMA)
+_DISTRIBUTIONS = (*(ns + "distribution" for ns in _SCHEMA), _DCAT + "distribution")
 _SCHEMA_FIELDS = {
     "name": "title",
     "headline": "title",
@@ -114,13 +121,21 @@ _DETAILS = {
         "http://xmlns.com/foaf/0.1/homepage",
     ),
     "object_identifier": tuple(ns + "value" for ns in _SCHEMA),
-    "object_content_identifier": tuple(
-        ns + term for ns in _SCHEMA for term in ("contentUrl", "url")
+    "object_content_identifier": (
+        *(ns + term for ns in _SCHEMA for term in ("contentUrl", "url")),
+        _DCAT + "downloadURL",
+        _DCAT + "accessURL",
     ),
-    "type": tuple(
-        ns + term for ns in _SCHEMA for term in ("encodingFormat", "fileFormat")
+    "type": (
+        *(ns + term for ns in _SCHEMA for term in ("encodingFormat", "fileFormat")),
+        _DCAT + "mediaType",
+        "http://purl.org/dc/elements/1.1/format",
+        "http://purl.org/dc/terms/format",
     ),
-    "size": tuple(ns + term for ns in _SCHEMA for term in ("contentSize", "fileSize")),
+    "size": (
+        *(ns + term for ns in _SCHEMA for term in ("contentSize", "fileSize")),
+        _DCAT + "byteSize",
+    ),
     "related_resources": (
         *(ns + term for ns in _SCHEMA for term in ("url", "identifier")),
         *_NAMES,
@@ -128,7 +143,9 @@ _DETAILS = {
 }
 
 type GraphIndex = dict[str, tuple[int, dict[str, JsonValue]]]
+# None marks an unreadable structure; absent values produce no entry.
 type SourcedValue = tuple[JsonValue, tuple[str, ...]]
+type Unreadable = dict[str, list[Diagnostic]]
 
 
 @dataclass(frozen=True)
@@ -138,20 +155,19 @@ class FujiMetadata:
     sources: dict[str, tuple[str, ...]]
     unmapped: tuple[str, ...]
     invalid: dict[str, Diagnostic] = dataclass_field(default_factory=dict)
+    unreadable: Unreadable = dataclass_field(default_factory=dict)
 
 
 def select_dataset(
     request: AssessmentInput, profile: LoadedProfile
 ) -> SelectedResource:
-    """Select the requested subject or the sole Schema.org Dataset."""
+    """Select the requested subject or the sole supported Dataset."""
     try:
-        return select_resource(
-            request, profile, resource_types=tuple(ns + "Dataset" for ns in _SCHEMA)
-        )
+        return select_resource(request, profile, resource_types=_DATASET_TYPES)
     except InputError as exc:
         if exc.code == "resource_not_found":
             raise InputError(
-                "dataset_not_found", "No Schema.org Dataset found; supply subject"
+                "dataset_not_found", "No supported Dataset found; supply subject"
             ) from exc
         if exc.code == "ambiguous_resource":
             raise InputError(
@@ -188,22 +204,68 @@ def _values(
                 )
             ]
         if "@value" in value:
-            value = value["@value"]
+            literal = value["@value"]
+            if (
+                isinstance(literal, str)
+                and value.get("@type") == "http://www.w3.org/2001/XMLSchema#boolean"
+            ):
+                return [(_BOOLEAN_VALUES.get(literal, literal), (location,))]
+            value = literal
         else:
-            identifier = value.get("@id")
-            if not isinstance(identifier, str):
-                return []
-            if prefer_id and not identifier.startswith("_:"):
-                properties = ()
-            found = _linked_values(identifier, location, graph, properties)
-            if found:
-                return found
-            value = None if identifier.startswith("_:") else identifier
-    if value is None or isinstance(value, (dict, list)):
+            return _reference_values(
+                value, location, graph, properties, prefer_id=prefer_id
+            )
+    if value is None or (isinstance(value, str) and not value.strip()):
         return []
-    if isinstance(value, str) and not value.strip():
-        return []
-    return [(value, (location,))]
+    return [(None if isinstance(value, (dict, list)) else value, (location,))]
+
+
+def _reference_values(
+    value: dict[str, JsonValue],
+    location: str,
+    graph: GraphIndex,
+    properties: tuple[str, ...],
+    *,
+    prefer_id: bool,
+) -> list[SourcedValue]:
+    """Read local details, retaining unsupported references and usable IRIs."""
+    identifier = value.get("@id")
+    if not isinstance(identifier, str):
+        return [(None, (location,))] if value else []
+    if prefer_id and not identifier.startswith("_:"):
+        properties = ()
+    found = _linked_values(identifier, location, graph, properties)
+    if any(item is not None for item, _ in found):
+        return found
+    if not identifier.startswith("_:"):
+        return [*found, (identifier, (location,))]
+    if found:
+        return found
+    node = graph.get(identifier, (0, {}))[1]
+    return [] if any(term in node for term in properties) else [(None, (location,))]
+
+
+def _readable(
+    entries: list[SourcedValue],
+    fields: tuple[str, ...],
+    unreadable: Unreadable,
+    *,
+    strings: bool = False,
+) -> list[SourcedValue]:
+    """Separate usable values from findings at their original graph locations."""
+    found: list[SourcedValue] = []
+    for value, paths in entries:
+        if value is None or (strings and not isinstance(value, str)):
+            note = Diagnostic(
+                code="unsupported_structure",
+                message="F-UJI cannot interpret this metadata structure.",
+                location=paths[-1],
+            )
+            for field in fields:
+                unreadable.setdefault(field, []).append(note)
+        else:
+            found.append((value, paths))
+    return found
 
 
 def _linked_values(
@@ -222,7 +284,7 @@ def _linked_values(
 
 
 def _related_resources(
-    node: dict[str, JsonValue], index: int, graph: GraphIndex
+    node: dict[str, JsonValue], index: int, graph: GraphIndex, unreadable: Unreadable
 ) -> list[SourcedValue]:
     """Keep typed references, using local details only for anonymous resources."""
     related: list[SourcedValue] = []
@@ -231,67 +293,135 @@ def _related_resources(
             continue
         for i, item in enumerate(cast("list[JsonValue]", items)):
             location = f"{_pointer(index, term)}/{i}"
-            values = _values(
-                item, location, graph, _DETAILS["related_resources"], prefer_id=True
+            values = _readable(
+                _values(
+                    item, location, graph, _DETAILS["related_resources"], prefer_id=True
+                ),
+                ("related_resources",),
+                unreadable,
+                strings=True,
             )
             related.extend(
                 ({"related_resource": value, "relation_type": term}, paths)
                 for value, paths in values
-                if isinstance(value, str)
             )
     return related
 
 
 def _distribution_details(
-    identifier: str, location: str, graph: GraphIndex
+    identifier: str, location: str, graph: GraphIndex, unreadable: Unreadable
 ) -> tuple[dict[str, JsonValue], dict[str, tuple[str, ...]]]:
     """Read each distribution's declarations without combining different files."""
     fields: dict[str, JsonValue] = {}
     sources: dict[str, tuple[str, ...]] = {}
     for field in ("type", "size"):
-        entries = _linked_values(identifier, location, graph, _DETAILS[field])
+        entries = _readable(
+            _linked_values(identifier, location, graph, _DETAILS[field]),
+            ("distribution_details", "file_formats")
+            if field == "type"
+            else ("distribution_details",),
+            unreadable,
+            strings=field == "type",
+        )
         values = [value for value, _ in entries]
+        if field == "type":
+            values = [
+                value.removeprefix(
+                    "https://www.iana.org/assignments/media-types/"
+                ).removeprefix("http://www.iana.org/assignments/media-types/")
+                if isinstance(value, str)
+                else value
+                for value in values
+            ]
         if values:
             fields[field] = values[0] if len(values) == 1 else values
             sources[field] = tuple(path for _, paths in entries for path in paths)
     return fields, sources
 
 
+def _distribution_links(
+    value: JsonValue, location: str, term: str, graph: GraphIndex
+) -> list[SourcedValue]:
+    """Distinguish declared data links from unsupported distribution structures."""
+    properties = _DETAILS["object_content_identifier"]
+    if term != _DCAT + "distribution":
+        return _values(value, location, graph, properties)
+    identifier = value.get("@id") if isinstance(value, dict) else None
+    if not isinstance(identifier, str):
+        return [(None, (location,))] if _values(value, location, graph) else []
+    found = _linked_values(identifier, location, graph, properties)
+    node = graph.get(identifier, (0, {}))[1]
+    return (
+        found
+        if found or any(prop in node for prop in properties)
+        else [(None, (location,))]
+    )
+
+
 def _distributions(
-    node: dict[str, JsonValue], index: int, graph: GraphIndex
+    node: dict[str, JsonValue],
+    index: int,
+    graph: GraphIndex,
+    unreadable: Unreadable,
+    *,
+    dataset_fields: dict[str, JsonValue],
 ) -> tuple[dict[str, list[SourcedValue]], tuple[str, ...]]:
     """Pair download links with their declarations, keeping their sources separate."""
     pending = [
-        (node[term], _pointer(index, term)) for term in _DISTRIBUTIONS if term in node
+        (node[term], _pointer(index, term), term)
+        for term in _DISTRIBUTIONS
+        if term in node
     ]
     pending.reverse()
     found: list[SourcedValue] = []
     formats: list[SourcedValue] = []
+    fallbacks: dict[str, list[SourcedValue]] = {"license": [], "access_level": []}
     sources: list[str] = []
     while pending:
-        value, location = pending.pop()
+        value, location, term = pending.pop()
         if isinstance(value, list):
             pending.extend(
-                (item, f"{location}/{i}")
+                (item, f"{location}/{i}", term)
                 for i, item in reversed(list(enumerate(value)))
             )
             continue
         if isinstance(value, dict) and "@list" in value:
-            pending.append((value["@list"], location + "/@list"))
+            pending.append((value["@list"], location + "/@list", term))
             continue
-        urls = [
-            (url, paths)
-            for url, paths in _values(
-                value, location, graph, _DETAILS["object_content_identifier"]
-            )
-            if isinstance(url, str)
-        ]
+        identifier = value.get("@id") if isinstance(value, dict) else None
+        urls = _readable(
+            _distribution_links(value, location, term, graph),
+            ("object_content_identifier", "distribution_details", "file_formats"),
+            unreadable,
+            strings=True,
+        )
         details: dict[str, JsonValue] = {}
         detail_sources: dict[str, tuple[str, ...]] = {}
-        identifier = value.get("@id") if isinstance(value, dict) else None
         if urls and isinstance(identifier, str):
-            details, detail_sources = _distribution_details(identifier, location, graph)
+            details, detail_sources = _distribution_details(
+                identifier, location, graph, unreadable
+            )
             sources.extend(path for paths in detail_sources.values() for path in paths)
+            if term == _DCAT + "distribution":
+                for field, properties in {
+                    "license": ("http://purl.org/dc/terms/license",),
+                    "access_level": (
+                        "http://purl.org/dc/terms/accessRights",
+                        "http://purl.org/dc/terms/rights",
+                    ),
+                }.items():
+                    if (
+                        field in dataset_fields
+                        or fallbacks[field]
+                        or (field == "access_level" and "access_free" in dataset_fields)
+                    ):
+                        continue
+                    fallbacks[field] = _readable(
+                        _linked_values(identifier, location, graph, properties),
+                        (field,),
+                        unreadable,
+                        strings=True,
+                    )[:1]
         found.extend(({"url": url, **details}, paths) for url, paths in urls)
         types = details.get("type", [])
         formats.extend(
@@ -300,7 +430,11 @@ def _distributions(
             for mime in (types if isinstance(types, list) else [types])
             if isinstance(mime, str) and mime.strip()
         )
-    return {"object_content_identifier": found, "file_formats": formats}, tuple(sources)
+    return {
+        "object_content_identifier": found,
+        "file_formats": formats,
+        **fallbacks,
+    }, tuple(sources)
 
 
 def _access_free(values: list[JsonValue]) -> bool:
@@ -392,13 +526,14 @@ def _linked_uris(node: dict[str, JsonValue], graph: GraphIndex) -> list[SourcedV
 
 
 def prepare_metadata(dataset: SelectedResource) -> FujiMetadata:
-    """Map selected metadata into F-UJI fields, retaining all supplied values."""
+    """Map selected metadata into F-UJI fields, retaining source locations."""
     graph = {
         cast("str", node["@id"]): (i, node) for i, node in enumerate(dataset.graph)
     }
     index, node = graph[cast("str", dataset.node["@id"])]
     fields: dict[str, JsonValue] = {}
     sources: dict[str, tuple[str, ...]] = {}
+    unreadable: Unreadable = {}
     for term, items in node.items():
         if term not in _FIELDS:
             continue
@@ -409,20 +544,27 @@ def prepare_metadata(dataset: SelectedResource) -> FujiMetadata:
         for i, item in entries:
             path = f"{location}/{i}" if i is not None else location
             entry: JsonValue = {"@id": item} if term in ("@id", "@type") else item
-            for value, paths in _values(entry, path, graph, properties):
+            entry = (
+                None if term == "@id" and cast("str", item).startswith("_:") else entry
+            )
+            for value, paths in _readable(
+                _values(entry, path, graph, properties), (field,), unreadable
+            ):
                 normalized = value
                 if field == "object_type" and isinstance(normalized, str):
                     for ns in _SCHEMA:
                         normalized = normalized.removeprefix(ns)
                 cast("list[JsonValue]", fields.setdefault(field, [])).append(normalized)
                 sources[field] = (*sources.get(field, ()), *paths)
-    distributions, details = _distributions(node, index, graph)
+    distributions, details = _distributions(
+        node, index, graph, unreadable, dataset_fields=fields
+    )
     if details:
         sources["distribution_details"] = details
     namespaces = _namespaces(node, graph)
     derived = {
         **distributions,
-        "related_resources": _related_resources(node, index, graph),
+        "related_resources": _related_resources(node, index, graph, unreadable),
         "namespaces": namespaces,
         "linked_uris": _linked_uris(node, graph),
         "provenance_namespaces": [
@@ -456,8 +598,18 @@ def prepare_metadata(dataset: SelectedResource) -> FujiMetadata:
             )
     return FujiMetadata(
         fields=fields,
-        sources=sources,
+        sources={
+            **sources,
+            **{
+                field: (
+                    *sources.get(field, ()),
+                    *(cast("str", note.location) for note in notes),
+                )
+                for field, notes in unreadable.items()
+            },
+        },
         invalid=invalid,
+        unreadable=unreadable,
         unmapped=tuple(
             sorted(
                 term
