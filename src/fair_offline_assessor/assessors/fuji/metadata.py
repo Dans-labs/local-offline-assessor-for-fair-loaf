@@ -318,7 +318,9 @@ def prepare_metadata(request: AssessmentInput, profile: LoadedProfile) -> FujiMe
     diagnostics: list[Diagnostic] = []
     collector: MetaDataCollector
     if format_ == "html":
-        from fair_offline_assessor._fuji_html import collect_html  # noqa: PLC0415
+        from fair_offline_assessor.assessors.fuji.html import (  # noqa: PLC0415
+            collect_html,
+        )
 
         if request.subject is not None:
             raise InputError(

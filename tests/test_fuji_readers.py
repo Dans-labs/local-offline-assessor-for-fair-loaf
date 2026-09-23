@@ -5,7 +5,7 @@ from rdflib import Dataset, Literal, URIRef
 from rdflib.namespace import RDF
 
 from fair_offline_assessor import AssessmentInput, Assessor, InputError
-from fair_offline_assessor._fuji_readers import prepare_metadata
+from fair_offline_assessor.assessors.fuji.metadata import prepare_metadata
 from fair_offline_assessor.profiles import load_profile
 
 

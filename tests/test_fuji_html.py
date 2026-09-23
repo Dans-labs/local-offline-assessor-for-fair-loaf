@@ -6,7 +6,6 @@ from pyRdfa import pyRdfa
 from rdflib import Graph
 
 from fair_offline_assessor import AssessmentInput, InputError, load_profile
-from fair_offline_assessor._fuji_html import collect_html
 from fair_offline_assessor._metadata import expand_metadata
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_collector import (
     MetadataFormats,
@@ -15,6 +14,7 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_collector import 
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_collector_rdf import (
     MetaDataCollectorRdf,
 )
+from fair_offline_assessor.assessors.fuji.html import collect_html
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +122,9 @@ def test_rdfa_retains_local_triples_without_fetching_remote_vocabulary(
         return pyRdfa(**kwargs)
 
     monkeypatch.setattr("requests.get", unexpected_fetch)
-    monkeypatch.setattr("fair_offline_assessor._fuji_html.pyRdfa", offline_parser)
+    monkeypatch.setattr(
+        "fair_offline_assessor.assessors.fuji.html.pyRdfa", offline_parser
+    )
     html = """<html><body>
       <section about="urn:rdfa" typeof="https://schema.org/Dataset"
         vocab="https://example.invalid/vocabulary/">

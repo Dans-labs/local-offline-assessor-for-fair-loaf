@@ -3,12 +3,12 @@ from collections.abc import Mapping
 from importlib.metadata import version
 from typing import Literal
 
-from fair_offline_assessor import _fuji
-from fair_offline_assessor._fuji_readers import (
+from fair_offline_assessor._input import PreparedInput, prepare_input
+from fair_offline_assessor.assessors.fuji import checks as fuji_checks
+from fair_offline_assessor.assessors.fuji.metadata import (
     FujiMetadata,
     prepare_metadata,
 )
-from fair_offline_assessor._input import PreparedInput, prepare_input
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
@@ -42,7 +42,7 @@ def _evidence(
 
 
 def _unmeasured(
-    definition: _fuji.MetricDefinition,
+    definition: fuji_checks.MetricDefinition,
     *,
     outcome: Literal["indeterminate", "error"] = "indeterminate",
     issues: Mapping[str, Diagnostic] | None = None,
@@ -77,8 +77,8 @@ def _unmeasured(
 
 
 def _run_metric(
-    definition: _fuji.MetricDefinition,
-    runner: _fuji.Runner,
+    definition: fuji_checks.MetricDefinition,
+    runner: fuji_checks.Runner,
     supplied: PreparedInput,
     metadata: FujiMetadata,
     blocked: dict[str, Diagnostic],
@@ -96,8 +96,8 @@ def _run_metric(
 
 
 def _assess_metric(
-    definition: _fuji.MetricDefinition,
-    runner: _fuji.Runner,
+    definition: fuji_checks.MetricDefinition,
+    runner: fuji_checks.Runner,
     metadata: FujiMetadata,
     evidence: dict[str, tuple[EvidenceRef, ...]],
     *,
@@ -105,7 +105,7 @@ def _assess_metric(
 ) -> tuple[MetricResult, tuple[CheckResult, ...]]:
     """Run supported F-UJI checks, isolating evaluator failures from input errors."""
     identifier = definition["metric_identifier"]
-    registration = _fuji.EVALUATORS.get(identifier)
+    registration = fuji_checks.EVALUATORS.get(identifier)
     if registration is None:
         return _unmeasured(definition)
     fields_by_check = {}
@@ -163,7 +163,7 @@ class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
     definitions: tuple[ResourceRef, ...] = (
-        *_fuji.REFERENCES,
+        *fuji_checks.REFERENCES,
         ResourceRef(
             id="fuji:creativeworks",
             version="3.5.1",
@@ -211,7 +211,7 @@ class FujiAdapter:
                     location="/metadata_url",
                 ),
             )
-        runner = _fuji.Runner(profile.resources)
+        runner = fuji_checks.Runner(profile.resources)
         metrics = []
         tests: list[CheckResult] = []
         for definition in runner.metrics.values():

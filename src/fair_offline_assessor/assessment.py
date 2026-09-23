@@ -2,8 +2,8 @@ from collections.abc import Mapping
 
 from pydantic import JsonValue
 
-from fair_offline_assessor._fuji_assessment import FujiAdapter
 from fair_offline_assessor.adapters import resolve_adapter
+from fair_offline_assessor.assessors.fuji.assessment import FujiAdapter
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,

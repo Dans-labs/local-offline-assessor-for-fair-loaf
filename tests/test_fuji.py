@@ -6,8 +6,9 @@ from copy import deepcopy
 
 import pytest
 
-from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_readers import prepare_metadata
+from fair_offline_assessor import AssessmentInput, load_profile
+from fair_offline_assessor.assessors.fuji import checks as fuji_checks
+from fair_offline_assessor.assessors.fuji.metadata import prepare_metadata
 from fair_offline_assessor.models import ProfileError
 
 
@@ -26,7 +27,7 @@ def metadata():
 
 @pytest.fixture
 def runner():
-    return _fuji.Runner(load_profile("fusji-offline@3.5.1").resources)
+    return fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
 
 
 @pytest.mark.parametrize(
@@ -100,7 +101,7 @@ def test_other_metric_definitions_are_rejected():
     resources = dict(load_profile("fusji-offline@3.5.1").resources)
     resources["fuji:metrics"] += b"\n"
     with pytest.raises(ProfileError) as error:
-        _fuji.Runner(resources)
+        fuji_checks.Runner(resources)
     assert error.value.code == "unsupported_definitions"
 
 
@@ -121,7 +122,7 @@ def forbid_network(event, args):
         raise AssertionError(event)
 sys.addaudithook(forbid_network)
 from fair_offline_assessor import AssessmentInput, assess, load_profile
-from fair_offline_assessor._fuji import Runner
+from fair_offline_assessor.assessors.fuji.checks import Runner
 runner = Runner(load_profile('fusji-offline@3.5.1').resources)
 core = runner.evaluate('FsF-F2-01M', {})
 assert core.metric.score.observed_earned == 0
@@ -213,7 +214,7 @@ def test_native_access_mapping_and_evaluator_mutations_are_isolated(runner):
 
 
 def test_evaluators_cannot_change_cached_catalogues_or_definitions(runner, monkeypatch):
-    implementation = _fuji.EVALUATORS["FsF-R1.1-01M"].implementation
+    implementation = fuji_checks.EVALUATORS["FsF-R1.1-01M"].implementation
     original = implementation.evaluate
 
     def evaluate(self):

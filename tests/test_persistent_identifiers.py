@@ -1,7 +1,7 @@
 import pytest
 
 from fair_offline_assessor import AssessmentInput, assess, load_profile
-from fair_offline_assessor._fuji import Runner
+from fair_offline_assessor.assessors.fuji.checks import Runner
 
 
 @pytest.mark.parametrize(

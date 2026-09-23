@@ -6,7 +6,8 @@ from importlib.metadata import version
 import pytest
 
 import fair_offline_assessor as library
-from fair_offline_assessor import AssessmentInput, ProfileError, _fuji
+from fair_offline_assessor import AssessmentInput, ProfileError
+from fair_offline_assessor.assessors.fuji import checks as fuji_checks
 from fair_offline_assessor.models import EvidenceRef
 
 PROFILE = "fusji-offline@3.5.1"
@@ -403,7 +404,9 @@ def test_evaluator_errors_are_findings_without_internal_details(
         raise RuntimeError("private implementation details")
 
     original = library.assess(request_data, profile=PROFILE)
-    monkeypatch.setattr(_fuji.EVALUATORS["FsF-F2-01M"].implementation, "evaluate", fail)
+    monkeypatch.setattr(
+        fuji_checks.EVALUATORS["FsF-F2-01M"].implementation, "evaluate", fail
+    )
     result = library.assess(request_data, profile=PROFILE)
     assert result.status == "completed_with_errors"
     assert result.coverage.errors == 2
@@ -555,7 +558,7 @@ def test_reference_files_are_parsed_once_per_reader_and_runner(
 ):
     parsed = []
 
-    for module, name in ((_fuji.yaml, "safe_load"), (_fuji.json, "loads")):
+    for module, name in ((fuji_checks.yaml, "safe_load"), (fuji_checks.json, "loads")):
         original = getattr(module, name)
 
         def read(content, *args, _loader=original, **kwargs):
@@ -569,10 +572,10 @@ def test_reference_files_are_parsed_once_per_reader_and_runner(
     resources = library.load_profile(PROFILE).resources
     assert {
         reference.id: parsed.count(resources[reference.id])
-        for reference in _fuji.REFERENCES
+        for reference in fuji_checks.REFERENCES
     } == {
         reference.id: 4 if reference.id == "fuji:vocabularies" else 2
-        for reference in _fuji.REFERENCES
+        for reference in fuji_checks.REFERENCES
     }
     assert parsed.count(resources["fuji:creativeworks"]) == 2
 

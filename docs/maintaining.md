@@ -28,11 +28,16 @@ The Python code is in `src/fair_offline_assessor/`:
 | File | Responsibility |
 | --- | --- |
 | `assessment.py` | Available assessors, versions and defaults |
-| `_fuji_readers.py`, `_fuji_html.py` | Apply F-UJI's mappings to supplied documents without fetching more information |
-| `_fuji.py` | Run F-UJI checks and keep their original results |
-| `_fuji_assessment.py` | Convert F-UJI results into the common response and report input problems |
+| `assessors/fuji/metadata.py`, `assessors/fuji/html.py` | Apply F-UJI's mappings to supplied documents without fetching more information |
+| `assessors/fuji/checks.py` | Run F-UJI checks and keep their original results |
+| `assessors/fuji/assessment.py` | Convert F-UJI results into the common response and report input problems |
 | `_metadata.py` | Interpret JSON-LD field names using locally available context definitions |
 | `models/v1.py` | Fields and allowed values for the library's input configuration and response |
+
+Code we maintain for each assessor belongs in `assessors/<name>/`. F-UJI's
+generated code stays in `_vendor/fuji/<version>/`, and its data files stay in
+`resources/assessors/fuji/<version>/`. The public API and common result definitions
+are shared by all assessors.
 
 A configuration file under `resources/profiles/` chooses an assessor implementation
 and its data files. The code calls this a **profile**. A `manifest.json` lists the
@@ -81,7 +86,8 @@ The generated `upstream.json` records the original commit and file checksums;
 3. Run the generation commands with the new settings file. Review all generated
    changes, including mappings and scoring rules. Update `NOTICE` and `LICENSES/`
    if the source's attribution or licence changed.
-4. Add a Python class for the new version using its generated code and data.
+4. Add a Python class under `assessors/fuji/` for the new version using its
+   generated code and data.
    Use the checksums in `resources.json`. Register the class in `assessment.py`
    and add its configuration under `resources/profiles/`. Regenerate the indexes
    with `prepare_resources.py`.
@@ -93,15 +99,15 @@ The generated `upstream.json` records the original commit and file checksums;
 
 ## Add checks or assessors
 
-`EVALUATORS` in `_fuji.py` connects groups of checks to F-UJI classes and lists
-checks unavailable offline. Update these entries and the generation settings when
+`EVALUATORS` in `assessors/fuji/checks.py` connects groups of checks to F-UJI classes
+and lists checks unavailable offline. Update these entries and the generation settings when
 enabling checks. Regenerate, compare outcomes and points with F-UJI, and update
 the expected check counts in `tests/test_assessment.py`.
 Keep metadata mappings and scoring rules in the generated F-UJI code.
 
-For another assessor, implement the Python interface `AssessorAdapter` from
-`adapters.py`. This class connects the assessor to the library. It must interpret
-the supplied metadata using that assessor's rules and return `AssessmentResult`.
+For another assessor, create `assessors/<name>/` and implement the Python interface
+`AssessorAdapter` from `adapters.py`. This class connects the assessor to the library.
+It must interpret the supplied metadata using that assessor's rules and return `AssessmentResult`.
 Preserve the assessor's original output in `raw` before converting results, so an
 error during conversion does not lose that output.
 

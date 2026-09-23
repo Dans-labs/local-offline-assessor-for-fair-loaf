@@ -3,7 +3,8 @@ from copy import deepcopy
 
 import pytest
 
-from fair_offline_assessor import Assessor, _fuji, load_profile
+from fair_offline_assessor import Assessor, load_profile
+from fair_offline_assessor.assessors.fuji import checks as fuji_checks
 from fair_offline_assessor.models import AssessmentResult, Provenance
 
 METADATA = {
@@ -24,14 +25,14 @@ IDENTIFIER = "https://doi.org/10.5072/example"
 @pytest.fixture
 def native_outputs(monkeypatch):
     produced = []
-    get_result = _fuji.FAIREvaluator.getResult
+    get_result = fuji_checks.FAIREvaluator.getResult
 
     def record_result(evaluator):
         native = get_result(evaluator)
         produced.append(deepcopy(native))
         return native
 
-    monkeypatch.setattr(_fuji.FAIREvaluator, "getResult", record_result)
+    monkeypatch.setattr(fuji_checks.FAIREvaluator, "getResult", record_result)
     return produced
 
 
@@ -68,7 +69,7 @@ def test_failure_before_native_result_does_not_invent_a_payload(
         raise RuntimeError("Evaluation failed before producing a result")
 
     monkeypatch.setattr(
-        _fuji.core_metadata.FAIREvaluatorCoreMetadata, "evaluate", fail_evaluation
+        fuji_checks.core_metadata.FAIREvaluatorCoreMetadata, "evaluate", fail_evaluation
     )
     result = Assessor("FUJI").assess(metadata=METADATA, metadata_url=IDENTIFIER)
 
@@ -86,7 +87,7 @@ def test_native_results_survive_harmonized_conversion_failure(
     def fail_conversion(**_values):
         raise RuntimeError("Harmonized score conversion failed")
 
-    monkeypatch.setattr(_fuji, "Score", fail_conversion)
+    monkeypatch.setattr(fuji_checks, "Score", fail_conversion)
     result = Assessor("FUJI").assess(metadata=METADATA, metadata_url=IDENTIFIER)
 
     assert result.raw == native_outputs
@@ -97,7 +98,7 @@ def test_native_results_survive_harmonized_conversion_failure(
 
 
 def test_runner_keeps_only_the_final_native_result_of_a_rerun():
-    runner = _fuji.Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
     first = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT"]})
     last = runner.evaluate("FsF-R1.1-01M", {})
 
@@ -107,7 +108,7 @@ def test_runner_keeps_only_the_final_native_result_of_a_rerun():
 
 
 def test_captured_native_results_are_detached_from_mutable_results():
-    runner = _fuji.Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
     result = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT"]})
     original = deepcopy(result.native)
 

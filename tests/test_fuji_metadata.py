@@ -1,7 +1,8 @@
 import pytest
 
-from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_readers import prepare_metadata
+from fair_offline_assessor import AssessmentInput, load_profile
+from fair_offline_assessor.assessors.fuji import checks as fuji_checks
+from fair_offline_assessor.assessors.fuji.metadata import prepare_metadata
 
 
 @pytest.fixture(scope="module")
@@ -42,7 +43,9 @@ def test_native_core_mapping_reaches_the_existing_fuji_evaluator(profile):
     for field, value in expected.items():
         assert prepared.fields[field] == value
     assert all(paths == ("/metadata",) for paths in prepared.sources.values())
-    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
+    result = fuji_checks.Runner(profile.resources).evaluate(
+        "FsF-F2-01M", prepared.fields
+    )
     assert result.metric.score.observed_earned == 2
     assert [check.outcome for check in result.tests] == ["pass", "pass"]
     assert request == original
@@ -167,7 +170,7 @@ def test_empty_native_core_values_do_not_earn_points(profile, empty):
     fields = prepare_metadata(request, profile).fields
 
     assert not {"title", "creator", "publisher"} & fields.keys()
-    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", fields)
+    result = fuji_checks.Runner(profile.resources).evaluate("FsF-F2-01M", fields)
     assert result.metric.score.observed_earned == 0
 
 
