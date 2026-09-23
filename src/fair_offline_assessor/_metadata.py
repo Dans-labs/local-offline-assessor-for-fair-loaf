@@ -1,6 +1,5 @@
 import json
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import cast
 
 from pydantic import JsonValue
@@ -13,12 +12,6 @@ from fair_offline_assessor.models import (
     ProfileError,
 )
 from fair_offline_assessor.profiles import LoadedProfile
-
-
-@dataclass(frozen=True)
-class SelectedResource:
-    node: dict[str, JsonValue]
-    graph: list[dict[str, JsonValue]]
 
 
 def _context_loader(
@@ -98,70 +91,3 @@ def expand_metadata(
         ) from exc
     except ValueError as exc:
         raise InputError("invalid_jsonld", "Cannot interpret JSON-LD metadata") from exc
-
-
-def select_resource(
-    request: AssessmentInput,
-    profile: LoadedProfile,
-    *,
-    resource_types: tuple[str, ...],
-) -> SelectedResource:
-    """Select an explicit subject or the sole matching resource and its graph."""
-    expanded = expand_metadata(request, profile)
-    loader = FrozenDocumentLoader(documents={})
-    issuer = jsonld.IdentifierIssuer("_:b")
-    try:
-        nodes = cast(
-            "list[dict[str, JsonValue]]",
-            jsonld.flatten(
-                expanded,
-                options={
-                    "documentLoader": loader,
-                    "contextResolver": ContextResolver({}, loader),
-                    "identifierIssuer": issuer,
-                },
-            ),
-        )
-    except jsonld.JsonLdError as exc:
-        raise InputError("invalid_jsonld", "Cannot combine JSON-LD records") from exc
-
-    subject = request.subject
-    if subject is not None and subject.startswith("_:"):
-        # Flattening renames blank nodes; match the caller's original label.
-        subject = issuer.existing.get(subject, "")
-    graphs = [
-        nodes,
-        *(
-            cast("list[dict[str, JsonValue]]", n["@graph"])
-            for n in nodes
-            if "@graph" in n
-        ),
-    ]
-    matches = [
-        SelectedResource(node, graph)
-        for graph in graphs
-        for node in graph
-        if (
-            node.get("@id") == subject
-            if subject is not None
-            else any(
-                kind in resource_types
-                for kind in cast("list[str]", node.get("@type", []))
-            )
-        )
-    ]
-    if not matches:
-        if subject is not None:
-            raise InputError(
-                "subject_not_found", f"Subject not found: {request.subject}"
-            )
-        raise InputError(
-            "resource_not_found", "No matching resource found; supply subject"
-        )
-    if len(matches) > 1:
-        if subject is not None:
-            raise InputError("ambiguous_subject", "Subject occurs in multiple graphs")
-        raise InputError(
-            "ambiguous_resource", "Multiple resources found; supply subject"
-        )
-    return matches[0]

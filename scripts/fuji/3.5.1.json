@@ -19,6 +19,14 @@
     "fair_evaluator_unique_identifier_metadata"
   ],
   "helpers": [
-    "harvester.metadata_harvester"
+    "controllers.fair_check",
+    "harvester.metadata_harvester",
+    "helper.metadata_collector_rdf",
+    "helper.metadata_collector_xml",
+    "helper.metadata_collector_datacite",
+    "helper.metadata_collector_dublincore",
+    "helper.metadata_collector_highwire_eprints",
+    "helper.metadata_collector_microdata",
+    "helper.metadata_collector_opengraph"
   ]
 }

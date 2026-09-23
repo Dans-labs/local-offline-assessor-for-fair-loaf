@@ -1,53 +1,96 @@
 export const metadata = {
   title: 'F-UJI',
-  description: 'Supported F-UJI checks, JSON-LD metadata and local contexts.',
+  description:
+    'Metadata F-UJI recognises, its checks and how it awards points.',
 }
 
 # F-UJI
 
-Select `Assessor("FUJI")` to assess dataset metadata with bundled
-[F-UJI](https://github.com/pangaea-data-publisher/fuji) evaluators.
-The default version is F-UJI `3.5.1`, with metric definitions `0.8`.
-
-## Coverage
-
-The configuration contains **31 checks across 17 metrics**. This release supports
-24 checks using supplied evidence. Seven require HTTP or HTML evidence and remain
-`indeterminate` with reason `unsupported_check`.
-
-Supported checks cover identifiers, descriptive metadata, licences, access
-conditions, related resources, provenance, vocabularies, metadata standards,
-protocols and file formats. Actual coverage depends on what you supply.
-
-Offline results cannot establish live accessibility, identifier resolution or
-metadata discoverability. They may differ from an online assessment, which can
-harvest additional evidence.
-
-## Metadata
-
-<Row>
-<Col>
-
-Supply JSON-LD describing a dataset. F-UJI mappings recognise supported terms
-from Schema.org, Dublin Core and DCAT, including linked records present in the
-supplied graph. Valid JSON-LD alone does not guarantee that a term or structure
-has a F-UJI mapping.
-
-Without `subject`, the library selects the sole node typed as Schema.org
-`Dataset`, `dcat:Dataset` or `dcmitype:Dataset`. When several datasets are present,
-pass the chosen node's `@id` as `subject`.
-
-You can use a custom JSON-LD context to map your field names to recognised
-vocabulary terms. Unrecognised terms produce `unmapped_term` diagnostics.
-
-</Col>
-<Col>
-<CodeGroup title="DCAT with Dublin Core properties">
+[F-UJI](https://github.com/pangaea-data-publisher/fuji) checks dataset metadata
+against FAIR requirements. The library includes F-UJI `3.5.1` and its `0.8`
+check definitions.
 
 ```python
 from fair_offline_assessor import Assessor
 
-result = Assessor("FUJI").assess(
+assessor = Assessor("FUJI", version="3.5.1")
+```
+
+This selects F-UJI's own metadata mappings, checks and scoring rules for that
+version. For example, its mapping recognises Schema.org `name` as a dataset title.
+
+## What it checks
+
+F-UJI looks for identifiers, descriptive information, licences, access conditions,
+links to data, relationships between datasets, and information about how data was
+created. Some checks examine whether recognised standards and file formats are used.
+
+Each check has its own requirements and points. These examples use F-UJI 3.5.1:
+
+| Required information                                                     | Check ID         | Points when met |
+| ------------------------------------------------------------------------ | ---------------- | --------------- |
+| `metadata_url` with recognised identifier syntax, such as a URL or UUID  | `FsF-F1-01MD-1`  | 1               |
+| Creator, title, identifier, publication date, publisher and dataset type | `FsF-F2-01M-2`   | 1               |
+| All of the preceding descriptive fields, plus a summary and keywords     | `FsF-F2-01M-3`   | 1               |
+| Licence information in an appropriate metadata field                     | `FsF-R1.1-01M-1` | 1               |
+
+Field names depend on the metadata standard you use. F-UJI's mappings connect
+those fields to the information each check requires. Adding a field affects only
+checks that use it.
+
+The complete requirements and points are in
+[F-UJI's check definitions for this version](https://github.com/pangaea-data-publisher/fuji/blob/9227fabb7f047475714f2e7622798b855c883f72/fuji_server/yaml/metrics_v0.8.yaml).
+
+## What can run offline
+
+The configuration contains **31 checks grouped into 17 metrics**. A metric groups
+checks about one aspect of FAIR. The library supports **24 checks** using supplied
+information. The other seven remain `indeterminate` with reason `unsupported_check`.
+
+Supported checks may also remain indeterminate if the required information is
+missing or cannot be interpreted. Offline results cannot confirm that a link
+opens, a dataset is downloadable or a search engine can find it.
+
+## Metadata
+
+Pass document contents to `metadata`. JSON-LD is the default. For another format,
+set `metadata_format` to one of the values below.
+
+| `metadata_format`                                | Accepted contents                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| omitted or `json-ld`                             | A JSON-LD dictionary, list of dictionaries or JSON text                                       |
+| `datacite-json`                                  | DataCite JSON with `agency` and metadata fields such as `titles` at the top level             |
+| `xml`                                            | DataCite, Dublin Core, DDI, CMDI, DIF, MODS, EML, ISO metadata, EAD or TEI XML                |
+| `html`                                           | HTML containing JSON-LD, Dublin Core, Microdata, RDFa, Highwire/Eprints or OpenGraph metadata |
+| `turtle`, `n3`, `nt`, `nquads`, `trig`, `rdfxml` | Text in the selected RDF format                                                               |
+
+DataCite JSON requires `agency`. DataCite API responses with metadata inside
+`data.attributes` are not supported. XML must contain its own information, without
+DOCTYPE or entity declarations. If an OAI-PMH XML response contains several
+records, F-UJI uses the first. RSS/GeoRSS and OAI-ORE Atom are not supported.
+
+Supply one intended dataset per document. F-UJI decides which described dataset
+to assess using its own rules. With JSON-LD or other RDF formats, you can set
+`subject` to the identifier you expect it to choose. A choice that cannot be
+confirmed produces `subject_not_selected`. Omit `subject` for XML, DataCite JSON
+and HTML.
+
+For Schema.org metadata:
+
+- Use `identifier` for the dataset identifier required by the citation check.
+  F-UJI does not use `@id` for that field.
+- Describe creators as `Person` or `Organization` objects, for example
+  `"creator": {"@type": "Person", "name": "Ada Example"}`. F-UJI 3.5.1 does not
+  use a plain text `creator` value in RDF input.
+- `isAccessibleForFree: false` is not used by this version's RDF mapping.
+  That value alone cannot establish access restrictions.
+
+<CodeGroup title="DCAT metadata with Dublin Core properties">
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI", version="3.5.1").assess(
     metadata={
         "@context": {
             "dcat": "http://www.w3.org/ns/dcat#",
@@ -65,30 +108,28 @@ result = Assessor("FUJI").assess(
 ```
 
 </CodeGroup>
-</Col>
-</Row>
+
+Schema.org, DCAT and Dublin Core are **vocabularies**: sets of named properties
+with agreed meanings. DataCite defines a **metadata schema**: fields and rules
+for describing a dataset. **RDF** describes things through statements such as
+“this dataset has this title”. JSON-LD and Turtle are ways to write those statements.
 
 ## Contexts
 
-<Row>
-<Col>
+A JSON-LD `@context` defines what field names mean. The library includes the
+Schema.org context, so `"@context": "https://schema.org"` works offline.
 
-The Schema.org context is bundled. The common `https://schema.org` context URL
-works without a network request.
+For another context URL, supply its document in `local_contexts`, or put the
+field definitions directly inside `@context`. Any other contexts it refers to
+must also be supplied. Context definitions cannot override different definitions
+already included in the library.
 
-For other context URLs, pass the context document in `local_contexts`, or embed
-an inline `@context` in the metadata. Referenced contexts must also be available
-locally. A supplied document cannot replace a different bundled context.
-
-Context documents define the meaning of JSON-LD terms. They do not specify the
-fields required to pass every FAIR check.
-
-</Col>
-<Col>
-<CodeGroup title="Supply a local context document">
+<CodeGroup title="Supply the definitions for a context URL">
 
 ```python
-result = Assessor("FUJI").assess(
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI", version="3.5.1").assess(
     metadata={
         "@context": "https://example.org/context",
         "@type": "Dataset",
@@ -105,11 +146,19 @@ result = Assessor("FUJI").assess(
 ```
 
 </CodeGroup>
-</Col>
-</Row>
 
-## Diagnostics
+A context gives field names their meaning. F-UJI's checks determine which
+information must be present to earn points.
 
-Check [F-UJI diagnostics](/assessors/fuji/diagnostics) when metadata cannot be
-interpreted or a check remains indeterminate. [Results](/results) explains the shared
-outcomes and score fields.
+## Original results
+
+`result.raw` is a list of F-UJI's original result dictionaries, with at most one
+entry per metric. A metric that produces no result has no entry. The list covers
+this offline run; it is not a full response from F-UJI's online service.
+
+The common response includes scores for individual checks and metrics.
+F-UJI leaves `overall_score` as `null` and `principle_scores` empty.
+The `evidence` entries refer to your whole metadata document or `metadata_url`.
+
+See [Results](/results) for field meanings and
+[F-UJI troubleshooting](/assessors/fuji/diagnostics) for problems with metadata.

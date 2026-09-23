@@ -4,7 +4,8 @@ Copyright 2026 Data Archiving and Networked Services (DANS)
 Library code is licensed under Apache-2.0.
 
 Includes the unmodified F-UJI 3.5.1 metric definitions (metrics 0.8), selected
-evaluator code, result models, selected constants and licence/access-rights catalogues.
+evaluator and metadata reader code, mappings, merge and cleanup methods, result
+models, selected constants, CreativeWork types and licence/access-rights catalogues.
 The catalogue originates from the SPDX License List: https://spdx.org/licenses/
 Code provenance and changes are
 recorded in src/fair_offline_assessor/_vendor/fuji/v3_5_1/.
@@ -18,4 +19,5 @@ CC-BY-SA-3.0: https://creativecommons.org/licenses/by-sa/3.0/
 Source: https://schema.org/version/30.0/
 
 Source URLs, available Git commits and checksums are recorded in
-the manifest.json beside each resource bundle. Upstream files retain their original bytes.
+the manifest.json beside each resource bundle. Generated code records upstream
+source hashes and offline adaptations in upstream.json and source.patch.

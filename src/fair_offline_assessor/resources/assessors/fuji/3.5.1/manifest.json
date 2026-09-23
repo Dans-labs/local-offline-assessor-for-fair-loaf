@@ -9,6 +9,16 @@
   },
   "files": [
     {
+      "id": "fuji:creativeworks",
+      "path": "creativeworks.json",
+      "kind": "reference",
+      "format": "json",
+      "source": {
+        "path": "fuji_server/data",
+        "transform": "creativework-types"
+      }
+    },
+    {
       "id": "fuji:vocabularies",
       "path": "vocabularies.json",
       "kind": "reference",

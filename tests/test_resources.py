@@ -46,7 +46,7 @@ def test_bundled_fuji_profile_loads_pinned_definitions():
     resources = read_resources()
     reference, content = resources["fuji:metrics"]
     assert reference["format"] == "yaml"
-    assert reference["version"] == "3.5.1"
+    assert reference["version"] == loaded.profile.version == "3.5.1"
     assert reference["source"]["metric_version"] == "0.8"
     assert reference["source"]["commit"] == "9227fabb7f047475714f2e7622798b855c883f72"
     assert loaded.resources["fuji:metrics"] == content

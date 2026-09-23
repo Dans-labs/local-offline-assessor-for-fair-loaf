@@ -1,8 +1,8 @@
-# Maintaining
+# Maintaining the library
 
-Run commands from the repository root.
+Run commands from the repository root unless stated otherwise.
 
-## Development
+## Development checks
 
 ```sh
 uv sync --locked
@@ -14,111 +14,134 @@ uv build
 uv run --group release twine check dist/*
 ```
 
-Tests run with sockets disabled.
+Tests block network connections. For documentation changes, follow the
+[documentation site instructions](site/README.md).
 
-## Code and generated files
+## Where to make changes
 
-Assessment code lives in `src/fair_offline_assessor/`. `_input.py` and
-`_metadata.py` prepare JSON-LD. `_fuji_metadata.py` maps it to F-UJI fields,
-`_fuji.py` runs the evaluators, and `_fuji_assessment.py` builds the shared result.
+`Assessor(name, version=...)` chooses the code and data used for an assessment.
+The selected assessor supplies the metadata mappings, check requirements and
+scoring rules. The library controls offline execution and the common response format.
 
-Profiles select adapter and resource versions. Resource manifests record upstream
-sources, files, aliases and licences.
+The Python code is in `src/fair_offline_assessor/`:
 
-| Maintained inputs | Generated files |
+| File | Responsibility |
 | --- | --- |
-| [F-UJI recipe](../scripts/fuji/3.5.1.json), [resource manifest](../src/fair_offline_assessor/resources/assessors/fuji/3.5.1/manifest.json), [preparation script](../scripts/fuji/prepare_fuji.py) | `_vendor/fuji/v3_5_1/` and F-UJI resource files |
-| Resource manifests, bundled files and profiles | `resources/resources.json`, `resources/profiles.json` |
-| [Python models](../src/fair_offline_assessor/models/v1.py) | `resources/schemas/profile-v1.json`, `resources/schemas/result-v1.json` |
+| `assessment.py` | Available assessors, versions and defaults |
+| `_fuji_readers.py`, `_fuji_html.py` | Apply F-UJI's mappings to supplied documents without fetching more information |
+| `_fuji.py` | Run F-UJI checks and keep their original results |
+| `_fuji_assessment.py` | Convert F-UJI results into the common response and report input problems |
+| `_metadata.py` | Interpret JSON-LD field names using locally available context definitions |
+| `models/v1.py` | Fields and allowed values for the library's input configuration and response |
 
-Generated paths above are relative to `src/fair_offline_assessor/`.
-Everything in `_vendor/` is generated. Its `source.patch` records source edits;
-`upstream.json` records the source commit and file hashes. Make changes in the
-preparation script, then regenerate.
+A configuration file under `resources/profiles/` chooses an assessor implementation
+and its data files. The code calls this a **profile**. A `manifest.json` lists the
+included data files, their sources and licences.
 
-## Updating F-UJI and resources
+## Generate F-UJI mappings and checks
 
-To regenerate the bundled F-UJI version:
+The settings in [scripts/fuji/3.5.1.json](../scripts/fuji/3.5.1.json) specify the
+F-UJI version, exact Git commit and code to include. The preparation script copies
+F-UJI's mappings and assessment code from that commit. It changes the code where
+needed to use local files and prevent network access.
 
 ```sh
 uv run python scripts/fuji/prepare_fuji.py --recipe scripts/fuji/3.5.1.json
 uv run python scripts/resources/prepare_resources.py
 ```
 
-The first command fetches the pinned Git commit and prepares the selected code
-and resources. Add `--source /path/to/fuji` to use a local Git repository containing
-that commit. The second command validates local bundles and generates indexes
-and SHA-256 hashes.
+The first command writes:
 
-For a new upstream version:
+- `_vendor/fuji/v3_5_1/`: F-UJI's mappings, code for choosing and interpreting
+  metadata, checks and result definitions.
+- `resources/assessors/fuji/3.5.1/`: scoring requirements and lists such as
+  recognised licences, identifiers and file formats.
 
-1. Copy the recipe to `scripts/fuji/<version>.json` and the manifest to
+Both paths are relative to `src/fair_offline_assessor/`. The second command writes
+`resources/resources.json` and `resources/profiles.json`, listing available files
+and configurations with checksums to detect changes.
+
+The first command downloads the chosen F-UJI source by default. Add
+`--source /path/to/fuji` to use a local Git repository containing the required
+commit. Only committed files are used. Add `--check` to either command to compare
+generated files without changing them.
+
+Do not edit files in `_vendor/`. Make changes in
+[prepare_fuji.py](../scripts/fuji/prepare_fuji.py), then regenerate.
+The generated `upstream.json` records the original commit and file checksums;
+`source.patch` records the changes made to F-UJI's code.
+
+## Add a F-UJI version
+
+1. Copy the settings file to `scripts/fuji/<version>.json` and the data-file list to
    `src/fair_offline_assessor/resources/assessors/fuji/<version>/manifest.json`.
-   Set the version and full upstream commit in both; review evaluator names and
-   resource paths.
-2. Review the preparation script's version-specific source edits, removed network
-   methods and allowed dependencies. Add the adaptations needed for that version.
-3. Run the commands above with the new recipe. Review the generated diff and
-   update `NOTICE` and `LICENSES/` if attribution or licence terms changed.
-4. Add an adapter version using the new vendor imports and resource versions.
-   Take its resource hashes from the generated `resources.json`. Add a profile
-   selecting that adapter and its resources, then regenerate the indexes.
-5. Compare checks and scores with upstream, review coverage changes, and run the
-   development checks. Commit the declarations, integration changes and generated
-   files together.
+   Set the version and full Git commit in both. Review the selected code and files.
+2. Review the preparation script's changes for that version. Check which functions
+   access the network and which additional Python packages are needed.
+3. Run the generation commands with the new settings file. Review all generated
+   changes, including mappings and scoring rules. Update `NOTICE` and `LICENSES/`
+   if the source's attribution or licence changed.
+4. Add a Python class for the new version using its generated code and data.
+   Use the checksums in `resources.json`. Register the class in `assessment.py`
+   and add its configuration under `resources/profiles/`. Regenerate the indexes
+   with `prepare_resources.py`.
+5. Compare mapped fields, the chosen dataset and results with that F-UJI version.
+   Test supported formats, missing or invalid input, and blocked network access.
+   Run the development checks and both generation commands with `--check`.
+6. Commit the settings, Python changes and generated files together. Test old
+   versions before changing the default in `assessment.py`.
 
-For Schema.org, copy the context unchanged from the repository, commit and path
-recorded in its [manifest](../src/fair_offline_assessor/resources/metadata/schemaorg/30.0/manifest.json).
-For an update, create a new bundle under `src/fair_offline_assessor/resources/metadata/`
-with its source and licence in `manifest.json`, select it in a profile, and run
-`prepare_resources.py`.
+## Add checks or assessors
 
-Check that generated F-UJI files and indexes are current:
+`EVALUATORS` in `_fuji.py` connects groups of checks to F-UJI classes and lists
+checks unavailable offline. Update these entries and the generation settings when
+enabling checks. Regenerate, compare outcomes and points with F-UJI, and update
+the expected check counts in `tests/test_assessment.py`.
+Keep metadata mappings and scoring rules in the generated F-UJI code.
 
-```sh
-uv run python scripts/fuji/prepare_fuji.py --check
-uv run python scripts/resources/prepare_resources.py --check
-```
+For another assessor, implement the Python interface `AssessorAdapter` from
+`adapters.py`. This class connects the assessor to the library. It must interpret
+the supplied metadata using that assessor's rules and return `AssessmentResult`.
+Preserve the assessor's original output in `raw` before converting results, so an
+error during conversion does not lose that output.
 
-Use `--recipe` when checking an additional F-UJI version.
+Add the assessor's data files and configuration. Register its name, default
+version and class in `assessment.py` for both `Assessor(...)` and `assess(...)`.
+Checks that need information unavailable offline must remain `indeterminate`
+without a score.
 
-## Changing assessments
+## Update the Schema.org context
 
-For F-UJI, register the evaluator in `_fuji.py`'s `EVALUATORS` and map any additional
-evidence in `_fuji_metadata.py`. Include new upstream modules in the recipe and
-regenerate. Check outcomes and scores against the pinned upstream evaluator;
-cover missing and invalid evidence as well as valid input. Keep coverage assertions
-in `tests/test_assessment.py` aligned with the supported checks.
+The context defines the meaning of JSON-LD field names. Its
+[manifest](../src/fair_offline_assessor/resources/metadata/schemaorg/30.0/manifest.json)
+records the source repository, commit, path and licence.
 
-An additional assessor needs an `AssessorAdapter` implementation returning
-`AssessmentResult`, its resource declarations and a profile. Register its name,
-default profile and adapter in `assessment.py` for both public entry points.
+For a new version, create a directory under `resources/metadata/schemaorg/`.
+Copy the context unchanged, add its `manifest.json`, choose it in an assessment
+configuration and run `prepare_resources.py`.
 
-Assessments must stay offline. Checks needing HTTP or HTML evidence remain
-`indeterminate` without a score.
+## Keep versions reproducible
 
-## Versioning and compatibility
+The package version is in `pyproject.toml`. F-UJI versions and commits are in
+`scripts/fuji/`. Each assessment configuration records its code and data versions;
+`engine_requires` states which library versions can use it. The public `version`
+argument selects this configuration version.
 
-Package versions live in `pyproject.toml`; upstream versions live in recipes.
-Profiles pin adapter and resource versions; `engine_requires` sets compatible
-library versions. `Assessor(..., version=...)` selects the profile version, which
-for F-UJI follows the pinned upstream F-UJI release.
-Public JSON formats use `schema_version`.
+After a release, keep its configurations, data files and response definitions
+unchanged. Add new versions alongside them and keep the old implementations
+available.
 
-Keep released profiles, resource bundles and schemas unchanged. Add new versions
-alongside them and keep their adapters available. Test old and new selections
-before changing the default in `assessment.py`.
-
-After changing Python models, regenerate their JSON schemas:
+After changing Python models, update the JSON Schema files that describe their
+allowed fields and values:
 
 ```sh
 uv run python scripts/resources/generate_schemas.py
 ```
 
-A new JSON format needs a versioned model and an update to the schema generator.
-Retain the released models and schema files.
+Public responses use `schema_version` to identify their format. A new response
+format needs its own model and schema file; retain the released ones.
 
-To check released resources, extract a previous wheel and pass its
+To check that released files are unchanged, extract a previous wheel and use its
 `fair_offline_assessor/resources` directory:
 
 ```sh

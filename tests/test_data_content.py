@@ -12,18 +12,18 @@ from fair_offline_assessor import AssessmentInput, assess
         ({"variableMeasured": "temperature"}, ("fail", "fail", "fail"), 0, 0),
         (
             {"size": {"value": 123}, "encodingFormat": "text/csv"},
-            ("fail", "pass", "fail"),
-            1,
-            3,
+            ("fail", "fail", "fail"),
+            0,
+            0,
         ),
         (
             {
                 "http://purl.org/dc/terms/extent": "123",
                 "http://purl.org/dc/terms/format": "text/csv",
             },
-            ("fail", "pass", "fail"),
-            1,
-            3,
+            ("fail", "fail", "fail"),
+            0,
+            0,
         ),
         (
             {
@@ -70,9 +70,9 @@ from fair_offline_assessor import AssessmentInput, assess
                 "distribution": "https://example.org/data",
                 "variableMeasured": "temperature",
             },
-            ("fail", "fail", "pass"),
+            ("fail", "fail", "fail"),
             0,
-            3,
+            0,
         ),
         (
             {"size": " ", "encodingFormat": [], "variableMeasured": {"name": ""}},
@@ -92,7 +92,6 @@ def test_data_content_preserves_native_presence_checks(
             "name": "Example",
             **properties,
         },
-        subject="urn:data",
     )
     original = request.model_copy(deep=True)
     result = assess(request, profile="fusji-offline@3.5.1")
@@ -106,7 +105,7 @@ def test_data_content_preserves_native_presence_checks(
     assert metric.level.value == maturity
     assert [check.score.maximum for check in checks] == [1, 1, 0]
     assert checks[2].score.observed_earned == 0
-    assert all(ref.location.endswith("/@type/0") for ref in checks[0].evidence)
+    assert all(ref.location == "/metadata" for c in checks for ref in c.evidence)
     assert all("variableMeasured" not in ref.location for ref in checks[1].evidence)
     assert all("contentSize" not in ref.location for ref in checks[2].evidence)
     assert result.coverage.errors == 0

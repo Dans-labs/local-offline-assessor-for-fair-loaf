@@ -17,6 +17,24 @@
     "aliases": []
   },
   {
+    "id": "fuji:creativeworks",
+    "version": "3.5.1",
+    "kind": "reference",
+    "format": "json",
+    "digest": "13a7713c5f401c08b0296eadb771d4d5925ce01093aa90d15eedc44c125cc2f0",
+    "path": "assessors/fuji/3.5.1/creativeworks.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/pangaea-data-publisher/fuji",
+      "commit": "9227fabb7f047475714f2e7622798b855c883f72",
+      "version": "3.5.1",
+      "metric_version": "0.8",
+      "path": "fuji_server/data",
+      "transform": "creativework-types"
+    },
+    "aliases": []
+  },
+  {
     "id": "fuji:file-formats",
     "version": "3.5.1",
     "kind": "reference",

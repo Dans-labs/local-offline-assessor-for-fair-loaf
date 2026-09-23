@@ -20,7 +20,7 @@ IDENTIFIER = "https://doi.org/10.5072/example"
         ("{", "invalid_json"),
         ("https://example.invalid/metadata", "invalid_json"),
         (None, "unsupported_input"),
-        ({"name": "Example"}, "dataset_not_found"),
+        ({"name": "Example"}, "metadata_not_found"),
     ],
 )
 def test_unusable_metadata_keeps_identifier_checks_and_input_provenance(metadata, code):
@@ -85,7 +85,10 @@ def test_jsonld_text_preserves_results_and_the_original_input_digest(metadata):
     parsed = assessor.assess(metadata=metadata)
     text = json.dumps(metadata)
     result = assessor.assess(metadata=text)
-    assert result.tests == parsed.tests
+    assert [(c.id, c.outcome, c.score) for c in result.tests] == [
+        (c.id, c.outcome, c.score) for c in parsed.tests
+    ]
+    assert result.raw == parsed.raw
     assert result.metrics == parsed.metrics
     assert not result.diagnostics
     assert result.provenance.resources == parsed.provenance.resources
@@ -127,83 +130,40 @@ def test_typed_boolean_keeps_native_assessment_results():
     assert not typed.diagnostics
 
 
-@pytest.mark.parametrize("readable", [False, True])
-def test_unreadable_licence_reports_its_source_without_hiding_usable_evidence(readable):
-    licence = [{"@type": "CreativeWork", "name": "Reuse terms"}]
-    if readable:
-        licence.append("MIT")
-    result = Assessor("FUJI").assess(
-        metadata={**METADATA, "license": licence}, metadata_url=IDENTIFIER
-    )
-    note = next(n for n in result.diagnostics if n.code == "unsupported_structure")
-    checks = {c.id: c for c in result.tests}
-    check = checks["FsF-R1.1-01M-1"]
-    assert check.outcome == ("pass" if readable else "indeterminate")
-    assert any(
-        ref.resource == "prepared_metadata" and ref.location == note.location
-        for ref in check.evidence
-    )
-    if not readable:
-        assert check.score is None
-        assert check.reason_code == note.code
-        assert next(m for m in result.metrics if m.id == check.metric).score is None
-    assert checks["FsF-F1-02MD-1"].outcome == "pass"
-    assert result.coverage.errors == 0
-
-
-def test_unreadable_keywords_leave_citation_and_licence_checks_available():
+def test_native_reader_retains_opaque_license_nodes_without_custom_diagnostics():
     result = Assessor("FUJI").assess(
         metadata={
             **METADATA,
-            "creator": "Alice",
-            "publisher": "Archive",
-            "datePublished": "2026-01-01",
-            "description": "Example data",
-            "keywords": {"name": "Soil"},
-            "https://example.org/unrelated": {"name": "Ignored"},
-        }
-    )
-    checks = {c.id: c for c in result.tests}
-    assert checks["FsF-F2-01M-2"].outcome == "pass"
-    assert checks["FsF-F2-01M-3"].reason_code == "unsupported_structure"
-    assert checks["FsF-F2-01M-3"].score is None
-    assert checks["FsF-R1.1-01M-1"].outcome == "pass"
-    metric = next(m for m in result.metrics if m.id == "FsF-F2-01M")
-    assert metric.score.observed_earned == 1
-    assert not metric.score.complete
-    assert {n.code for n in result.diagnostics} == {
-        "unsupported_structure",
-        "unmapped_term",
-    }
-
-
-@pytest.mark.parametrize("url", [None, "https://example.org/data.csv", "urn:opaque"])
-def test_service_only_distribution_keeps_conclusive_results_and_reports_gaps(url):
-    distributions = [
-        {
-            "http://www.w3.org/ns/dcat#accessService": {
-                "http://www.w3.org/ns/dcat#endpointURL": {
-                    "@id": "https://example.org/api"
-                }
-            }
-        }
-    ]
-    if url:
-        distributions.append({"http://www.w3.org/ns/dcat#downloadURL": {"@id": url}})
-    result = Assessor("FUJI").assess(
-        metadata={**METADATA, "http://www.w3.org/ns/dcat#distribution": distributions},
+            "license": {"@type": "CreativeWork", "name": "Reuse terms"},
+        },
         metadata_url=IDENTIFIER,
     )
-    checks = {c.id: c for c in result.tests}
-    check = checks["FsF-A1.1-01MD-2"]
-    assert check.outcome == (
-        "pass" if url and url.startswith("https:") else "indeterminate"
-    )
-    if check.outcome == "indeterminate":
-        assert check.reason_code == "unsupported_structure"
-        assert check.score is None
-    assert checks["FsF-F3-01M-2"].outcome == ("pass" if url else "indeterminate")
-    assert checks["FsF-R1.1-01M-1"].outcome == "pass"
-    assert checks["FsF-A1.1-01MD-1"].outcome == "pass"
-    assert any(n.code == "unsupported_structure" for n in result.diagnostics)
+    assert not result.diagnostics
+    check = next(c for c in result.tests if c.id == "FsF-R1.1-01M-1")
+    assert check.outcome == "pass"
+    assert all(ref.location == "/metadata" for ref in check.evidence)
+    assert all(ref.resource == "assessment_input" for ref in check.evidence)
     assert result.coverage.errors == 0
+
+
+def test_native_reader_ignores_unknown_terms_without_custom_unmapped_diagnostics():
+    result = Assessor("FUJI").assess(
+        metadata={**METADATA, "https://example.org/unrelated": {"name": "Ignored"}},
+        metadata_url=IDENTIFIER,
+    )
+    assert not result.diagnostics
+    assert next(c for c in result.tests if c.id == "FsF-R1.1-01M-1").outcome == "pass"
+    assert next(c for c in result.tests if c.id == "FsF-F1-02MD-1").outcome == "pass"
+
+
+@pytest.mark.parametrize("format_", ["unsupported-format", 42])
+def test_invalid_format_keeps_independent_identifier_checks(format_):
+    result = Assessor("FUJI").assess(
+        metadata=METADATA, metadata_format=format_, metadata_url=IDENTIFIER
+    )
+    assert any("format" in n.code for n in result.diagnostics)
+    assert (
+        next(c for c in result.tests if c.id == "FsF-R1.1-01M-1").outcome
+        == "indeterminate"
+    )
+    assert next(c for c in result.tests if c.id == "FsF-F1-02MD-1").outcome == "pass"

@@ -297,6 +297,7 @@ REFERENCES = (
 class Runner:
     def __init__(self, resources: Mapping[str, bytes]) -> None:
         """Load the pinned definitions and catalogues once for this assessment."""
+        self._native_results: dict[str, dict[str, JsonValue]] = {}
         loaded = {}
         for reference in REFERENCES:
             content = resources.get(reference.id)
@@ -363,6 +364,11 @@ class Runner:
                 }
             },
         }
+
+    @property
+    def native_results(self) -> list[JsonValue]:
+        """Return a detached snapshot of the final native result for each metric."""
+        return deepcopy(list(self._native_results.values()))
 
     def _context(self, identifier: str, **evidence: object) -> SimpleNamespace:
         """Give each evaluator private definitions, metadata and catalogues."""
@@ -478,8 +484,12 @@ class Runner:
             check for check in checks if check["metric_test_identifier"] not in missing
         ]
         evaluator = registration.implementation(context)
+        native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
+        # Capture before conversion so a harmonization failure cannot discard it.
+        self._native_results[identifier] = deepcopy(native)
         return _evaluate(
             evaluator,
+            native=native,
             checks=checks,
             unsupported_checks=registration.unsupported_checks,
             blocked=blocked,
@@ -495,12 +505,12 @@ def _identifier(value: str, catalogue: Mapping[str, object]) -> dict[str, JsonVa
 def _evaluate(
     evaluator: FAIREvaluator,
     *,
+    native: dict[str, JsonValue],
     checks: Sequence[CheckDefinition],
     unsupported_checks: tuple[str, ...] = (),
     blocked: Mapping[str, Diagnostic] | None = None,
 ) -> MetricEvaluation:
-    """Run F-UJI and convert its checks and metric result."""
-    native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
+    """Convert F-UJI's checks and captured metric result."""
     identifier = cast("str", native["metric_identifier"])
     metric = evaluator.fuji.METRICS[identifier]
     results = []
@@ -518,8 +528,8 @@ def _evaluate(
                     else issue.code
                     if issue is not None
                     else "missing_evidence",
-                    message="This check requires HTTP or HTML evidence, "
-                    "which this release does not support."
+                    message="This check requires evidence unavailable "
+                    "to the offline evaluator."
                     if check_id in unsupported_checks
                     else issue.message
                     if issue is not None

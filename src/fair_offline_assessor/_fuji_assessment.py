@@ -1,18 +1,14 @@
-import json
 import logging
 from collections.abc import Mapping
-from hashlib import sha256
 from importlib.metadata import version
-from typing import Literal, cast
+from typing import Literal
 
 from fair_offline_assessor import _fuji
-from fair_offline_assessor._fuji_metadata import (
+from fair_offline_assessor._fuji_readers import (
     FujiMetadata,
     prepare_metadata,
-    select_dataset,
 )
 from fair_offline_assessor._input import PreparedInput, prepare_input
-from fair_offline_assessor._metadata import SelectedResource
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
@@ -28,35 +24,16 @@ from fair_offline_assessor.models import (
 from fair_offline_assessor.profiles import LoadedProfile
 
 
-def _digest(value: object) -> str:
-    """Hash deterministic JSON, rejecting non-finite numbers and invalid text."""
-    try:
-        content = json.dumps(
-            value,
-            sort_keys=True,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode()
-    except ValueError as exc:
-        raise InputError(
-            "invalid_json", "Evidence must contain valid, finite JSON values"
-        ) from exc
-    return sha256(content).hexdigest()
-
-
 def _evidence(
-    dataset: SelectedResource, sources: dict[str, tuple[str, ...]]
+    supplied: PreparedInput, sources: dict[str, tuple[str, ...]]
 ) -> dict[str, tuple[EvidenceRef, ...]]:
-    """Locate mapped values in the prepared graph, including linked records."""
-    digest = _digest(dataset.graph)
+    """Cite supplied evidence; native readers do not emit field-level locations."""
     return {
         field: tuple(
             EvidenceRef(
-                resource="prepared_metadata",
-                digest=digest,
+                resource="assessment_input",
+                digest=supplied.digest,
                 location=path,
-                subject=cast("str", dataset.graph[int(path.split("/")[1])]["@id"]),
             )
             for path in dict.fromkeys(paths)
         )
@@ -78,8 +55,7 @@ def _unmeasured(
     message = (
         "F-UJI could not complete this check."
         if outcome == "error"
-        else "This check requires HTTP or HTML evidence, "
-        "which this release does not support."
+        else "This check requires evidence unavailable to the offline evaluator."
     )
     return (
         MetricResult(id=identifier, principles=(principle,), outcome=outcome),
@@ -149,20 +125,16 @@ def _assess_metric(
         issue = (
             supplied.invalid.get("metadata_url")
             if fields == ("metadata_url",)
-            else supplied.invalid.get("metadata") or supplied.invalid.get("subject")
-        )
-        issue = issue or next(
-            (metadata.invalid[field] for field in fields if field in metadata.invalid),
-            None,
+            else supplied.invalid.get("metadata")
+            or supplied.invalid.get("subject")
+            or supplied.invalid.get("metadata_format")
         )
         if issue is not None:
             blocked[check_id] = issue
-        elif note := next(
-            (note for field in fields for note in metadata.unreadable.get(field, ())),
-            None,
-        ):
-            target = partial if check_id in registration.partial_passes else blocked
-            target[check_id] = note
+        elif metadata.diagnostics and fields != ("metadata_url",):
+            # A skipped source may contain missing evidence. Preserve conclusive
+            # passes, but do not treat an incomplete harvest as proof of absence.
+            partial[check_id] = metadata.diagnostics[0]
     try:
         metric, results = _run_metric(definition, runner, supplied, metadata, blocked)
         inconclusive = {
@@ -190,27 +162,46 @@ def _assess_metric(
 class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
-    definitions: tuple[ResourceRef, ...] = _fuji.REFERENCES
+    definitions: tuple[ResourceRef, ...] = (
+        *_fuji.REFERENCES,
+        ResourceRef(
+            id="fuji:creativeworks",
+            version="3.5.1",
+            kind="reference",
+            format="json",
+            digest="13a7713c5f401c08b0296eadb771d4d5925ce01093aa90d15eedc44c125cc2f0",
+        ),
+    )
 
     def assess(
         self, request: AssessmentInput | Mapping[str, object], profile: LoadedProfile
     ) -> AssessmentResult:
-        """Prepare supplied JSON-LD and run the supported F-UJI metrics."""
+        """Use pinned native readers and run the supported F-UJI metrics."""
         supplied = prepare_input(request)
         request = supplied.request
         input_digest = supplied.digest
-        metadata = FujiMetadata({}, {}, ())
+        metadata = FujiMetadata({})
         evidence = {}
-        if not supplied.invalid.keys() & {"metadata", "subject"}:
+        if not supplied.invalid.keys() & {"metadata", "subject", "metadata_format"}:
             try:
-                dataset = select_dataset(request, profile)
-                metadata = prepare_metadata(dataset)
-                evidence = _evidence(dataset, metadata.sources)
+                metadata = prepare_metadata(request, profile)
+                evidence = _evidence(supplied, metadata.sources)
             except InputError as exc:
                 supplied.invalid["metadata"] = Diagnostic(
                     code=exc.code,
                     message=str(exc),
                     location=exc.location or "/metadata",
+                )
+            except ProfileError:
+                raise
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "F-UJI metadata reader failed", exc_info=True
+                )
+                supplied.invalid["metadata"] = Diagnostic(
+                    code="metadata_reader_error",
+                    message="F-UJI could not interpret the supplied metadata.",
+                    location="/metadata",
                 )
         if request.metadata_url:
             evidence["metadata_url"] = (
@@ -233,19 +224,7 @@ class FujiAdapter:
             )
             metrics.append(metric)
             tests.extend(checks)
-        diagnostics = [
-            *supplied.invalid.values(),
-            *metadata.invalid.values(),
-            *dict.fromkeys(
-                note for notes in metadata.unreadable.values() for note in notes
-            ),
-            *(
-                Diagnostic(
-                    code="unmapped_term", message=f"No F-UJI field mapping for {term}."
-                )
-                for term in metadata.unmapped
-            ),
-        ]
+        diagnostics = [*supplied.invalid.values(), *metadata.diagnostics]
         return AssessmentResult(
             profile=profile.info,
             provenance=Provenance(
@@ -262,4 +241,5 @@ class FujiAdapter:
             metrics=tuple(metrics),
             tests=tuple(tests),
             diagnostics=tuple(diagnostics),
+            raw=runner.native_results,
         )

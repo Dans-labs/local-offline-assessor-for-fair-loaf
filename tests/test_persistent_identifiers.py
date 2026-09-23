@@ -57,10 +57,7 @@ def test_pid_syntax_keeps_registration_unassessed(
             assert check.reason_code == "missing_evidence"
             assert not check.evidence
     assert all(ref.location == "/metadata_url" for ref in checks["1"].evidence)
-    assert all(
-        "~1distribution/" in ref.location or "~1contentUrl/" in ref.location
-        for ref in checks["4"].evidence
-    )
+    assert all(ref.location == "/metadata" for ref in checks["4"].evidence)
     for suffix in ("2", "5"):
         assert checks[suffix].outcome == "indeterminate"
         assert checks[suffix].reason_code == "unsupported_check"

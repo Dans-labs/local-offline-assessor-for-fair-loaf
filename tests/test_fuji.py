@@ -7,7 +7,7 @@ from copy import deepcopy
 import pytest
 
 from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_metadata import prepare_metadata, select_dataset
+from fair_offline_assessor._fuji_readers import prepare_metadata
 from fair_offline_assessor.models import ProfileError
 
 
@@ -171,7 +171,7 @@ def test_licence_catalogue_keeps_native_lookup_without_changing_presence_score(
     assert result.native["output"][0]["details_url"] == details
 
 
-def test_access_booleans_and_evaluator_mutations_are_isolated(runner):
+def test_native_access_mapping_and_evaluator_mutations_are_isolated(runner):
     profile = load_profile("fusji-offline@3.5.1")
     inputs = [
         {"isAccessibleForFree": True},
@@ -188,7 +188,7 @@ def test_access_booleans_and_evaluator_mutations_are_isolated(runner):
                 **metadata,
             }
         )
-        prepared = prepare_metadata(select_dataset(request, profile))
+        prepared = prepare_metadata(request, profile)
         original_fields = deepcopy(prepared.fields)
         result = runner.evaluate("FsF-A1-01M", prepared.fields)
         assert prepared.fields == original_fields
@@ -198,12 +198,12 @@ def test_access_booleans_and_evaluator_mutations_are_isolated(runner):
         results = list(pool.map(evaluate, inputs))
     assert [result.native["output"]["access_level"] for result in results] == [
         "public",
-        "restricted",
+        None,
         None,
     ]
     assert [result.native["test_status"] for result in results] == [
         "pass",
-        "pass",
+        "fail",
         "fail",
     ]
     assert all(

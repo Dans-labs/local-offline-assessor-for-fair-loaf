@@ -365,3 +365,43 @@ def test_vocabulary_bundle_records_sources_and_merges_in_filename_order(tmp_path
     (resources / "vocabularies.json").write_text("{}")
     with pytest.raises(ValueError, match="Stale"):
         prepare(target, recipe, resources=resources, check=True)
+
+
+def test_creativework_bundle_uses_pinned_types_and_bioschemas(tmp_path):
+    prepare = runpy.run_path(str(SCRIPT))["prepare"]
+    repository, recipe, resources = source(tmp_path)
+    data = repository / "fuji_server/data"
+    creativeworks = data / "creativeworktypes.txt"
+    bioschemas = data / "bioschemastypes.txt"
+    creativeworks.write_text("Dataset\nCreativeWork\n")
+    bioschemas.write_text("BioChemEntity\nDataset\n")
+    source_digests = {
+        str(path.relative_to(repository)): sha256(path.read_bytes()).hexdigest()
+        for path in (creativeworks, bioschemas)
+    }
+    recipe["commit"] = commit(repository)
+    manifest = resources / "manifest.json"
+    declaration = json.loads(manifest.read_bytes())
+    declaration["source"]["commit"] = recipe["commit"]
+    declaration["files"] = [
+        {
+            "id": "fuji:creativeworks",
+            "path": "creativeworks.json",
+            "kind": "reference",
+            "format": "json",
+            "source": {
+                "path": "fuji_server/data",
+                "transform": "creativework-types",
+            },
+        }
+    ]
+    manifest.write_text(json.dumps(declaration))
+    creativeworks.write_text("UncommittedType\n")
+    target = tmp_path / "v3_5_1"
+    prepare(target, recipe, resources=resources)
+    bundle = json.loads((resources / "creativeworks.json").read_bytes())
+    assert bundle == {
+        "sources": source_digests,
+        "creativeworks": ["dataset", "creativework", "biochementity", "dataset"],
+    }
+    prepare(target, recipe, resources=resources, check=True)

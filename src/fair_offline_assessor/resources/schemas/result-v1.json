@@ -179,6 +179,7 @@
       "title": "EvidenceRef",
       "type": "object"
     },
+    "JsonValue": {},
     "MaturityLevel": {
       "additionalProperties": false,
       "properties": {
@@ -498,6 +499,10 @@
     },
     "provenance": {
       "$ref": "#/$defs/Provenance"
+    },
+    "raw": {
+      "$ref": "#/$defs/JsonValue",
+      "default": null
     },
     "schema_version": {
       "const": 1,

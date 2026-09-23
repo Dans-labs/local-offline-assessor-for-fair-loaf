@@ -7,6 +7,7 @@ import pytest
 
 import fair_offline_assessor as library
 from fair_offline_assessor import AssessmentInput, ProfileError, _fuji
+from fair_offline_assessor.models import EvidenceRef
 
 PROFILE = "fusji-offline@3.5.1"
 
@@ -18,14 +19,25 @@ def request_data():
             "@context": "https://schema.org",
             "@id": "urn:data",
             "@type": "Dataset",
+            "identifier": "urn:data",
             "name": "Example",
-            "creator": "Alice",
+            "creator": {"@type": "Person", "name": "Alice"},
             "publisher": "Archive",
             "datePublished": "2026-01-01",
             "description": "Soil measurements",
             "keywords": ["soil"],
         },
         metadata_url="https://example.org/metadata.jsonld",
+    )
+
+
+def assert_metadata_evidence(result, evidence):
+    assert evidence == (
+        EvidenceRef(
+            resource="assessment_input",
+            location="/metadata",
+            digest=result.provenance.input_digest,
+        ),
     )
 
 
@@ -38,6 +50,7 @@ def test_dcat_and_dublin_core_evidence_reaches_fuji_checks():
             },
             "@id": "urn:data",
             "@type": "dcat:Dataset",
+            "identifier": "urn:data",
             "title": "Example",
             "creator": "Alice",
             "publisher": "Archive",
@@ -62,7 +75,7 @@ def test_dcat_and_dublin_core_evidence_reaches_fuji_checks():
         "FsF-R1.1-01M-1",
     ):
         assert checks[identifier].outcome == "pass"
-    assert any("downloadURL" in ref.location for ref in checks["FsF-F3-01M-2"].evidence)
+        assert_metadata_evidence(result, checks[identifier].evidence)
     assert not result.diagnostics
 
 
@@ -87,52 +100,38 @@ def test_dcat_distribution_licence_reaches_fuji_with_its_source():
     check = next(c for c in result.tests if c.id == "FsF-R1.1-01M-1")
     assert check.outcome == "pass"
     assert check.score.observed_earned == 1
-    assert {ref.subject for ref in check.evidence} == {"urn:data", "urn:file"}
-    assert any("license" in ref.location for ref in check.evidence)
+    assert_metadata_evidence(result, check.evidence)
     assert not result.diagnostics
     assert request == original
 
 
 @pytest.mark.parametrize(
-    ("dataset", "term", "value", "outcome"),
+    ("dataset", "distribution", "outcome"),
     [
         (
             {},
-            "accessRights",
-            {"@id": "http://purl.org/coar/access_right/c_abf2"},
-            "pass",
+            {"accessRights": {"@id": "http://purl.org/coar/access_right/c_abf2"}},
+            "fail",
         ),
-        ({}, "rights", "Available on request.", "pass"),
-        ({"accessRights": "Restricted"}, "accessRights", "Public", "pass"),
-        ({"schema:isAccessibleForFree": False}, "accessRights", "Public", "fail"),
-        ({}, "accessRights", {"title": "Ask the archive"}, "indeterminate"),
+        ({}, {"rights": "Available on request."}, "fail"),
+        ({"accessRights": "Restricted"}, {"accessRights": "Public"}, "pass"),
+        ({"rights": "Available on request."}, {}, "pass"),
     ],
 )
-def test_dcat_access_fallback_keeps_dataset_priority_and_sources(
-    dataset, term, value, outcome
-):
+def test_dcat_access_uses_native_dataset_mapping(dataset, distribution, outcome):
     request = AssessmentInput(
         metadata={
             "@context": {
                 "@vocab": "http://purl.org/dc/terms/",
                 "dcat": "http://www.w3.org/ns/dcat#",
-                "schema": "https://schema.org/",
             },
             "@id": "urn:data",
             "@type": "dcat:Dataset",
             **dataset,
             "dcat:distribution": {
-                "@list": [
-                    {
-                        "@id": "urn:empty",
-                        "dcat:downloadURL": {"@id": "https://example.org/empty.csv"},
-                    },
-                    {
-                        "@id": "urn:file",
-                        "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
-                        term: value,
-                    },
-                ]
+                "@id": "urn:file",
+                "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
+                **distribution,
             },
         }
     )
@@ -140,23 +139,14 @@ def test_dcat_access_fallback_keeps_dataset_priority_and_sources(
     result = library.Assessor("FUJI").assess(metadata=request.metadata)
     check = next(c for c in result.tests if c.id == "FsF-A1-01M-1")
     assert check.outcome == outcome
-    if outcome == "indeterminate":
-        assert check.score is None
-        assert check.reason_code == "unsupported_structure"
-        assert any(
-            n.code == check.reason_code
-            and any(ref.location == n.location for ref in check.evidence)
-            for n in result.diagnostics
-        )
-    else:
-        assert check.score.observed_earned == (1 if outcome == "pass" else 0)
-        assert not result.diagnostics
+    assert check.score.observed_earned == (1 if outcome == "pass" else 0)
+    # Upstream reads distribution access as access_rights, which its merger
+    # drops. Dataset access_level remains available to the evaluator.
     if dataset:
-        assert {ref.subject for ref in check.evidence} == {"urn:data"}
+        assert_metadata_evidence(result, check.evidence)
     else:
-        assert any(
-            ref.subject == "urn:file" and term in ref.location for ref in check.evidence
-        )
+        assert not check.evidence
+    assert not result.diagnostics
     assert result.coverage.errors == 0
     assert request == original
 
@@ -166,7 +156,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     request_data, identified
 ):
     if not identified:
-        del request_data.metadata["@id"]
+        del request_data.metadata["identifier"]
     original = request_data.model_copy(deep=True)
     result = library.assess(request_data, profile=PROFILE)
     core = next(metric for metric in result.metrics if metric.id == "FsF-F2-01M")
@@ -249,8 +239,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
             )
             if check.reason_code == "unsupported_check":
                 assert check.message == (
-                    "This check requires HTTP or HTML evidence, "
-                    "which this release does not support."
+                    "This check requires evidence unavailable to the offline evaluator."
                 )
                 metric = next(m for m in result.metrics if m.id == check.metric)
                 assert metric.score is None or not metric.score.complete
@@ -269,6 +258,7 @@ def test_public_assessment_reports_core_results_and_full_coverage(
         "fuji:licenses",
         "fuji:access-rights",
         "fuji:protocols",
+        "fuji:creativeworks",
         "schemaorg:context",
     }
     assert (
@@ -299,19 +289,14 @@ def test_evidence_and_digests_are_reproducible(request_data):
         assert before.model_copy(update={"evidence": evidence}) == after
     assert first.provenance.input_digest != relocated.provenance.input_digest
     citation = next(check for check in first.tests if check.id == "FsF-F2-01M-2")
-    title = next(
-        ref
-        for ref in citation.evidence
-        if ref.location.endswith("/http:~1~1schema.org~1name/0")
-    )
-    assert title.resource == "prepared_metadata"
-    assert title.subject == "urn:data"
-    assert len(title.digest) == 64
+    assert_metadata_evidence(first, citation.evidence)
+    assert citation.evidence[0].subject is None
     request_data.metadata["name"] = "Changed"
     changed = library.assess(request_data, profile=PROFILE)
     assert first.provenance.input_digest != changed.provenance.input_digest
     changed_citation = next(check for check in changed.tests if check.id == citation.id)
-    assert title.digest != changed_citation.evidence[0].digest
+    assert citation.evidence[0].digest != changed_citation.evidence[0].digest
+    assert_metadata_evidence(changed, changed_citation.evidence)
 
 
 @pytest.mark.parametrize(
@@ -326,6 +311,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
         "file-formats",
         "metadata-standards",
         "vocabularies",
+        "creativeworks",
     ],
 )
 def test_configuration_is_checked_before_input(problem):
@@ -376,7 +362,8 @@ def test_configuration_is_checked_before_input(problem):
     ("metadata", "code"),
     [
         ({"@context": "https://missing.invalid/context"}, "unknown_context"),
-        ({"@context": "https://schema.org", "@type": "Person"}, "dataset_not_found"),
+        ({"@context": "https://schema.org"}, "metadata_not_found"),
+        ("{invalid JSON", "invalid_json"),
         (
             {
                 "@context": "https://schema.org",
@@ -395,6 +382,18 @@ def test_input_errors_do_not_become_failed_checks(metadata, code):
     assert check.reason_code == code
     assert check.score is None
     assert result.coverage.evaluated == result.coverage.errors == 0
+
+
+def test_native_reader_accepts_creative_works_beyond_datasets(request_data):
+    request_data.metadata["@type"] = "ScholarlyArticle"
+    result = library.assess(request_data, profile=PROFILE)
+    metric = next(metric for metric in result.metrics if metric.id == "FsF-F2-01M")
+
+    assert metric.outcome == "pass"
+    assert metric.score.observed_earned == 2
+    assert metric.score.complete
+    assert result.coverage.errors == 0
+    assert not result.diagnostics
 
 
 def test_evaluator_errors_are_findings_without_internal_details(
@@ -421,16 +420,13 @@ def test_evaluator_errors_are_findings_without_internal_details(
     assert "private implementation details" not in result.model_dump_json()
 
 
-def test_unused_metadata_and_removed_capture_input_are_reported(request_data):
+def test_unused_metadata_is_native_and_removed_capture_input_is_reported(request_data):
     request_data.metadata["urn:custom"] = "Extra"
     request = {**request_data.model_dump(), "captures": []}
     result = library.assess(
         request, profile=PROFILE, provider=library.BundledProfileProvider()
     )
-    assert {note.code for note in result.diagnostics} == {
-        "unmapped_term",
-        "invalid_captures",
-    }
+    assert {note.code for note in result.diagnostics} == {"invalid_captures"}
     assert any(note.location == "/captures" for note in result.diagnostics)
     assert next(c for c in result.tests if c.id == "FsF-F2-01M-2").outcome == "pass"
     assert result.status == "completed"
@@ -445,7 +441,8 @@ def test_unused_metadata_and_removed_capture_input_are_reported(request_data):
         ("license", {"url": "https://example.org/licence"}, "pass"),
         ("http://purl.org/dc/terms/license", "MIT License", "pass"),
         ("license", None, "fail"),
-        ("license", [{"@value": ""}, {"@value": "  "}, 0, False], "fail"),
+        ("license", {"@value": ""}, "fail"),
+        ("license", "  ", "fail"),
     ],
 )
 def test_licence_presence_uses_supplied_values_without_requiring_spdx(
@@ -463,11 +460,10 @@ def test_licence_presence_uses_supplied_values_without_requiring_spdx(
     assert metric.score.complete
     assert metric.level.value == (3 if outcome == "pass" else 0)
     assert check.evidence or outcome == "fail"
-    assert all(
-        "license" in ref.location or "url" in ref.location for ref in check.evidence
-    )
+    if check.evidence:
+        assert_metadata_evidence(result, check.evidence)
     core = next(item for item in result.tests if item.metric == "FsF-F2-01M")
-    assert all("license" not in ref.location for ref in core.evidence)
+    assert_metadata_evidence(result, core.evidence)
     assert not result.diagnostics
     assert request_data == original
     empty = library.assess(
@@ -496,9 +492,10 @@ def test_licence_presence_uses_supplied_values_without_requiring_spdx(
         ),
         ({"conditionsOfAccess": "MIT License"}, "fail", 0),
         ({"license": "https://creativecommons.org/licenses/by/4.0/"}, "fail", 0),
-        ({"conditionsOfAccess": [None, "  "]}, "fail", 0),
+        ({"conditionsOfAccess": None}, "fail", 0),
+        ({"conditionsOfAccess": "  "}, "fail", 0),
         ({"isAccessibleForFree": True}, "pass", 0),
-        ({"isAccessibleForFree": False}, "pass", 0),
+        ({"isAccessibleForFree": False}, "fail", 0),
     ],
 )
 def test_access_information_preserves_fuji_scoring(
@@ -517,33 +514,45 @@ def test_access_information_preserves_fuji_scoring(
     assert check.score == metric.score
     assert metric.level.value == (3 if earned else 0)
     assert check.evidence or not earned
-    assert all("license" not in ref.location for ref in check.evidence)
+    if check.evidence:
+        assert_metadata_evidence(result, check.evidence)
     assert not result.diagnostics
     assert request_data == original
 
 
 @pytest.mark.parametrize(
-    "value",
+    ("value", "metric_outcome", "has_evidence"),
     [
-        "false",
-        [True, False],
-        {"@value": "", "@type": "http://www.w3.org/2001/XMLSchema#boolean"},
+        ("false", "pass", True),
+        (True, "pass", True),
+        (False, "fail", False),
+        ("", "fail", False),
     ],
 )
-def test_access_free_rejects_invalid_or_conflicting_booleans(request_data, value):
+def test_access_free_preserves_native_literal_truthiness(
+    request_data, value, metric_outcome, has_evidence
+):
     request_data.metadata["isAccessibleForFree"] = value
     request_data.metadata["license"] = "MIT"
     result = library.assess(request_data, profile=PROFILE)
     check = next(check for check in result.tests if check.id == "FsF-A1-01M-1")
-    assert check.outcome == "indeterminate"
-    assert check.reason_code == "invalid_access_free"
-    assert check.score is None
-    assert "invalid_access_free" in {note.code for note in result.diagnostics}
+    metric = next(metric for metric in result.metrics if metric.id == check.metric)
+    assert metric.outcome == metric_outcome
+    # Native access_free can pass the metric without earning its presence check.
+    assert check.outcome == "fail"
+    assert check.score.observed_earned == 0
+    assert check.score.complete
+    assert bool(check.evidence) == has_evidence
+    if has_evidence:
+        assert_metadata_evidence(result, check.evidence)
+    assert not result.diagnostics
     assert next(c for c in result.tests if c.id == "FsF-R1.1-01M-1").outcome == "pass"
     assert result.coverage.errors == 0
 
 
-def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatch):
+def test_reference_files_are_parsed_once_per_reader_and_runner(
+    request_data, monkeypatch
+):
     parsed = []
 
     for module, name in ((_fuji.yaml, "safe_load"), (_fuji.json, "loads")):
@@ -558,9 +567,14 @@ def test_reference_files_are_parsed_once_per_assessment(request_data, monkeypatc
     second = library.assess(request_data, profile=PROFILE)
     assert first == second
     resources = library.load_profile(PROFILE).resources
-    assert all(
-        parsed.count(resources[reference.id]) == 2 for reference in _fuji.REFERENCES
-    )
+    assert {
+        reference.id: parsed.count(resources[reference.id])
+        for reference in _fuji.REFERENCES
+    } == {
+        reference.id: 4 if reference.id == "fuji:vocabularies" else 2
+        for reference in _fuji.REFERENCES
+    }
+    assert parsed.count(resources["fuji:creativeworks"]) == 2
 
 
 @pytest.mark.parametrize(
@@ -589,10 +603,8 @@ def test_data_links_use_distributions_without_counting_the_dataset_url(
     assert metric.score.complete
     assert metric.level.value == (3 if outcome == "pass" else 0)
     assert check.evidence or outcome == "fail"
-    assert all(
-        ref.subject != "urn:data" or "distribution" in ref.location
-        for ref in check.evidence
-    )
+    if check.evidence:
+        assert_metadata_evidence(result, check.evidence)
     assert not result.diagnostics
     assert request_data == original
 
@@ -688,8 +700,8 @@ def test_protocols_use_supplied_urls_and_catalogue_capabilities(
             ref = checks[0].evidence[0]
             assert (ref.resource, ref.location) == ("assessment_input", "/metadata_url")
             assert ref.digest == result.provenance.input_digest
-        assert all(ref.resource == "prepared_metadata" for ref in checks[1].evidence)
-        assert all("@id" not in ref.location for ref in checks[1].evidence)
+        if data_urls:
+            assert_metadata_evidence(result, checks[1].evidence)
     assert result.coverage.errors == 0
     assert request == original
 
@@ -745,13 +757,8 @@ def test_identifier_syntax_uses_supplied_targets_and_preserves_zero_weight(
         ref = checks[0].evidence[0]
         assert (ref.resource, ref.location) == ("assessment_input", "/metadata_url")
         assert ref.digest == result.provenance.input_digest
-    assert all(
-        any(term in ref.location for term in ("~1distribution/", "~1contentUrl/"))
-        for ref in checks[1].evidence
-    )
     if data_ids:
-        assert any("~1contentUrl/" in ref.location for ref in checks[1].evidence)
-    assert all(ref.resource == "prepared_metadata" for ref in checks[1].evidence)
+        assert_metadata_evidence(result, checks[1].evidence)
     assert result.coverage.errors == 0
 
 
@@ -763,7 +770,7 @@ def test_identifier_syntax_uses_supplied_targets_and_preserves_zero_weight(
         ("sameAs", {"@id": "https://doi.org/10.5072/example"}, ("pass", "pass"), 3),
         ("http://purl.org/dc/terms/source", "taxonomy:9606", ("pass", "pass"), 3),
         ("citation", "550e8400-e29b-41d4-a716-446655440000", ("pass", "fail"), 2),
-        ("citation", ["A study by Alice", "10.5072/example"], ("pass", "pass"), 3),
+        ("citation", "10.5072/example", ("pass", "pass"), 3),
         ("citation", None, ("fail", "fail"), 0),
         (
             "urn:unrecognised:relation",
@@ -791,10 +798,8 @@ def test_related_resources_keep_native_alternative_scoring(
         assert check.score.observed_earned == (2 if check.outcome == "pass" else 0)
         assert check.score.maximum == 2
         assert bool(check.evidence) == bool(maturity)
-        assert all(
-            term.replace("~", "~0").replace("/", "~1") in ref.location
-            for ref in check.evidence
-        )
+        if maturity:
+            assert_metadata_evidence(result, check.evidence)
     assert result.coverage.errors == 0
     assert request_data == original
 
@@ -802,39 +807,43 @@ def test_related_resources_keep_native_alternative_scoring(
 def test_related_resources_do_not_use_distribution_identifiers(request_data):
     request_data.metadata.update(
         citation="https://example.org/paper",
-        distribution={"contentUrl": {"@value": "https://["}},
+        distribution={"contentUrl": {"@value": "unrecognised"}},
     )
     result = library.assess(request_data, profile=PROFILE)
     related = [check for check in result.tests if check.metric == "FsF-I3-01M"]
     assert [check.outcome for check in related] == ["pass", "pass"]
+    data_identifier = next(
+        check for check in result.tests if check.id == "FsF-F1-01MD-2"
+    )
+    assert data_identifier.outcome == "fail"
 
 
 @pytest.mark.parametrize(
-    ("term", "value", "metric_id"),
+    ("metadata", "metric_id", "outcomes", "earned"),
     [
-        ("license", {"@id": "_:unknown"}, "FsF-R1.1-01M"),
-        ("distribution", {"name": "Data file"}, "FsF-F3-01M"),
-        ("distribution", {"@id": "_:missing"}, "FsF-F3-01M"),
-        ("distribution", {"contentUrl": [{"@value": "  "}, False, 0]}, "FsF-F3-01M"),
-        ("citation", [" ", False, 0, {"@id": "_:missing"}], "FsF-I3-01M"),
+        ({"license": {"@id": "_:unknown"}}, "FsF-R1.1-01M", ("pass",), 1),
+        ({"distribution": {"name": "Data file"}}, "FsF-F3-01M", ("fail",), 0),
+        ({"distribution": {"@id": "_:missing"}}, "FsF-F3-01M", ("fail",), 0),
+        ({"distribution": {"contentUrl": "  "}}, "FsF-F3-01M", ("fail",), 0),
+        ({"citation": {"@id": "_:missing"}}, "FsF-I3-01M", ("pass", "fail"), 2),
     ],
 )
-def test_unreadable_values_are_findings_instead_of_missing_metadata(
-    request_data, term, value, metric_id
+def test_native_rdf_values_reach_evaluators_without_custom_validation(
+    request_data, metadata, metric_id, outcomes, earned
 ):
-    request_data.metadata[term] = value
+    request_data.metadata.update(metadata)
     original = request_data.model_copy(deep=True)
     result = library.assess(request_data, profile=PROFILE)
     metric = next(m for m in result.metrics if m.id == metric_id)
     checks = [c for c in result.tests if c.metric == metric_id]
-    assert metric.outcome == "indeterminate"
-    assert metric.score is None
-    assert all(
-        c.reason_code == "unsupported_structure" and c.score is None for c in checks
-    )
-    assert {n.location for n in result.diagnostics} <= {
-        ref.location for c in checks for ref in c.evidence
-    }
-    assert result.diagnostics
+    assert tuple(check.outcome for check in checks) == outcomes
+    assert metric.outcome == outcomes[0]
+    assert metric.score.observed_earned == earned
+    assert metric.score.complete
+    assert all(check.reason_code == "fuji_result" for check in checks)
+    if earned:
+        for check in checks:
+            assert_metadata_evidence(result, check.evidence)
+    assert not result.diagnostics
     assert result.coverage.errors == 0
     assert request_data == original

@@ -1,11 +1,11 @@
 export const metadata = {
   title: 'Quickstart',
-  description: 'Assess JSON-LD dataset metadata offline with F-UJI.',
+  description: 'Run an offline assessment and read its results.',
 }
 
 # Quickstart
 
-Assess JSON-LD dataset metadata against F-UJI checks, without network access.
+This example checks a dataset description using F-UJI 3.5.1.
 
 ## Install
 
@@ -18,15 +18,12 @@ uv add git+ssh://git@github.com/akeldamas/fair-offline-assessor.git
 
 ## Assess metadata
 
-Pass your dataset's JSON-LD metadata to the assessor. URLs in the metadata are
-not fetched.
-
 Save this as `assess.py`:
 
 ```python
 from fair_offline_assessor import Assessor
 
-result = Assessor("FUJI").assess(
+result = Assessor("FUJI", version="3.5.1").assess(
     metadata={
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -45,10 +42,20 @@ Run it from your project:
 uv run python assess.py
 ```
 
+This description uses JSON-LD, a JSON format that gives field names agreed
+meanings. Here, `@context` says to use Schema.org's meanings for `Dataset`, `name`
+and `license`. The library includes that context, so it needs no network request.
+
 ## Read the result
 
-The result contains individual check outcomes, metric scores and diagnostics.
-Missing metadata can cause checks to fail. Checks requiring HTTP or HTML
-evidence are marked `indeterminate` and receive no score.
+- `tests`: what each check found and the points awarded.
+- `diagnostics`: problems with the supplied metadata.
+- `raw`: the assessor's original results, unchanged.
 
-See the [Python API](/reference) for arguments and [Results](/results) for the returned fields.
+This small example does not meet every requirement. Missing information can
+cause a check to fail or leave it `indeterminate`, depending on the check.
+`indeterminate` means the library cannot decide; it receives no score.
+
+The version selects F-UJI's mappings, checks and scoring rules together. Omit
+`version` to use the default. See [F-UJI](/assessors/fuji) for its requirements
+and other formats, and [Results](/results) for a guide to the response.

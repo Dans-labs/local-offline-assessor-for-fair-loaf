@@ -13,9 +13,7 @@ from fair_offline_assessor._fuji import Runner
     ],
 )
 def test_community_standards_use_declared_namespaces(term, outcomes, maturity):
-    request = AssessmentInput(
-        metadata={"@id": "urn:data", term: "Sample"}, subject="urn:data"
-    )
+    request = AssessmentInput(metadata={"@id": "urn:data", term: "Sample"})
     original = request.model_copy(deep=True)
     result = assess(request, profile="fusji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1.3-01M")
@@ -31,7 +29,7 @@ def test_community_standards_use_declared_namespaces(term, outcomes, maturity):
     assert request == original
 
 
-def test_community_namespaces_stay_with_the_selected_graph():
+def test_community_namespaces_follow_native_union_of_supplied_graphs():
     metadata = {
         "@context": {"dwc": "http://rs.tdwg.org/dwc/terms/"},
         "@graph": [
@@ -48,25 +46,18 @@ def test_community_namespaces_stay_with_the_selected_graph():
         ],
     }
     first = assess(
-        AssessmentInput(metadata=metadata, subject="urn:data"),
+        AssessmentInput(metadata=metadata),
         profile="fusji-offline@3.5.1",
     )
-    assert all(
-        check.outcome == "fail"
-        for check in first.tests
-        if check.metric == "FsF-R1.3-01M"
-    )
+    assert next(c for c in first.tests if c.id == "FsF-R1.3-01M-1").outcome == "pass"
     metadata["@graph"][0]["urn:related"] = {"@list": [{"@id": "urn:other"}]}
     second = assess(
-        AssessmentInput(metadata=metadata, subject="urn:data"),
+        AssessmentInput(metadata=metadata),
         profile="fusji-offline@3.5.1",
     )
     check = next(item for item in second.tests if item.id == "FsF-R1.3-01M-1")
     assert check.outcome == "pass"
-    assert any(
-        ref.subject == "urn:other" and "/@type/" in ref.location
-        for ref in check.evidence
-    )
+    assert all(ref.location == "/metadata" for ref in check.evidence)
     assert second.coverage.errors == 0
 
 

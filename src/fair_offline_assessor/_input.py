@@ -20,6 +20,7 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
     """Validate each evidence field, retaining invalid input in the digest."""
     defaults: dict[str, object] = {
         "metadata": {},
+        "metadata_format": None,
         "subject": None,
         "metadata_url": None,
         "local_contexts": {},
@@ -38,8 +39,6 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
     values = dict(original)
     metadata = values["metadata"]
     try:
-        if isinstance(metadata, str):
-            metadata = json.loads(metadata)
         json.dumps(metadata, allow_nan=False, ensure_ascii=False).encode()
     except (ValueError, TypeError):
         invalid["metadata"] = Diagnostic(
@@ -48,16 +47,16 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
             location="/metadata",
         )
     else:
-        if not isinstance(metadata, dict) and not (
+        if not isinstance(metadata, (dict, str)) and not (
             isinstance(metadata, list) and all(isinstance(n, dict) for n in metadata)
         ):
             invalid["metadata"] = Diagnostic(
                 code="unsupported_input",
-                message="Supply a JSON-LD object or array of objects.",
+                message="Supply a metadata object, array of objects, or document text.",
                 location="/metadata",
             )
     values["metadata"] = {} if "metadata" in invalid else metadata
-    for name in ("subject", "metadata_url", "local_contexts"):
+    for name in ("metadata_format", "subject", "metadata_url", "local_contexts"):
         try:
             json.dumps(
                 to_jsonable_python(values[name]), allow_nan=False, ensure_ascii=False

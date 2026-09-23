@@ -9,7 +9,7 @@ from fair_offline_assessor._fuji import Runner
     [
         ("http://www.w3.org/ns/prov#wasDerivedFrom", "Sample", "pass"),
         ("https://schema.org/name", "Sample", "fail"),
-        ("urn:subject", "http://purl.obolibrary.org/obo/ENVO_00000446", "fail"),
+        ("urn:subject", "http://purl.obolibrary.org/obo/ENVO_00000446", "pass"),
         (
             "urn:subject",
             {"@list": [{"@id": "http://purl.obolibrary.org/obo/ENVO_00000446"}]},
@@ -20,9 +20,7 @@ from fair_offline_assessor._fuji import Runner
 def test_semantic_vocabularies_use_registered_nondefault_namespaces(
     term, value, outcome
 ):
-    request = AssessmentInput(
-        metadata={"@id": "urn:data", term: value}, subject="urn:data"
-    )
+    request = AssessmentInput(metadata={"@id": "urn:data", term: value})
     original = request.model_copy(deep=True)
     result = assess(request, profile="fusji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-I2-01M")
@@ -34,8 +32,7 @@ def test_semantic_vocabularies_use_registered_nondefault_namespaces(
     assert metric.score.complete
     assert metric.level.value == (3 if outcome == "pass" else 0)
     assert check.evidence
-    if isinstance(value, dict):
-        assert any(ref.location.endswith("/@list/0") for ref in check.evidence)
+    assert all(ref.location == "/metadata" for ref in check.evidence)
     assert result.coverage.errors == 0
     assert request == original
 

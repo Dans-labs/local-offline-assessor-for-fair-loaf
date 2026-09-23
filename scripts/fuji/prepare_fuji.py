@@ -14,25 +14,26 @@ from tempfile import TemporaryDirectory
 from pydantic import BaseModel, ConfigDict, Field
 
 _CONSTANTS = {
-    "helper.metadata_mapper": (
-        "Mapper",
-        (
-            "MATURITY_LEVELS",
-            "PROVENANCE_MAPPING",
-            "REFERENCE_METADATA_LIST",
-            "REQUIRED_CORE_METADATA",
-        ),
-    ),
-    "helper.metadata_collector": ("MetadataOfferingMethods", ()),
+    "helper.request_helper": ("AcceptTypes", ()),
 }
 _METHODS = {
+    "controllers.fair_check": ("FAIRCheck", ("clean_metadata",), ("json",)),
     "harvester.metadata_harvester": (
         "MetadataHarvester",
-        ("lookup_metadatastandard_by_uri", "get_metadata_standard_info"),
-        ("rapidfuzz", "tldextract"),
+        (
+            "merge_metadata",
+            "exclude_null",
+            "clean_html_language_tag",
+            "retrieve_metadata_embedded_extruct",
+            "lookup_metadatastandard_by_uri",
+            "get_metadata_standard_by_uris",
+            "get_metadata_standard_info",
+        ),
+        ("copy", "enum", "re", "extruct", "rapidfuzz", "tldextract"),
     ),
 }
 _EXTERNAL_IMPORTS = {
+    "json",
     "datetime",
     "enum",
     "pprint",
@@ -50,9 +51,285 @@ _EXTERNAL_IMPORTS = {
     "rapidfuzz",
     "tldextract",
     "logging",
+    "copy",
+    "warnings",
+    "bs4",
+    "extruct",
+    "jmespath",
+    "lxml.etree",
+    "rdflib",
+    "rdflib.namespace",
+    "urlextract",
 }
 # Version-scoped edits keep service and network behaviour out of copied helpers.
 _REPLACEMENTS = {
+    ("3.5.1", "helper.metadata_mapper"): (),
+    ("3.5.1", "helper.request_helper"): (
+        ("class AcceptTypes(Enum):", "class AcceptTypes(enum.Enum):", 1),
+    ),
+    ("3.5.1", "helper.metadata_collector"): (
+        ("from fuji_server.helper import metadata_mapper\n", "", 1),
+        ("from fuji_server.helper.preprocessor import Preprocessor\n", "", 1),
+        ("mapping: metadata_mapper.Mapper = None,", "mapping: Mapper = None,", 1),
+        (
+            "        logger: logging.Logger | None = None,\n",
+            (
+                "        logger: logging.Logger | None = None,\n"
+                "        *,\n"
+                "        linked_vocab_index=None,\n"
+            ),
+            1,
+        ),
+        (
+            "        self.source_metadata = sourcemetadata\n",
+            (
+                "        self.linked_vocab_index = (\n"
+                "            {} if linked_vocab_index is None else linked_vocab_index\n"
+                "        )\n"
+                "        self.source_metadata = sourcemetadata\n"
+            ),
+            1,
+        ),
+        ("Preprocessor.linked_vocab_index", "self.linked_vocab_index", 1),
+    ),
+    ("3.5.1", "helper.metadata_collector_rdf"): (
+        ("import json\n", "", 1),
+        ("import urllib\n", "", 1),
+        ("import dateutil\n", "import dateutil.parser\n", 1),
+        ("import requests\n", "", 1),
+        ("from fuji_server.helper.preprocessor import Preprocessor\n", "", 1),
+        (
+            (
+                "from fuji_server.helper.request_helper import "
+                "AcceptTypes, RequestHelper\n"
+            ),
+            "from fuji_server.helper.request_helper import AcceptTypes\n",
+            1,
+        ),
+        ("    SCHEMA_ORG_CONTEXT = Preprocessor.get_schema_org_context()\n", "", 1),
+        (
+            (
+                "    SCHEMA_ORG_CREATIVEWORKS = "
+                "Preprocessor.get_schema_org_creativeworks()\n"
+            ),
+            "",
+            1,
+        ),
+        (
+            (
+                "    def __init__(self, loggerinst, target_url=None, "
+                "source=None, json_ld_content=None, "
+                "pref_mime_type=None):\n"
+            ),
+            (
+                "    def __init__(self, loggerinst, target_url=None, "
+                "source=None, json_ld_content=None, "
+                "pref_mime_type=None,\n"
+                "                 *, request_helper, "
+                "schema_org_creativeworks, schema_org_context=(), "
+                "linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            "        super().__init__(logger=loggerinst)\n",
+            (
+                "        super().__init__(logger=loggerinst, "
+                "linked_vocab_index=linked_vocab_index)\n"
+                "        self.request_helper = request_helper\n"
+                "        self.schema_org_creativeworks = "
+                "schema_org_creativeworks\n"
+                "        self.schema_org_context = schema_org_context\n"
+            ),
+            1,
+        ),
+        ("self.SCHEMA_ORG_CREATIVEWORKS", "self.schema_org_creativeworks", 1),
+        (
+            "Preprocessor.get_schema_org_creativeworks()",
+            "self.schema_org_creativeworks",
+            1,
+        ),
+        ("requests.get(disturl,", "self.request_helper.get(disturl,", 1),
+    ),
+    ("3.5.1", "helper.metadata_collector_datacite"): (
+        (
+            (
+                "from fuji_server.helper.request_helper import "
+                "AcceptTypes, RequestHelper\n"
+            ),
+            "from fuji_server.helper.request_helper import AcceptTypes\n",
+            1,
+        ),
+        (
+            "    def __init__(self, mapping, pid_url=None, loggerinst=None):\n",
+            (
+                "    def __init__(self, mapping, pid_url=None, loggerinst=None,\n"
+                "                 *, request_helper, linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            "        super().__init__(logger=loggerinst, mapping=mapping)\n",
+            (
+                "        super().__init__(logger=loggerinst, "
+                "mapping=mapping, "
+                "linked_vocab_index=linked_vocab_index)\n"
+                "        self.request_helper = request_helper\n"
+            ),
+            1,
+        ),
+        (
+            "RequestHelper(self.pid_url, self.logger)",
+            "self.request_helper(self.pid_url, self.logger)",
+            1,
+        ),
+    ),
+    ("3.5.1", "helper.metadata_collector_xml"): (
+        ("import lxml\n", "import lxml.etree\n", 1),
+        (
+            (
+                "from fuji_server.helper.request_helper import "
+                "AcceptTypes, RequestHelper\n"
+            ),
+            "from fuji_server.helper.request_helper import AcceptTypes\n",
+            1,
+        ),
+        (
+            (
+                "    def __init__(self, loggerinst, target_url=None, "
+                'link_type="linked", pref_mime_type=None):\n'
+            ),
+            (
+                "    def __init__(self, loggerinst, target_url=None, "
+                'link_type="linked", pref_mime_type=None,\n'
+                "                 *, request_helper, "
+                "linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            "        super().__init__(logger=loggerinst)\n",
+            (
+                "        super().__init__(logger=loggerinst, "
+                "linked_vocab_index=linked_vocab_index)\n"
+                "        self.request_helper = request_helper\n"
+            ),
+            1,
+        ),
+        (
+            "RequestHelper(self.target_url, self.logger)",
+            "self.request_helper(self.target_url, self.logger)",
+            1,
+        ),
+        (
+            "lxml.etree.XMLParser(strip_cdata=False, recover=True)",
+            (
+                "lxml.etree.XMLParser(strip_cdata=False, recover=True, "
+                "no_network=True, resolve_entities=False, "
+                "load_dtd=False)"
+            ),
+            1,
+        ),
+    ),
+    ("3.5.1", "helper.metadata_collector_dublincore"): (
+        (
+            "    def __init__(self, sourcemetadata, mapping, loggerinst):\n",
+            (
+                "    def __init__(self, sourcemetadata, mapping, "
+                "loggerinst, *, linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            (
+                "super().__init__(logger=loggerinst, mapping=mapping, "
+                "sourcemetadata=sourcemetadata)"
+            ),
+            (
+                "super().__init__(logger=loggerinst, mapping=mapping, "
+                "sourcemetadata=sourcemetadata, "
+                "linked_vocab_index=linked_vocab_index)"
+            ),
+            1,
+        ),
+    ),
+    ("3.5.1", "helper.metadata_collector_highwire_eprints"): (
+        (
+            "    def __init__(self, sourcemetadata, loggerinst):\n",
+            (
+                "    def __init__(self, sourcemetadata, loggerinst, *, "
+                "linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            "super().__init__(logger=loggerinst, sourcemetadata=sourcemetadata)",
+            (
+                "super().__init__(logger=loggerinst, "
+                "sourcemetadata=sourcemetadata, "
+                "linked_vocab_index=linked_vocab_index)"
+            ),
+            1,
+        ),
+    ),
+    ("3.5.1", "helper.metadata_collector_microdata"): (
+        ("from fuji_server.helper.preprocessor import Preprocessor\n", "", 1),
+        (
+            (
+                "    SCHEMA_ORG_CREATIVEWORKS = "
+                "Preprocessor.get_schema_org_creativeworks()\n"
+            ),
+            "",
+            1,
+        ),
+        (
+            "    def __init__(self, sourcemetadata, mapping, loggerinst):\n",
+            (
+                "    def __init__(self, sourcemetadata, mapping, "
+                "loggerinst,\n"
+                "                 *, schema_org_creativeworks, "
+                "linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            (
+                "        super().__init__(logger=loggerinst, "
+                "mapping=mapping, sourcemetadata=sourcemetadata)\n"
+            ),
+            (
+                "        super().__init__(logger=loggerinst, "
+                "mapping=mapping, sourcemetadata=sourcemetadata, "
+                "linked_vocab_index=linked_vocab_index)\n"
+                "        self.schema_org_creativeworks = "
+                "schema_org_creativeworks\n"
+            ),
+            1,
+        ),
+        ("self.SCHEMA_ORG_CREATIVEWORKS", "self.schema_org_creativeworks", 1),
+    ),
+    ("3.5.1", "helper.metadata_collector_opengraph"): (
+        (
+            "    def __init__(self, sourcemetadata, mapping, loggerinst):\n",
+            (
+                "    def __init__(self, sourcemetadata, mapping, "
+                "loggerinst, *, linked_vocab_index=None):\n"
+            ),
+            1,
+        ),
+        (
+            (
+                "super().__init__(logger=loggerinst, mapping=mapping, "
+                "sourcemetadata=sourcemetadata)"
+            ),
+            (
+                "super().__init__(logger=loggerinst, mapping=mapping, "
+                "sourcemetadata=sourcemetadata, "
+                "linked_vocab_index=linked_vocab_index)"
+            ),
+            1,
+        ),
+    ),
     ("3.5.1", "evaluators.fair_evaluator_persistent_identifier_metadata_data"): (
         (
             "from fuji_server import Persistence, PersistenceOutput\n",
@@ -120,11 +397,61 @@ _REPLACEMENTS = {
     ),
     ("3.5.1", "harvester.metadata_harvester"): (
         (
+            "            except Exception as e:\n                extracted = {}\n",
+            (
+                "            except Exception as e:\n                extracted = {}\n"
+                "                self.extraction_failed = True\n"
+            ),
+            1,
+        ),
+        (
             "from tldextract import extract\n",
             (
                 "from tldextract import TLDExtract\n\n"
                 "extract = TLDExtract(suffix_list_urls=(), cache_dir=None)\n"
             ),
+            1,
+        ),
+        (
+            (
+                '                if metadict.get("object_identifier"):\n'
+                "                    if not "
+                'isinstance(metadict.get("object_identifier"), list):\n'
+                '                        metadict["object_identifier"] '
+                '= [metadict.get("object_identifier")]\n'
+                "                    for object_identifier in "
+                'metadict.get("object_identifier"):\n'
+                "                        resolves_to_landing_domain = "
+                "False\n"
+                "                        pid_helper = "
+                "IdentifierHelper(object_identifier, self.logger)\n"
+                "                        if (\n"
+                "                            pid_helper.identifier_url "
+                "not in self.pid_collector\n"
+                "                            and "
+                "pid_helper.is_persistent\n"
+                "                            and "
+                "pid_helper.preferred_schema in self.valid_pid_types\n"
+                "                        ):\n"
+                "                            pid_record = "
+                "pid_helper.get_identifier_info(self.pid_collector)\n"
+                "                            "
+                "self.pid_collector[pid_helper.identifier_url] = "
+                "pid_record\n"
+                "                            resolves_to_landing_domain "
+                "= self.check_if_pid_resolves_to_landing_page(\n"
+                "                                "
+                "pid_helper.identifier_url\n"
+                "                            )\n"
+                "                            # verified means: it "
+                "resolves and if a PID isd given in the metadata it "
+                "shall resolves to an URL which is part of the landing "
+                "domain\n"
+                "                            "
+                'self.pid_collector[pid_helper.identifier_url]["verified'
+                '"] = resolves_to_landing_domain\n'
+            ),
+            "",
             1,
         ),
     ),
@@ -176,6 +503,9 @@ _REPLACEMENTS = {
     ),
 }
 _REMOVED_METHODS = {
+    ("3.5.1", "helper.metadata_collector_rdf"): (
+        "MetaDataCollectorRdf.parse_metadata",
+    ),
     ("3.5.1", "helper.linked_vocab_helper"): (
         "LinkedVocabHelper.set_linked_vocab_dict",
     ),
@@ -267,9 +597,27 @@ def resource_files(root: Path, recipe: Recipe) -> dict[str, dict[str, str]]:
 def reference_content(
     repository: Path, recipe: Recipe, source: dict[str, str]
 ) -> bytes:
-    """Copy a reference or bundle the pinned semantic vocabulary registries."""
+    """Copy a reference or bundle reviewed pinned metadata catalogues."""
     if not source.get("transform"):
         return read_source(repository, recipe.commit, source["path"])
+    if source["transform"] == "creativework-types" and recipe.version == "3.5.1":
+        files = {
+            source["path"] + "/" + name: read_source(
+                repository, recipe.commit, source["path"] + "/" + name
+            )
+            for name in ("creativeworktypes.txt", "bioschemastypes.txt")
+        }
+        bundle = {
+            "sources": {
+                path: sha256(content).hexdigest() for path, content in files.items()
+            },
+            "creativeworks": [
+                line.lower()
+                for content in files.values()
+                for line in content.decode().splitlines()
+            ],
+        }
+        return (json.dumps(bundle, indent=2) + "\n").encode()
     if source["transform"] != "semantic-vocabularies" or recipe.version != "3.5.1":
         raise ValueError(f"Unreviewed resource transformation: {source['transform']}")
     root = source["path"]
@@ -346,7 +694,7 @@ def constants(source: str, module: str) -> str:
 
 
 def methods(source: str, module: str) -> str:
-    """Extract reviewed lookup methods without loading the harvester."""
+    """Extract reviewed methods without loading the online harvester."""
     name, members, imports = _METHODS[module]
     tree = ast.parse(source)
     selected = [
@@ -362,7 +710,11 @@ def methods(source: str, module: str) -> str:
     prefix += "\n".join(
         ast.get_source_segment(source, node) or ""
         for node in tree.body
-        if isinstance(node, ast.ImportFrom) and node.module in imports
+        if (isinstance(node, ast.ImportFrom) and node.module in imports)
+        or (
+            isinstance(node, ast.Import)
+            and all(name.name in imports for name in node.names)
+        )
     )
     return (
         prefix
@@ -380,8 +732,16 @@ def dependencies(source: str) -> set[str]:
     for node in ast.walk(ast.parse(source)):
         names: list[str] = []
         if isinstance(node, ast.ImportFrom):
-            if node.level or not node.module or any(n.name == "*" for n in node.names):
-                raise ValueError("Unreviewed relative or wildcard import")
+            if (
+                node.level
+                or not node.module
+                or any(n.name == "*" for n in node.names)
+                or (
+                    node.module == "fuji_server.helper.request_helper"
+                    and any(name.name != "AcceptTypes" for name in node.names)
+                )
+            ):
+                raise ValueError("Unreviewed relative, wildcard or transport import")
             names = (
                 [f"fuji_server.{name.name}" for name in node.names]
                 if node.module == "fuji_server"

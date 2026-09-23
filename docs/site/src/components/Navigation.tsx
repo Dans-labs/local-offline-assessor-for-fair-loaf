@@ -254,7 +254,7 @@ export const navigation: Array<NavGroup> = [
     title: 'Assessors',
     links: [
       { title: 'F-UJI', href: '/assessors/fuji' },
-      { title: 'F-UJI diagnostics', href: '/assessors/fuji/diagnostics' },
+      { title: 'F-UJI troubleshooting', href: '/assessors/fuji/diagnostics' },
     ],
   },
 ]

@@ -42,13 +42,15 @@ class Assessor:
         self,
         *,
         metadata: JsonValue,
+        metadata_format: str | None = None,
         subject: str | None = None,
         metadata_url: str | None = None,
         local_contexts: dict[str, JsonObject] | None = None,
     ) -> AssessmentResult:
-        """Assess supplied JSON-LD and optional evidence without fetching URLs."""
+        """Assess supplied metadata using this assessor's readers, without fetching."""
         request = {
             "metadata": metadata,
+            "metadata_format": metadata_format,
             "subject": subject,
             "metadata_url": metadata_url,
             "local_contexts": local_contexts if local_contexts is not None else {},

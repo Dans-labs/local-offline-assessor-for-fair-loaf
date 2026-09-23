@@ -1,43 +1,52 @@
 export const metadata = {
   title: 'Results',
-  description:
-    'Check outcomes, scores, coverage and diagnostics in AssessmentResult.',
+  description: 'Understand check results, scores and messages.',
 }
 
 # Results
 
-`assess()` returns an `AssessmentResult`. This is the library's shared result
-format. Assessor-specific check identifiers and scoring are retained inside it.
+`assess()` returns an `AssessmentResult`. The library uses a common response
+format so applications can read the same fields regardless of assessor. Check IDs
+and scoring rules belong to the selected assessor.
+
+A **check** answers one question, such as whether licence information is present.
+A **metric** groups checks about one aspect of FAIR. The `tests` field holds
+individual checks; `metrics` holds their group results.
 
 ## Read the result
 
 <Row>
 <Col>
 
-| Field            | Meaning                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------- |
-| `tests`          | Individual checks, each with an outcome, reason, message and any evidence references. |
-| `metrics`        | Metric results grouping checks. A check's `metric` matches a metric's `id`.           |
-| `coverage`       | Counts of evaluated, indeterminate, error and not-applicable checks.                    |
-| `diagnostics`    | Input and interpretation findings with a code, message and optional location.         |
-| `status`         | `completed`, or `completed_with_errors` when an evaluator could not finish.           |
-| `profile`        | The selected configuration's identity, version and digest.                            |
-| `provenance`     | Library and JSON-LD processor versions, input digest and bundled resource versions.   |
-| `schema_version` | Version of the shared result format; currently `1`.                                   |
+| Field            | Meaning                                                                          |
+| ---------------- | -------------------------------------------------------------------------------- |
+| `tests`          | Each check's result, points, explanation and the information used.               |
+| `metrics`        | Results for groups of checks. A check's `metric` matches the group's `id`.       |
+| `coverage`       | Counts of decided checks, undecided checks, errors and checks that do not apply. |
+| `diagnostics`    | Messages about problems with the supplied metadata.                              |
+| `status`         | Whether the assessment finished normally or encountered an error.                |
+| `raw`            | The assessor's original results, unchanged.                                      |
+| `profile`        | The chosen assessment configuration and its version.                             |
+| `provenance`     | The software and data versions used, and a checksum identifying the input.       |
+| `schema_version` | Version of the library's response format; currently `1`.                         |
 
-`completed` describes execution. It does not mean all checks passed or the input
-had no diagnostics. Always inspect the findings and coverage.
+`status="completed"` means the assessment finished. Check `tests` and `diagnostics`
+to see whether anything failed or could not be assessed.
+`completed_with_errors` means a check could not finish because of an error.
+
+A checksum is a value calculated from contents to detect changes. The recorded
+versions and checksums help identify exactly what was assessed and with which rules.
 
 </Col>
 <Col>
-<CodeGroup title="Inspect an assessment">
+<CodeGroup title="Inspect results and messages">
 
 ```python
 for check in result.tests:
-    print(check.id, check.outcome, check.reason_code)
+    print(check.id, check.outcome, check.message)
 
 for diagnostic in result.diagnostics:
-    print(diagnostic.code, diagnostic.location)
+    print(diagnostic.code, diagnostic.message)
 ```
 
 </CodeGroup>
@@ -57,38 +66,47 @@ for diagnostic in result.diagnostics:
 ```
 
 </CodeGroup>
+
+This check validates `metadata_url`. The quickstart does not supply that argument.
+
 </Col>
 </Row>
 
 ## Outcomes
 
-| Outcome          | Meaning                                                     |
-| ---------------- | ----------------------------------------------------------- |
-| `pass`           | The check's requirements were met.                          |
-| `partial`        | Some requirements were met.                                 |
-| `fail`           | The check ran and its requirements were not met.            |
-| `indeterminate`  | Required evidence was unavailable, unusable or unsupported. |
-| `not_applicable` | The check does not apply.                                   |
-| `error`          | The evaluator could not complete the check.                 |
+| Outcome          | Meaning                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `pass`           | The check's requirements were met.                        |
+| `partial`        | Some requirements were met.                               |
+| `fail`           | The check ran and its requirements were not met.          |
+| `indeterminate`  | The library cannot decide from the information available. |
+| `not_applicable` | The check does not apply.                                 |
+| `error`          | An error prevented the check from finishing.              |
 
-`coverage.evaluated` counts `pass`, `partial` and `fail`. An indeterminate check
-has no score; it is not counted as a zero-point failure.
+`coverage.evaluated` counts `pass`, `partial` and `fail`. An `indeterminate` check
+receives no score and is not counted as a zero-point failure. Read its `reason_code`
+and `message` for the reason, such as missing information or a check that cannot
+run offline.
 
 ## Scores
 
 <Row>
 <Col>
 
-A score records `observed_earned` points, the `maximum` and whether it is
-`complete`. `percent` is calculated only for a complete score with a nonzero
-maximum; otherwise it is `null`.
+A score contains:
 
-A metric may have an incomplete score when some of its checks were indeterminate.
-Do not present that score as a complete FAIR percentage.
+- `observed_earned`: points awarded by the checks that could run.
+- `maximum`: the maximum points for the check or metric.
+- `complete`: whether enough information was available to determine the full score.
+- `percent`: the percentage, calculated only when the score is complete and
+  `maximum` is greater than zero. Otherwise it is `null`.
 
-The bundled F-UJI assessor returns check and metric scores. It currently leaves
-`overall_score` as `null` and `principle_scores` empty. Where available, `level`
-records the assessor's maturity scheme and value.
+Use the returned metric scores. Assessors can combine their checks in different
+ways, so adding up individual check points may give the wrong total.
+
+An incomplete score describes only the checks that could be decided. Display
+it with that limitation instead of presenting it as a complete FAIR percentage.
+Where supplied, `level` records an additional rating defined by the assessor.
 
 </Col>
 <Col>
@@ -113,10 +131,18 @@ records the assessor's maturity scheme and value.
 </Col>
 </Row>
 
-## Evidence
+## Information used by a check
 
-Check evidence references identify the resource, its digest and a JSON Pointer
-location. F-UJI uses `assessment_input` for supplied input and `prepared_metadata`
-for the expanded, flattened graph used in assessment. A prepared-graph location
-is not a path into the original JSON-LD. The prepared graph itself is not included
-in the result.
+The `evidence` field points to the supplied information used by a check. Each
+entry includes its name, checksum and location. For example, `/metadata` refers
+to the metadata document you supplied.
+
+## Original results
+
+`result.raw` contains the assessor's original output from this run. The library
+keeps its field names and values unchanged. Its contents depend on the assessor;
+see [F-UJI's original results](/assessors/fuji#original-results).
+
+Use `tests` and `coverage` when deciding what the offline assessment established.
+A failure in `raw` can appear as `indeterminate` in `tests` when the information
+needed to decide was unavailable offline.

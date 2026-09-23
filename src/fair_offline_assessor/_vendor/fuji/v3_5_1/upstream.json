@@ -19,32 +19,49 @@
     "fair_evaluator_unique_identifier_metadata"
   ],
   "helpers": [
-    "harvester.metadata_harvester"
+    "controllers.fair_check",
+    "harvester.metadata_harvester",
+    "helper.metadata_collector_rdf",
+    "helper.metadata_collector_xml",
+    "helper.metadata_collector_datacite",
+    "helper.metadata_collector_dublincore",
+    "helper.metadata_collector_highwire_eprints",
+    "helper.metadata_collector_microdata",
+    "helper.metadata_collector_opengraph"
   ],
   "license": "MIT",
   "constants": {
-    "helper.metadata_mapper": [
-      "Mapper",
-      [
-        "MATURITY_LEVELS",
-        "PROVENANCE_MAPPING",
-        "REFERENCE_METADATA_LIST",
-        "REQUIRED_CORE_METADATA"
-      ]
-    ],
-    "helper.metadata_collector": [
-      "MetadataOfferingMethods",
+    "helper.request_helper": [
+      "AcceptTypes",
       []
     ]
   },
   "methods": {
+    "controllers.fair_check": [
+      "FAIRCheck",
+      [
+        "clean_metadata"
+      ],
+      [
+        "json"
+      ]
+    ],
     "harvester.metadata_harvester": [
       "MetadataHarvester",
       [
+        "merge_metadata",
+        "exclude_null",
+        "clean_html_language_tag",
+        "retrieve_metadata_embedded_extruct",
         "lookup_metadatastandard_by_uri",
+        "get_metadata_standard_by_uris",
         "get_metadata_standard_info"
       ],
       [
+        "copy",
+        "enum",
+        "re",
+        "extruct",
         "rapidfuzz",
         "tldextract"
       ]
@@ -54,6 +71,10 @@
     {
       "path": "LICENSE",
       "sha256": "48c5dc0f1fe16e18f43930ebf797d556320a929a0c8ae4c6d8dac72e7b3b5a73"
+    },
+    {
+      "path": "fuji_server/controllers/fair_check.py",
+      "sha256": "da5f50607f483ddf796eaef5e1bf99ded70565f58f12b900cb15c3353d5179bf"
     },
     {
       "path": "fuji_server/evaluators/fair_evaluator.py",
@@ -132,8 +153,40 @@
       "sha256": "11a53029fdbb295898ef6d697e0c2f2c97d7b849324cdf7b441442c3f98d4c35"
     },
     {
+      "path": "fuji_server/helper/metadata_collector_datacite.py",
+      "sha256": "16d2756760d96e86ac97086354b56a4c5bbdf6091146fa7089e5b7771197d532"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_dublincore.py",
+      "sha256": "b14f22b567f1c9987e2579601dc0a7ed84289246ffa7b2839e90406d6221dd1a"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_highwire_eprints.py",
+      "sha256": "30a78bad191f61eeb6b4c161d4e7f7e4cc18e4e6703720bd74ce0bb1e2e26529"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_microdata.py",
+      "sha256": "adede9c7129714369572077e398d67d9ec5aa69e89edad2e4d31a761586df128"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_opengraph.py",
+      "sha256": "9a5eaf511bbeda7a0b366f3c3f10274f7e9f3db9648b95f98e625d131c74bb19"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_rdf.py",
+      "sha256": "02119307c3e2a20bd6daeddd508cb0d2e126cf0d262673cf49e66d9c63be0e8a"
+    },
+    {
+      "path": "fuji_server/helper/metadata_collector_xml.py",
+      "sha256": "e9ab84b01ce65f7bd6da17be3b7f6235c9549cbd81a9c89dbfe30e0b47bea3a0"
+    },
+    {
       "path": "fuji_server/helper/metadata_mapper.py",
       "sha256": "4eef3e4aabce658097aaae3e76d8538a4f109f453cb3a2ee316b889f5e5d3156"
+    },
+    {
+      "path": "fuji_server/helper/request_helper.py",
+      "sha256": "0cfe15752179e511ab48d43729a4d97fefdaf0b4742fb7df0603d36a63ea431d"
     },
     {
       "path": "fuji_server/models/base_model_.py",

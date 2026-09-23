@@ -25,6 +25,11 @@ def test_file_formats_use_declarations_without_guessing(formats, outcome):
             },
         }
     )
+    if isinstance(formats, list):
+        request.metadata["distribution"] = [
+            {"contentUrl": f"https://example.org/data/{i}", "encodingFormat": fmt}
+            for i, fmt in enumerate(formats)
+        ]
     original = request.model_copy(deep=True)
     result = assess(request, profile="fusji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1.3-02D")
@@ -40,7 +45,7 @@ def test_file_formats_use_declarations_without_guessing(formats, outcome):
     else:
         assert check.score == metric.score
         assert metric.level.value == (3 if outcome == "pass" else 0)
-        assert any("encodingFormat" in ref.location for ref in check.evidence)
+        assert all(ref.location == "/metadata" for ref in check.evidence)
         assert all("contentSize" not in ref.location for ref in check.evidence)
     assert result.coverage.errors == 0
     assert request == original

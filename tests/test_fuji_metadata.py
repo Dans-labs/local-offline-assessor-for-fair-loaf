@@ -1,109 +1,21 @@
-from copy import deepcopy
-
 import pytest
 
 from fair_offline_assessor import AssessmentInput, _fuji, load_profile
-from fair_offline_assessor._fuji_metadata import prepare_metadata, select_dataset
+from fair_offline_assessor._fuji_readers import prepare_metadata
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def profile():
     return load_profile("fusji-offline@3.5.1")
 
 
-def at_pointer(value, pointer):
-    for part in pointer.split("/")[1:]:
-        key = part.replace("~1", "/").replace("~0", "~")
-        value = value[int(key)] if isinstance(value, list) else value[key]
-    return value
-
-
-def test_provenance_fields_keep_local_names_and_dates(profile):
-    expected = {
-        "contributor": ["Alice"],
-        "right_holder": ["Archive"],
-        "created_date": ["2020-01-01"],
-        "modified_date": ["2021-01-01"],
-        "accepted_date": ["2022-01-01"],
-        "submitted_date": ["2023-01-01"],
-    }
-    request = AssessmentInput(
-        metadata={
-            "@context": "https://schema.org",
-            "@type": "Dataset",
-            "contributor": {"name": "Alice"},
-            "copyrightHolder": {"name": "Archive"},
-            **{
-                "http://purl.org/dc/terms/" + term: expected[field][0]
-                for term, field in (
-                    ("created", "created_date"),
-                    ("modified", "modified_date"),
-                    ("dateAccepted", "accepted_date"),
-                    ("dateSubmitted", "submitted_date"),
-                )
-            },
-        }
-    )
-    prepared = prepare_metadata(select_dataset(request, profile))
-    assert prepared.fields == {
-        "object_type": ["Dataset"],
-        "namespaces": ["http://purl.org/dc/terms/", "http://schema.org/"],
-        "linked_uris": ["http://schema.org/Dataset"],
-        **expected,
-    }
-    assert not prepared.unmapped
-
-
-def test_provenance_namespaces_follow_local_nodes_without_crossing_graphs(profile):
-    request = AssessmentInput(
-        metadata={
-            "@context": {
-                "@vocab": "http://schema.org/",
-                "prov": "http://www.w3.org/ns/prov#",
-                "pav": "http://purl.org/pav/",
-                "activity": "prov:Activity",
-            },
-            "@graph": [
-                {
-                    "@id": "urn:data",
-                    "@type": "Dataset",
-                    "subjectOf": {"@list": [{"@id": "urn:run"}]},
-                    "isPartOf": {"@id": "urn:other-graph"},
-                    "description": {"@value": "text", "@type": "pav:Literal"},
-                },
-                {
-                    "@id": "urn:run",
-                    "@type": "activity",
-                    "prov:used": {"@id": "urn:data"},
-                },
-                {"@id": "urn:unrelated", "pav:createdBy": "Bob"},
-                {
-                    "@id": "urn:other-graph",
-                    "@graph": [{"@id": "urn:run", "pav:createdBy": "Bob"}],
-                },
-            ],
-        }
-    )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["provenance_namespaces"] == ["http://www.w3.org/ns/prov#"]
-    values = [
-        at_pointer(selected.graph, path)
-        for path in prepared.sources["provenance_namespaces"]
-    ]
-    assert len(values) == 2
-    assert "http://www.w3.org/ns/prov#Activity" in values
-    assert [{"@id": "urn:data"}] in values
-    assert selected == original
-
-
-def test_maps_core_fields_into_the_existing_fuji_evaluator(profile):
+def test_native_core_mapping_reaches_the_existing_fuji_evaluator(profile):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
             "@id": "urn:data",
             "@type": "Dataset",
+            "identifier": "urn:published-id",
             "name": "Example",
             "description": "Soil measurements",
             "keywords": ["soil"],
@@ -113,28 +25,56 @@ def test_maps_core_fields_into_the_existing_fuji_evaluator(profile):
             "value": "Not an identifier",
         }
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields == {
-        "object_identifier": ["urn:data"],
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
+    expected = {
+        "object_identifier": ["urn:published-id"],
         "object_type": ["Dataset"],
-        "title": ["Example"],
-        "summary": ["Soil measurements"],
+        "title": "Example",
+        "summary": "Soil measurements",
         "keywords": ["soil"],
         "creator": ["Alice"],
         "publisher": ["Archive"],
-        "publication_date": ["2026-01-01"],
-        "namespaces": ["http://schema.org/"],
-        "linked_uris": ["http://schema.org/Dataset", "http://schema.org/Person"],
+        "publication_date": "2026-01-01",
     }
+    for field, value in expected.items():
+        assert prepared.fields[field] == value
+    assert all(paths == ("/metadata",) for paths in prepared.sources.values())
     result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
     assert result.metric.score.observed_earned == 2
     assert [check.outcome for check in result.tests] == ["pass", "pass"]
-    assert selected == original
+    assert request == original
 
 
-def test_mixed_vocabularies_aliases_and_local_references_keep_their_sources(profile):
+@pytest.mark.parametrize(
+    ("field", "terms", "expected"),
+    [
+        ("title", ("title", "title", "name"), "DC value"),
+        ("summary", ("description", "description", "description"), "DC value"),
+        ("publication_date", ("date", "issued", "datePublished"), "DC value"),
+        ("publisher", ("publisher", "publisher", "publisher"), ["DC value"]),
+    ],
+)
+def test_native_core_term_priority_does_not_merge_competing_values(
+    profile, field, terms, expected
+):
+    dc, dct, schema = terms
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            f"http://purl.org/dc/elements/1.1/{dc}": "DC value",
+            f"http://purl.org/dc/terms/{dct}": "DC Terms value",
+            schema: "Schema value",
+        }
+    )
+
+    assert prepare_metadata(request, profile).fields[field] == expected
+
+
+def test_native_aliases_and_local_references_are_document_evidence(profile):
     request = AssessmentInput(
         metadata={
             "@context": {
@@ -149,169 +89,151 @@ def test_mixed_vocabularies_aliases_and_local_references_keep_their_sources(prof
                     "author": {"@id": "urn:author"},
                     "identifier": {"@id": "_:identifier"},
                     "http://www.w3.org/ns/dcat#keyword": "soil",
-                    "urn:unrelated/title": "Ignore",
                 },
                 {"@id": "urn:author", "name": "Alice"},
                 {"@id": "_:identifier", "value": "10.1234/example"},
-                {"@id": "urn:other", "description": "Not the selected dataset"},
+                {"@id": "urn:other", "description": "Unrelated record"},
             ],
         }
     )
-    selected = select_dataset(request, profile)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["title"] == ["Bodem"]
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields["title"] == "Bodem"
     assert prepared.fields["creator"] == ["Alice"]
-    assert prepared.fields["object_identifier"] == ["urn:data", "10.1234/example"]
+    assert prepared.fields["object_identifier"] == ["10.1234/example"]
     assert prepared.fields["keywords"] == ["soil"]
     assert "summary" not in prepared.fields
-    assert prepared.unmapped == ("urn:unrelated/title",)
-    sources = [
-        at_pointer(selected.graph, pointer)
-        for pointer in prepared.sources["title"] + prepared.sources["creator"]
-    ]
-    assert {"@value": "Bodem", "@language": "nl"} in sources
-    assert {"@id": "urn:author"} in sources
-    assert {"@value": "Alice"} in sources
+    assert prepared.sources["title"] == prepared.sources["creator"] == ("/metadata",)
+    assert request == original
 
 
-@pytest.mark.parametrize("empty", [None, "  ", [], {"name": ""}])
-def test_empty_values_and_blank_identifiers_do_not_earn_points(profile, empty):
+def test_native_provenance_namespaces_cover_the_supplied_rdf_union(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": {
+                "@vocab": "http://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "pav": "http://purl.org/pav/",
+            },
+            "@graph": [
+                {
+                    "@id": "urn:data",
+                    "@type": "Dataset",
+                    "name": "Example",
+                    "contributor": "Alice",
+                    "dateCreated": "2020-01-01",
+                    "subjectOf": {"@id": "urn:run"},
+                },
+                {
+                    "@id": "urn:run",
+                    "@type": "prov:Activity",
+                    "prov:used": {"@id": "urn:data"},
+                },
+                {
+                    "@id": "urn:other-graph",
+                    "@graph": [{"@id": "urn:unrelated", "pav:createdBy": "Bob"}],
+                },
+            ],
+        }
+    )
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields["contributor"] == ["Alice"]
+    assert prepared.fields["publication_date"] == "2020-01-01"
+    assert "http://www.w3.org/ns/prov#" in prepared.fields["provenance_namespaces"]
+    assert "http://purl.org/pav/" in prepared.fields["provenance_namespaces"]
+    assert prepared.sources["provenance_namespaces"] == ("/metadata",)
+    assert request == original
+
+
+@pytest.mark.parametrize("empty", [None, "  ", []])
+def test_empty_native_core_values_do_not_earn_points(profile, empty):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
             "@type": "Dataset",
+            "identifier": "urn:data",
+            "datePublished": "2026-01-01",
             "name": empty,
             "creator": empty,
             "publisher": empty,
         }
     )
-    prepared = prepare_metadata(select_dataset(request, profile))
-    assert prepared.fields == {
-        "object_type": ["Dataset"],
-        "namespaces": ["http://schema.org/"],
-        "linked_uris": ["http://schema.org/Dataset"],
-    }
-    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", prepared.fields)
+
+    fields = prepare_metadata(request, profile).fields
+
+    assert not {"title", "creator", "publisher"} & fields.keys()
+    result = _fuji.Runner(profile.resources).evaluate("FsF-F2-01M", fields)
     assert result.metric.score.observed_earned == 0
 
 
-def test_literal_values_keep_zero_false_and_multiple_languages(profile):
+def test_native_rdf_literals_use_lexical_strings(profile):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
             "@type": "Dataset",
-            "name": [
-                {"@value": "Soil", "@language": "en"},
-                {"@value": "Bodem", "@language": "nl"},
+            "name": {"@value": "Bodem", "@language": "nl"},
+            "keywords": [
+                False,
+                0,
+                {
+                    "@value": "2026",
+                    "@type": "http://www.w3.org/2001/XMLSchema#gYear",
+                },
             ],
-            "keywords": {
-                "@list": [
-                    False,
-                    0,
-                    {
-                        "@value": "2026",
-                        "@type": "http://www.w3.org/2001/XMLSchema#gYear",
-                    },
-                ]
-            },
         }
     )
-    selected = select_dataset(request, profile)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["title"] == ["Soil", "Bodem"]
-    assert prepared.fields["keywords"] == [False, 0, "2026"]
-    assert type(prepared.fields["keywords"][0]) is bool
-    assert type(prepared.fields["keywords"][1]) is int
-    assert len(prepared.sources["keywords"]) == 3
-    assert at_pointer(selected.graph, prepared.sources["keywords"][-1]) == {
-        "@value": "2026",
-        "@type": "http://www.w3.org/2001/XMLSchema#gYear",
-    }
+
+    fields = prepare_metadata(request, profile).fields
+
+    assert fields["title"] == "Bodem"
+    assert set(fields["keywords"]) == {"false", "0", "2026"}
 
 
 @pytest.mark.parametrize(
     ("lexical", "expected"),
-    [("true", True), ("1", True), ("false", False), ("0", False)],
+    [("true", "true"), ("1", "true"), ("false", None), ("0", None)],
 )
-def test_typed_booleans_preserve_original_evidence(profile, lexical, expected):
-    literal = {"@value": lexical, "@type": "http://www.w3.org/2001/XMLSchema#boolean"}
+def test_native_boolean_reader_keeps_its_truthiness_filter(profile, lexical, expected):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
             "@type": "Dataset",
-            "isAccessibleForFree": literal,
+            "isAccessibleForFree": {
+                "@value": lexical,
+                "@type": "http://www.w3.org/2001/XMLSchema#boolean",
+            },
         }
     )
     original = request.model_copy(deep=True)
-    selected = select_dataset(request, profile)
-    graph = deepcopy(selected.graph)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["access_free"] is expected
-    assert not prepared.invalid
-    assert [
-        at_pointer(selected.graph, path) for path in prepared.sources["access_free"]
-    ] == [literal]
-    assert selected.graph == graph
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields.get("access_free") == expected
     assert request == original
 
 
-def test_unreadable_list_and_linked_literals_keep_paths_and_original_graph(profile):
+def test_native_schema_creator_lookup_requires_a_local_name(profile):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
             "@type": "Dataset",
-            "name": {"@list": ["Title", {"name": "Nested title"}]},
-            "creator": {"name": {"@value": {"label": "Alice"}, "@type": "@json"}},
-            "distribution": {
-                "contentUrl": "https://example.org/data",
-                "encodingFormat": 42,
-            },
+            "creator": "Alice",
         }
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["title"] == ["Title"]
-    assert "creator" not in prepared.fields
-    assert set(prepared.unreadable) == {
-        "title",
-        "creator",
-        "file_formats",
-        "distribution_details",
-    }
-    for field, notes in prepared.unreadable.items():
-        assert len(notes) == 1
-        assert notes[0].location in prepared.sources[field]
-        assert isinstance(at_pointer(selected.graph, notes[0].location), dict)
-    assert selected == original
 
-
-@pytest.mark.parametrize("dataset_license", [None, "MIT"])
-def test_distribution_licence_findings_respect_dataset_priority(
-    profile, dataset_license
-):
-    request = AssessmentInput(
-        metadata={
-            "@context": {
-                "@vocab": "http://purl.org/dc/terms/",
-                "dcat": "http://www.w3.org/ns/dcat#",
-            },
-            "@type": "dcat:Dataset",
-            "license": dataset_license,
-            "dcat:distribution": {
-                "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
-                "license": {"title": "Reuse terms"},
-            },
-        }
+    assert "creator" not in prepare_metadata(request, profile).fields
+    named = request.model_copy(
+        update={"metadata": {**request.metadata, "creator": {"name": "Alice"}}}
     )
-    prepared = prepare_metadata(select_dataset(request, profile))
-    assert bool(prepared.unreadable.get("license")) == (dataset_license is None)
-    assert prepared.fields.get("license") == (
-        [dataset_license] if dataset_license else None
-    )
+    assert prepare_metadata(named, profile).fields["creator"] == ["Alice"]
 
 
-def test_links_are_not_fetched_or_followed_outside_the_selected_graph(profile):
+def test_native_creator_names_can_come_from_another_supplied_named_graph(profile):
     request = AssessmentInput(
         metadata={
             "@context": "https://schema.org",
@@ -320,136 +242,97 @@ def test_links_are_not_fetched_or_followed_outside_the_selected_graph(profile):
                     "@id": "urn:data",
                     "@type": "Dataset",
                     "creator": {"@id": "https://example.org/person"},
-                    "publisher": {"@id": "_:cycle"},
                 },
-                {"@id": "_:cycle", "name": {"@id": "_:cycle"}},
                 {
                     "@id": "urn:other-graph",
-                    "@graph": [
-                        {"@id": "https://example.org/person", "name": "Must not use"}
-                    ],
+                    "@graph": [{"@id": "https://example.org/person", "name": "Alice"}],
                 },
             ],
         }
     )
-    prepared = prepare_metadata(select_dataset(request, profile))
-    assert prepared.fields["creator"] == ["https://example.org/person"]
-    assert "publisher" not in prepared.fields
+
+    assert prepare_metadata(request, profile).fields["creator"] == ["Alice"]
 
 
-def test_distribution_links_keep_local_sources_and_multiple_downloads(profile):
+def test_native_schema_distributions_follow_local_links_and_url_priority(profile):
     request = AssessmentInput(
         metadata={
             "@context": {
                 "@vocab": "https://schema.org/",
                 "files": "https://schema.org/distribution",
                 "download": {"@id": "https://schema.org/contentUrl", "@type": "@id"},
-            },
-            "@graph": [
-                {
-                    "@id": "urn:data",
-                    "@type": "Dataset",
-                    "files": [{"@id": "urn:file"}, {"@id": "_:foreign"}],
-                },
-                {
-                    "@id": "urn:file",
-                    "download": [
-                        "https://example.org/a.csv",
-                        "https://example.org/b.csv",
-                    ],
-                },
-                {"@id": "urn:unrelated", "download": "https://example.org/unrelated"},
-                {
-                    "@id": "urn:other-graph",
-                    "@graph": [
-                        {"@id": "_:foreign", "download": "https://example.org/foreign"}
-                    ],
-                },
-            ],
-        }
-    )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["object_content_identifier"] == [
-        {"url": "https://example.org/a.csv"},
-        {"url": "https://example.org/b.csv"},
-    ]
-    values = [
-        at_pointer(selected.graph, path)
-        for path in prepared.sources["object_content_identifier"]
-    ]
-    assert {"@id": "urn:file"} in values
-    assert {"@id": "https://example.org/a.csv"} in values
-    assert {"@id": "https://example.org/b.csv"} in values
-    assert not prepared.unmapped
-    assert selected == original
-
-
-def test_distribution_descriptors_stay_with_their_files_and_sources(profile):
-    request = AssessmentInput(
-        metadata={
-            "@context": {
-                "@vocab": "https://schema.org/",
                 "bytes": "https://schema.org/contentSize",
             },
             "@graph": [
                 {
                     "@id": "urn:data",
                     "@type": "Dataset",
-                    "distribution": {"@list": [{"@id": "urn:a"}, {"@id": "urn:b"}]},
+                    "files": [{"@id": "urn:a"}, {"@id": "urn:b"}],
                 },
                 {
                     "@id": "urn:a",
-                    "contentUrl": [
-                        "https://example.org/a",
-                        "https://example.org/mirror",
-                    ],
+                    "download": "https://example.org/a",
+                    "url": "https://example.org/ignored-mirror",
                     "bytes": "100",
-                    "encodingFormat": ["text/csv", "application/csv"],
+                    "encodingFormat": "text/csv",
                 },
                 {"@id": "urn:b", "url": "https://example.org/b", "fileSize": "200"},
-                {"@id": "urn:unrelated", "encodingFormat": "text/csv"},
+                {"@id": "urn:unrelated", "download": "https://example.org/ignored"},
                 {
                     "@id": "urn:other-graph",
-                    "@graph": [{"@id": "urn:b", "encodingFormat": "text/csv"}],
+                    "@graph": [{"@id": "urn:b", "encodingFormat": "application/json"}],
                 },
             ],
         }
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    assert prepared.fields["object_content_identifier"] == [
-        {
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
+    assert {
+        item["url"]: item for item in prepared.fields["object_content_identifier"]
+    } == {
+        "https://example.org/a": {
             "url": "https://example.org/a",
-            "type": ["text/csv", "application/csv"],
+            "type": "text/csv",
             "size": "100",
         },
-        {
-            "url": "https://example.org/mirror",
-            "type": ["text/csv", "application/csv"],
-            "size": "100",
+        "https://example.org/b": {
+            "url": "https://example.org/b",
+            "type": "application/json",
+            "size": "200",
         },
-        {"url": "https://example.org/b", "size": "200"},
-    ]
-    details = [
-        at_pointer(selected.graph, path)
-        for path in prepared.sources["distribution_details"]
-    ]
-    assert {"@value": "100"} in details
-    assert {"@value": "200"} in details
-    assert {"@value": "text/csv"} in details
-    assert {"@value": "application/csv"} in details
-    assert all(
-        "encodingFormat" not in path and "contentSize" not in path
-        for path in prepared.sources["object_content_identifier"]
+    }
+    assert prepared.sources["file_formats"] == ("/metadata",)
+    assert request == original
+
+
+def test_native_schema_haspart_media_objects_are_distributions(profile):
+    request = AssessmentInput(
+        metadata={
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            "name": "Example",
+            "description": "More descriptive properties than the file",
+            "hasPart": {
+                "@type": "MediaObject",
+                "contentUrl": "https://example.org/data.csv",
+                "encodingFormat": "text/csv",
+            },
+        }
     )
-    assert selected == original
+
+    fields = prepare_metadata(request, profile).fields
+
+    assert fields["object_content_identifier"] == [
+        {"url": "https://example.org/data.csv", "type": "text/csv", "size": None}
+    ]
 
 
 @pytest.mark.parametrize("format_term", ["dcat:mediaType", "dc:format", "dct:format"])
-def test_dcat_distributions_keep_formats_sizes_and_sources(profile, format_term):
+def test_native_dcat_distributions_use_access_url_and_string_descriptors(
+    profile, format_term
+):
     request = AssessmentInput(
         subject="urn:data",
         metadata={
@@ -460,70 +343,83 @@ def test_dcat_distributions_keep_formats_sizes_and_sources(profile, format_term)
             },
             "@id": "urn:data",
             "@type": "dcat:Dataset",
-            "dcat:distribution": [
-                {
-                    "@id": "urn:a",
-                    "dcat:downloadURL": {"@id": "https://example.org/a"},
-                    format_term: {
-                        "@id": "https://www.iana.org/assignments/media-types/text/csv"
-                    },
-                    "dcat:byteSize": 12,
+            "dcat:distribution": {
+                "dcat:downloadURL": {"@id": "https://example.org/download"},
+                "dcat:accessURL": {"@id": "https://example.org/access"},
+                format_term: {
+                    "@id": "https://www.iana.org/assignments/media-types/text/csv"
                 },
-                {
-                    "@id": "urn:b",
-                    "dcat:accessURL": {"@id": "https://example.org/b"},
-                    format_term: {
-                        "@id": "https://example.org/formats/application/json"
-                    },
-                    "dcat:byteSize": 24,
-                },
-            ],
+                "dcat:byteSize": 12,
+            },
         },
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
     assert prepared.fields["object_content_identifier"] == [
-        {"url": "https://example.org/a", "type": "text/csv", "size": 12},
         {
-            "url": "https://example.org/b",
-            "type": "https://example.org/formats/application/json",
-            "size": 24,
-        },
+            "url": "https://example.org/access",
+            "type": "text/csv",
+            "size": "12",
+            "service": None,
+        }
     ]
-    sources = [
-        at_pointer(selected.graph, path) for path in prepared.sources["file_formats"]
-    ]
-    assert {"@id": "https://www.iana.org/assignments/media-types/text/csv"} in sources
-    assert {"@id": "https://example.org/a"} in sources
-    assert not prepared.unmapped
-    assert selected == original
+    assert (
+        prepared.fields["file_formats"] == prepared.fields["object_content_identifier"]
+    )
+    assert prepared.sources["file_formats"] == ("/metadata",)
+    assert request == original
 
 
-def test_dcat_distribution_ids_do_not_become_download_links(profile):
+def test_native_dcat_unavailable_distribution_retains_uri_and_diagnostic(profile):
     request = AssessmentInput(
-        subject="urn:data",
         metadata={
             "@context": {"@vocab": "http://www.w3.org/ns/dcat#"},
             "@id": "urn:data",
             "@type": "Dataset",
-            "distribution": {"@id": "https://example.org/distribution"},
-            "@graph": [
-                {
-                    "@id": "https://example.org/distribution",
-                    "downloadURL": {"@id": "https://example.org/foreign"},
-                }
-            ],
-        },
+            "distribution": {"@id": "https://example.invalid/distribution"},
+        }
     )
-    prepared = prepare_metadata(select_dataset(request, profile))
-    assert "object_content_identifier" not in prepared.fields
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields["object_content_identifier"] == [
+        {
+            "url": "https://example.invalid/distribution",
+            "type": None,
+            "size": None,
+            "service": None,
+        }
+    ]
+    assert len(prepared.diagnostics) == 1
+    assert prepared.diagnostics[0].code == "offline_reference"
+    assert prepared.diagnostics[0].location == "/metadata"
+
+
+def test_native_datacite_content_url_is_cleaned_to_a_distribution_list(profile):
+    request = AssessmentInput(
+        metadata={
+            "agency": "DataCite",
+            "id": "10.1234/example",
+            "titles": [{"title": "Downloadable dataset"}],
+            "contentUrl": "https://example.org/data.csv",
+        },
+        metadata_format="datacite-json",
+    )
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields["object_content_identifier"] == [
+        {"url": "https://example.org/data.csv"}
+    ]
+    assert prepared.sources["object_content_identifier"] == ("/metadata",)
+    assert request == original
 
 
 @pytest.mark.parametrize("dataset_license", [None, "MIT License"])
-def test_dcat_licence_fallback_keeps_dataset_priority_and_sources(
-    profile, dataset_license
-):
+def test_native_dcat_distribution_licence_is_a_fallback(profile, dataset_license):
     request = AssessmentInput(
         metadata={
             "@context": {
@@ -534,31 +430,19 @@ def test_dcat_licence_fallback_keeps_dataset_priority_and_sources(
             "@type": "dcat:Dataset",
             "license": dataset_license,
             "dcat:distribution": {
-                "@list": [
-                    {
-                        "@id": f"urn:file-{i}",
-                        "dcat:downloadURL": {"@id": f"https://example.org/{i}.csv"},
-                        "license": license_value,
-                    }
-                    for i, license_value in enumerate([None, "CC-BY-4.0", "CC0-1.0"])
-                ]
+                "dcat:downloadURL": {"@id": "https://example.org/data.csv"},
+                "license": "CC-BY-4.0",
             },
         }
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
-    expected = dataset_license or "CC-BY-4.0"
-    assert prepared.fields["license"] == [expected]
-    assert [
-        at_pointer(selected.graph, path) for path in prepared.sources["license"]
-    ] == ([{"@id": "urn:file-1"}] if dataset_license is None else []) + [
-        {"@value": expected}
-    ]
-    assert selected == original
+
+    prepared = prepare_metadata(request, profile)
+
+    assert prepared.fields["license"] == [dataset_license or "CC-BY-4.0"]
+    assert prepared.sources["license"] == ("/metadata",)
 
 
-def test_related_resources_keep_relation_types_and_local_graph_sources(profile):
+def test_native_related_resources_keep_reference_terms_without_dereferencing(profile):
     request = AssessmentInput(
         metadata={
             "@context": {
@@ -569,49 +453,28 @@ def test_related_resources_keep_relation_types_and_local_graph_sources(profile):
                 {
                     "@id": "urn:data",
                     "@type": "Dataset",
-                    "basedOn": {
-                        "@list": [
-                            {"@id": "_:source"},
-                            {"@id": "_:foreign"},
-                            {"@id": "https://example.org/derived"},
-                        ]
-                    },
+                    "basedOn": {"@id": "urn:source"},
                     "citation": {"@id": "https://example.org/paper"},
                     "sameAs": {"@id": "https://example.org/copy"},
                 },
-                {"@id": "_:source", "name": {"@value": "Bodem", "@language": "nl"}},
-                {"@id": "https://example.org/paper", "name": "Keep the paper ID"},
+                {"@id": "urn:source", "name": {"@value": "Bodem", "@language": "nl"}},
+                {"@id": "https://example.org/paper", "name": "Paper title"},
                 {"@id": "urn:unrelated", "citation": "https://example.org/ignored"},
-                {
-                    "@id": "urn:other-graph",
-                    "@graph": [
-                        {"@id": "_:foreign", "url": "https://example.org/foreign"}
-                    ],
-                },
             ],
         }
     )
-    selected = select_dataset(request, profile)
-    original = deepcopy(selected)
-    prepared = prepare_metadata(selected)
+    original = request.model_copy(deep=True)
+
+    prepared = prepare_metadata(request, profile)
+
     assert {
         (entry["relation_type"], entry["related_resource"])
         for entry in prepared.fields["related_resources"]
     } == {
-        ("https://schema.org/isBasedOn", "Bodem"),
-        ("https://schema.org/isBasedOn", "https://example.org/derived"),
+        ("https://schema.org/isBasedOn", "urn:source"),
         ("https://schema.org/citation", "https://example.org/paper"),
         ("https://schema.org/sameAs", "https://example.org/copy"),
     }
-    assert prepared.fields["object_identifier"] == [
-        "urn:data",
-        "https://example.org/copy",
-    ]
-    values = [
-        at_pointer(selected.graph, pointer)
-        for pointer in prepared.sources["related_resources"]
-    ]
-    assert {"@value": "Bodem", "@language": "nl"} in values
-    assert {"@id": "https://example.org/paper"} in values
-    assert not prepared.unmapped
-    assert selected == original
+    assert prepared.fields["object_identifier"] == ["https://example.org/copy"]
+    assert prepared.sources["related_resources"] == ("/metadata",)
+    assert request == original

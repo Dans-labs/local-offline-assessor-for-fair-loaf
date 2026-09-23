@@ -24,16 +24,24 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "beautifulsoup4~=4.12",
+    "extruct~=0.17.0",
     "hashid~=3.1.4",
     "idutils~=1.2",
+    "jmespath~=1.0",
     "levenshtein>=0.27,<0.28",
+    "lxml>=5.3,<7",
     "packaging>=25",
     "pydantic>=2.12,<3",
     "PyLD>=3.3,<4",
+    "pyRdfa3~=3.5",
+    "python-dateutil~=2.9",
     "PyYAML>=6",
     "rapidfuzz>=3,<4",
+    "rdflib~=7.0",
     "six>=1.17",
     "tldextract==5.3.2",  # Pin the suffix list used for namespace matching.
+    "urlextract==1.9.0",  # Pin the bundled TLD list used by native readers.
 ]
 
 [dependency-groups]

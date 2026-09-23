@@ -1,36 +1,39 @@
 export const metadata = {
-  title: 'F-UJI diagnostics',
-  description: 'Interpret F-UJI input findings and indeterminate checks.',
+  title: 'F-UJI troubleshooting',
+  description: 'Understand F-UJI messages and checks that cannot be completed.',
 }
 
-# F-UJI diagnostics
+# F-UJI troubleshooting
 
-Input findings appear in `result.diagnostics`. Individual checks explain their
-outcome through `reason_code` and `message`. Invalid or unsupported evidence
-leaves affected checks indeterminate; unrelated checks can still run.
+Start with `result.diagnostics` for problems with the metadata. For a particular
+check, read its `reason_code` and `message`.
 
-## Inspect a finding
+`indeterminate` means the library cannot decide whether the check passes.
+Other checks can still run if they have the information they need.
+
+## Example: a missing context
 
 <Row>
 <Col>
 
-This context URL is not bundled or supplied locally. The assessment returns an
-`unknown_context` diagnostic instead of downloading the context.
+A JSON-LD context defines what field names mean. In this example, the metadata
+refers to a context URL whose definitions are not available to the library.
+It returns `unknown_context` because it cannot download them.
 
-Supply the document through `local_contexts`, or use an inline context. See
-[F-UJI contexts](/assessors/fuji#contexts).
+Supply the document through `local_contexts`, or put the definitions directly
+inside `@context`. See [F-UJI contexts](/assessors/fuji#contexts).
 
-The result can still have `status="completed"`: that status records whether
-evaluators finished, not whether input was valid.
+The assessment can still have `status="completed"`. That means processing
+finished; the diagnostics explain which parts could not be assessed.
 
 </Col>
 <Col>
-<CodeGroup title="Unavailable context">
+<CodeGroup title="A context that was not supplied">
 
 ```python
 from fair_offline_assessor import Assessor
 
-result = Assessor("FUJI").assess(
+result = Assessor("FUJI", version="3.5.1").assess(
     metadata={
         "@context": "https://example.org/context",
         "@type": "Dataset",
@@ -41,7 +44,7 @@ print(result.diagnostics[0].model_dump_json(indent=2))
 ```
 
 </CodeGroup>
-<CodeGroup title="Returned diagnostic">
+<CodeGroup title="Returned message">
 
 ```json
 {
@@ -55,43 +58,46 @@ print(result.diagnostics[0].model_dump_json(indent=2))
 </Col>
 </Row>
 
-## Input diagnostics
+## Problems with metadata
 
-| Code                    | What to do                                                                        |
-| ----------------------- | --------------------------------------------------------------------------------- |
-| `invalid_json`          | Supply valid JSON without non-finite numbers such as `NaN`.                       |
-| `unsupported_input`     | Supply a JSON-LD object or array of objects.                                      |
-| `invalid_jsonld`        | Correct the JSON-LD syntax identified by the message.                             |
-| `unknown_context`       | Supply the missing context document locally.                                      |
-| `invalid_context`       | Include `@context` in the supplied context document.                              |
-| `context_conflict`      | Remove a local context that conflicts with a bundled one.                         |
-| `dataset_not_found`     | Supply a recognised dataset type, or select the dataset node with `subject`.      |
-| `ambiguous_dataset`     | Set `subject` to the dataset's `@id`.                                             |
-| `subject_not_found`     | Check that `subject` matches a node in the expanded graph.                        |
-| `ambiguous_subject`     | Avoid repeating the selected subject in separate named graphs.                    |
-| `unsupported_structure` | Simplify the value at the reported location to a structure F-UJI can interpret.   |
-| `unmapped_term`         | Use a recognised vocabulary term if the property should contribute to assessment. |
-| `invalid_access_free`   | Supply one consistent boolean for `isAccessibleForFree`.                          |
+| Code                          | Meaning or action                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_json`                | Correct the JSON syntax. Values such as `NaN` are not valid JSON numbers.                                                        |
+| `unsupported_input`           | Supply a dictionary, a list of dictionaries or document text as required by the chosen format.                                   |
+| `invalid_jsonld`              | Correct the JSON-LD problem identified in the message.                                                                           |
+| `unknown_context`             | Supply the definitions for the context URL.                                                                                      |
+| `invalid_context`             | Include `@context` in the supplied context document.                                                                             |
+| `context_conflict`            | The supplied context differs from one included in the library. Use the included definitions or a different context URL.          |
+| `metadata_reader_error`       | F-UJI could not interpret the metadata. Check that its structure matches the chosen format.                                      |
+| `invalid_rdf`                 | Correct the RDF syntax identified in the message.                                                                                |
+| `invalid_embedded_metadata`   | Correct the metadata inside the HTML. Other usable information is still assessed.                                                |
+| `invalid_rdfa`                | Correct the RDFa metadata inside the HTML. Other usable information is still assessed.                                           |
+| `metadata_not_found`          | F-UJI found no usable metadata. Check the contents and chosen format.                                                            |
+| `unsupported_metadata_format` | Choose one of the supported `metadata_format` values.                                                                            |
+| `unsupported_datacite_shape`  | Supply DataCite JSON with `agency` and its metadata fields at the top level. Metadata inside `data.attributes` is not supported. |
+| `subject_not_selected`        | F-UJI could not confirm the dataset specified by `subject`. Supply a document describing the intended dataset.                   |
+| `unsupported_subject`         | Omit `subject` for XML, DataCite JSON and HTML.                                                                                  |
+| `unsafe_xml`                  | Remove DOCTYPE and entity declarations. Supply XML that contains its own information.                                            |
+| `offline_reference`           | The assessment cannot fetch the referenced information.                                                                          |
 
-Invalid argument types use codes such as `invalid_subject`, `invalid_metadata_url`
-or `invalid_local_contexts`. Check the message and the
-[argument types](/reference#assess-a-dataset).
+Codes such as `invalid_subject`, `invalid_metadata_url` and `invalid_local_contexts`
+mean an argument has the wrong type or value. Check the message and the
+[Python API](/reference#assess-a-dataset).
 
-## Indeterminate checks and execution errors
+## Why a check could not run
 
-| Check reason        | Meaning                                                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `missing_evidence`  | No conclusive evidence was supplied for this check. Supply the relevant metadata or `metadata_url` where applicable. |
-| `unsupported_check` | This release does not support the HTTP or HTML evidence required by the check. Additional JSON-LD cannot enable it.  |
-| `evaluator_error`   | The evaluator could not finish. The check has outcome `error` and the result has status `completed_with_errors`.     |
+| Check reason        | Meaning                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `missing_evidence`  | The information needed to decide this check was not supplied.                                                              |
+| `unsupported_check` | The library cannot run this check offline.                                                                                 |
+| `evaluator_error`   | An error prevented the check from finishing. Its outcome is `error`, and the assessment status is `completed_with_errors`. |
 
-Input diagnostic codes can also appear as a check's reason when that input blocks
-the check. For an unexpected evaluator error, report the library version, check
-identifier and a minimal input that reproduces it.
+A metadata problem's code can also appear as a check's reason when that problem
+prevents the check from running. To report an error, include the library version,
+check ID and a small example that reproduces it.
 
-## Selection errors
+## Choosing an assessor
 
-`Assessor(...)` raises `ProfileError` for configuration problems before assessment
-starts. `assessor_not_found` means the name is unknown;
-`assessor_version_not_found` means that configuration version is unavailable.
-Use `Assessor("FUJI")` for the bundled default.
+`Assessor(...)` raises `ProfileError` if the requested assessor or version is
+unavailable. Its `code` is `assessor_not_found` or `assessor_version_not_found`.
+Use `Assessor("FUJI")` to select the current default.

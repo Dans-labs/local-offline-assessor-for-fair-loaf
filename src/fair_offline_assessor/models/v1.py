@@ -115,7 +115,8 @@ class ProfileInfo(ProfileIdentity):
 
 
 class AssessmentInput(Model):
-    metadata: JsonObject | list[JsonObject]
+    metadata: JsonObject | list[JsonObject] | str
+    metadata_format: str | None = None
     subject: str | None = None
     metadata_url: str | None = None
     local_contexts: dict[str, JsonObject] = Field(default_factory=dict)
@@ -228,6 +229,7 @@ class AssessmentResult(Model):
     overall_score: Score | None = None
     coverage: Coverage = Field(default_factory=Coverage)
     diagnostics: tuple[Diagnostic, ...] = ()
+    raw: JsonValue = None
 
     @model_validator(mode="after")
     def consistent_findings(self) -> Self:

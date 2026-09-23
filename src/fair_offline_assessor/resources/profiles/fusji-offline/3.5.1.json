@@ -7,6 +7,10 @@
   "engine_requires": ">=0.1,<0.2",
   "resources": [
     {
+      "id": "fuji:creativeworks",
+      "version": "3.5.1"
+    },
+    {
       "id": "fuji:vocabularies",
       "version": "3.5.1"
     },
