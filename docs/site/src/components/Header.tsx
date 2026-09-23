@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform } from 'framer-motion'
 import Link from 'next/link'
 import { forwardRef } from 'react'
 
+import { GitHubIcon } from '@/components/GitHubIcon'
 import { Logo } from '@/components/Logo'
 import {
   MobileNavigation,
@@ -24,7 +25,7 @@ function TopLevelNavItem({
     <li>
       <Link
         href={href}
-        className="text-sm/5 text-zinc-600 transition hover:text-brand-950 dark:text-zinc-400 dark:hover:text-white"
+        className="inline-flex p-1 text-sm/5 text-zinc-600 transition hover:text-brand-950 dark:text-zinc-400 dark:hover:text-white"
       >
         {children}
       </Link>
@@ -81,7 +82,8 @@ export const Header = forwardRef<
         <nav className="hidden md:block">
           <ul role="list" className="flex items-center gap-8">
             <TopLevelNavItem href="https://github.com/akeldamas/fair-offline-assessor">
-              GitHub
+              <GitHubIcon className="size-5" />
+              <span className="sr-only">GitHub</span>
             </TopLevelNavItem>
           </ul>
         </nav>

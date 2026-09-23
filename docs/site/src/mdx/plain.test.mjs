@@ -104,7 +104,7 @@ test('keeps documentation links inside the GitHub Pages base path', () => {
   assert.match(toMarkdown(source), /\[Results\]\(\/results#scores\)/)
 })
 
-test('generates text and discovery links for root and nested pages', () => {
+test('generates Markdown copies for root and nested pages', () => {
   const root = mkdtempSync(join(tmpdir(), 'docs-export-'))
   try {
     for (const [route, title] of [
@@ -136,9 +136,6 @@ test('generates text and discovery links for root and nested pages', () => {
       readFileSync(join(root, 'out/guide/index.md'), 'utf8'),
       '# Guide\n\nContent.\n',
     )
-    const index = readFileSync(join(root, 'out/llms.txt'), 'utf8')
-    assert.match(index, /\[Quickstart\]\(\.\/index.md\)/)
-    assert.match(index, /\[Guide\]\(\.\/guide\/index.md\)/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

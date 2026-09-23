@@ -14,7 +14,7 @@ Import `Assessor` from `fair_offline_assessor`. Choose an assessor once, then ca
 <Col>
 
 `Assessor(name, version=...)` chooses an assessor and a version included in the
-installed library. It does not download anything.
+installed library.
 
 <Properties>
 <Property name="name" type="str">
@@ -103,9 +103,7 @@ are context URLs; values are the corresponding documents, each containing
 </Property>
 </Properties>
 
-The result stays in your Python process. Use `model_dump()` to get a dictionary,
-or `model_dump_json()` to get a JSON string. Save or send it from your application
-if needed.
+Use `model_dump()` to get a dictionary or `model_dump_json()` to get a JSON string.
 
 </Col>
 <Col>
@@ -142,9 +140,6 @@ print(result.coverage.model_dump_json(indent=2))
 
 </CodeGroup>
 
-This example gives a decision for 15 checks. The remaining 16 cannot be decided
-from the information available offline.
-
 <CodeGroup title="Save the result">
 
 ```python
@@ -168,4 +163,4 @@ can still run. A missing field can cause a failure or an indeterminate result,
 depending on what the check requires.
 
 Read each check's `reason_code` and `message` alongside the diagnostics.
-[F-UJI troubleshooting](/assessors/fuji/diagnostics) lists common problems and fixes.
+[F-UJI troubleshooting](/assessors/fuji#troubleshooting) lists common problems and fixes.

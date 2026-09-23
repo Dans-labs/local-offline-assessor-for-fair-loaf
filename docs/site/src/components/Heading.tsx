@@ -91,13 +91,11 @@ export function Heading<Level extends 2 | 3>({
   })
 
   useEffect(() => {
-    if (level === 2) {
-      registerHeading({
-        id: props.id,
-        ref,
-        offsetRem: tag || label ? 8 : 6,
-      })
-    }
+    registerHeading({
+      id: props.id,
+      ref,
+      offsetRem: tag || label ? 8 : 6,
+    })
   })
 
   return (

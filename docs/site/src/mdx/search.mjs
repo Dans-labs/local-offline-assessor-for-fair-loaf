@@ -32,7 +32,7 @@ function extractSections() {
     visit(tree, (node) => {
       if (node.type === 'heading' || node.type === 'paragraph') {
         let content = toString(excludeObjectExpressions(node))
-        if (node.type === 'heading' && node.depth <= 2) {
+        if (node.type === 'heading' && node.depth <= 3) {
           let hash = node.depth === 1 ? null : slugify(content)
           sections.push([content, hash, []])
         } else {

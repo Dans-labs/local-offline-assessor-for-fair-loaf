@@ -7,17 +7,24 @@ export const metadata = {
 # F-UJI
 
 [F-UJI](https://github.com/pangaea-data-publisher/fuji) checks dataset metadata
-against FAIR requirements. The library includes F-UJI `3.5.1` and its `0.8`
-check definitions.
+against FAIR requirements.
+
+## Supported versions
+
+| F-UJI version   | Metric version | Total metrics | Metrics supported offline | Total checks | Checks supported offline |
+| --------------- | -------------- | ------------- | ------------------------- | ------------ | ------------------------ |
+| 3.5.1 (default) | 0.8            | 17            | 13 full + 1 partial       | 31           | 24                       |
+
+Full metric support means all its checks are supported; partial means only some.
+A supported check still needs the required information to produce a decision.
+
+Select a version explicitly to keep using its mappings, checks and scoring rules:
 
 ```python
 from fair_offline_assessor import Assessor
 
 assessor = Assessor("FUJI", version="3.5.1")
 ```
-
-This selects F-UJI's own metadata mappings, checks and scoring rules for that
-version. For example, its mapping recognises Schema.org `name` as a dataset title.
 
 ## What it checks
 
@@ -35,17 +42,15 @@ Each check has its own requirements and points. These examples use F-UJI 3.5.1:
 | Licence information in an appropriate metadata field                     | `FsF-R1.1-01M-1` | 1               |
 
 Field names depend on the metadata standard you use. F-UJI's mappings connect
-those fields to the information each check requires. Adding a field affects only
-checks that use it.
+those fields to the information each check requires. For example, Schema.org
+`name` supplies the dataset title.
 
 The complete requirements and points are in
 [F-UJI's check definitions for this version](https://github.com/pangaea-data-publisher/fuji/blob/9227fabb7f047475714f2e7622798b855c883f72/fuji_server/yaml/metrics_v0.8.yaml).
 
 ## What can run offline
 
-The configuration contains **31 checks grouped into 17 metrics**. A metric groups
-checks about one aspect of FAIR. The library supports **24 checks** using supplied
-information. The other seven remain `indeterminate` with reason `unsupported_check`.
+The seven unsupported checks remain `indeterminate` with reason `unsupported_check`.
 
 Supported checks may also remain indeterminate if the required information is
 missing or cannot be interpreted. Offline results cannot confirm that a link
@@ -147,18 +152,114 @@ result = Assessor("FUJI", version="3.5.1").assess(
 
 </CodeGroup>
 
-A context gives field names their meaning. F-UJI's checks determine which
-information must be present to earn points.
-
-## Original results
-
-`result.raw` is a list of F-UJI's original result dictionaries, with at most one
-entry per metric. A metric that produces no result has no entry. The list covers
-this offline run; it is not a full response from F-UJI's online service.
+## Results
 
 The common response includes scores for individual checks and metrics.
 F-UJI leaves `overall_score` as `null` and `principle_scores` empty.
 The `evidence` entries refer to your whole metadata document or `metadata_url`.
 
+`raw` contains unmodified F-UJI result dictionaries, with at most one entry per
+metric. Metrics that produce no result are omitted. It covers this offline run,
+not a full response from F-UJI's online service.
+
 See [Results](/results) for field meanings and
-[F-UJI troubleshooting](/assessors/fuji/diagnostics) for problems with metadata.
+[Troubleshooting](#troubleshooting) for problems with metadata.
+
+## Troubleshooting
+
+Start with `result.diagnostics` for problems with the metadata. For a particular
+check, read its `reason_code` and `message`.
+
+`indeterminate` means the library cannot decide whether the check passes.
+Other checks can still run if they have the information they need.
+
+### Example: a missing context
+
+<Row>
+<Col>
+
+A JSON-LD context defines what field names mean. In this example, the metadata
+refers to a context URL whose definitions are not available to the library.
+It returns `unknown_context` because it cannot download them.
+
+Supply the document through `local_contexts`, or put the definitions directly
+inside `@context`. See [F-UJI contexts](/assessors/fuji#contexts).
+
+The assessment can still have `status="completed"`. That means processing
+finished; the diagnostics explain which parts could not be assessed.
+
+</Col>
+<Col>
+<CodeGroup title="A context that was not supplied">
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI", version="3.5.1").assess(
+    metadata={
+        "@context": "https://example.org/context",
+        "@type": "Dataset",
+    }
+)
+
+print(result.diagnostics[0].model_dump_json(indent=2))
+```
+
+</CodeGroup>
+<CodeGroup title="Returned message">
+
+```json
+{
+  "code": "unknown_context",
+  "message": "Context unavailable locally: https://example.org/context",
+  "location": "/metadata"
+}
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+### Problems with metadata
+
+| Code                          | Meaning or action                                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_json`                | Correct the JSON syntax. Values such as `NaN` are not valid JSON numbers.                                                        |
+| `unsupported_input`           | Supply a dictionary, a list of dictionaries or document text as required by the chosen format.                                   |
+| `invalid_jsonld`              | Correct the JSON-LD problem identified in the message.                                                                           |
+| `unknown_context`             | Supply the definitions for the context URL.                                                                                      |
+| `invalid_context`             | Include `@context` in the supplied context document.                                                                             |
+| `context_conflict`            | The supplied context differs from one included in the library. Use the included definitions or a different context URL.          |
+| `metadata_reader_error`       | F-UJI could not interpret the metadata. Check that its structure matches the chosen format.                                      |
+| `invalid_rdf`                 | Correct the RDF syntax identified in the message.                                                                                |
+| `invalid_embedded_metadata`   | Correct the metadata inside the HTML. Other usable information is still assessed.                                                |
+| `invalid_rdfa`                | Correct the RDFa metadata inside the HTML. Other usable information is still assessed.                                           |
+| `metadata_not_found`          | F-UJI found no usable metadata. Check the contents and chosen format.                                                            |
+| `unsupported_metadata_format` | Choose one of the supported `metadata_format` values.                                                                            |
+| `unsupported_datacite_shape`  | Supply DataCite JSON with `agency` and its metadata fields at the top level. Metadata inside `data.attributes` is not supported. |
+| `subject_not_selected`        | F-UJI could not confirm the dataset specified by `subject`. Supply a document describing the intended dataset.                   |
+| `unsupported_subject`         | Omit `subject` for XML, DataCite JSON and HTML.                                                                                  |
+| `unsafe_xml`                  | Remove DOCTYPE and entity declarations. Supply XML that contains its own information.                                            |
+| `offline_reference`           | The assessment cannot fetch the referenced information.                                                                          |
+
+Codes such as `invalid_subject`, `invalid_metadata_url` and `invalid_local_contexts`
+mean an argument has the wrong type or value. Check the message and the
+[Python API](/reference#assess-a-dataset).
+
+### Why a check could not run
+
+| Check reason        | Meaning                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `missing_evidence`  | The information needed to decide this check was not supplied.                                                              |
+| `unsupported_check` | The library cannot run this check offline.                                                                                 |
+| `evaluator_error`   | An error prevented the check from finishing. Its outcome is `error`, and the assessment status is `completed_with_errors`. |
+
+A metadata problem's code can also appear as a check's reason when that problem
+prevents the check from running. To report an error, include the library version,
+check ID and a small example that reproduces it.
+
+### Choosing an assessor
+
+`Assessor(...)` raises `ProfileError` if the requested assessor or version is
+unavailable. Its `code` is `assessor_not_found` or `assessor_version_not_found`.
+Use `Assessor("FUJI")` to select the current default.

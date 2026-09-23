@@ -16,13 +16,6 @@ export function PageLinks() {
       >
         View as Markdown
       </a>
-      <span aria-hidden="true">·</span>
-      <a
-        href={`${basePath}/llms.txt`}
-        className="transition hover:text-brand-700 dark:hover:text-brand-300"
-      >
-        llms.txt
-      </a>
     </div>
   )
 }

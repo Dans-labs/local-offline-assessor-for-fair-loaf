@@ -50,12 +50,10 @@ and `license`. The library includes that context, so it needs no network request
 
 - `tests`: what each check found and the points awarded.
 - `diagnostics`: problems with the supplied metadata.
-- `raw`: the assessor's original results, unchanged.
 
 This small example does not meet every requirement. Missing information can
 cause a check to fail or leave it `indeterminate`, depending on the check.
 `indeterminate` means the library cannot decide; it receives no score.
 
-The version selects F-UJI's mappings, checks and scoring rules together. Omit
-`version` to use the default. See [F-UJI](/assessors/fuji) for its requirements
+Omit `version` to use the default. See [F-UJI](/assessors/fuji) for its requirements
 and other formats, and [Results](/results) for a guide to the response.

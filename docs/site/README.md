@@ -35,9 +35,9 @@ npm run format
 npm run build
 ```
 
-The build writes the website to `out/`. It also creates a Markdown copy of every
-page and an `llms.txt` file listing the pages. It rejects page components whose
-content cannot be included in those text copies.
+The build writes the website to `out/` and creates a Markdown copy of every
+documentation page. It rejects page components whose content cannot be included
+in those text copies.
 
 ## Build for GitHub Pages
 

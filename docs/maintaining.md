@@ -105,6 +105,11 @@ enabling checks. Regenerate, compare outcomes and points with F-UJI, and update
 the expected check counts in `tests/test_assessment.py`.
 Keep metadata mappings and scoring rules in the generated F-UJI code.
 
+When versions or supported checks change, update the tables on the documentation
+overview and assessor page. Count a metric as having offline checks if at least
+one is supported, and distinguish full from partial support. "Latest supported"
+means a version available in this library, not the latest upstream release.
+
 For another assessor, create `assessors/<name>/` and implement the Python interface
 `AssessorAdapter` from `adapters.py`. This class connects the assessor to the library.
 It must interpret the supplied metadata using that assessor's rules and return `AssessmentResult`.

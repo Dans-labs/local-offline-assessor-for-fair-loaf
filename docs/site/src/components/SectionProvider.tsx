@@ -12,6 +12,7 @@ import { createStore, useStore, type StoreApi } from 'zustand'
 import { remToPx } from '@/lib/remToPx'
 
 export interface Section {
+  level: 2 | 3
   id: string
   title: string
   offsetRem?: number

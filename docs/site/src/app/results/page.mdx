@@ -25,7 +25,7 @@ individual checks; `metrics` holds their group results.
 | `coverage`       | Counts of decided checks, undecided checks, errors and checks that do not apply. |
 | `diagnostics`    | Messages about problems with the supplied metadata.                              |
 | `status`         | Whether the assessment finished normally or encountered an error.                |
-| `raw`            | The assessor's original results, unchanged.                                      |
+| `raw`            | The selected assessor's original, unmodified results.                            |
 | `profile`        | The chosen assessment configuration and its version.                             |
 | `provenance`     | The software and data versions used, and a checksum identifying the input.       |
 | `schema_version` | Version of the library's response format; currently `1`.                         |
@@ -88,6 +88,10 @@ receives no score and is not counted as a zero-point failure. Read its `reason_c
 and `message` for the reason, such as missing information or a check that cannot
 run offline.
 
+A failure in `raw` can appear as `indeterminate` in `tests` when the information
+needed to decide was unavailable offline. Use `tests` and `coverage` to determine
+what the assessment established.
+
 ## Scores
 
 <Row>
@@ -136,13 +140,3 @@ Where supplied, `level` records an additional rating defined by the assessor.
 The `evidence` field points to the supplied information used by a check. Each
 entry includes its name, checksum and location. For example, `/metadata` refers
 to the metadata document you supplied.
-
-## Original results
-
-`result.raw` contains the assessor's original output from this run. The library
-keeps its field names and values unchanged. Its contents depend on the assessor;
-see [F-UJI's original results](/assessors/fuji#original-results).
-
-Use `tests` and `coverage` when deciding what the offline assessment established.
-A failure in `raw` can appear as `indeterminate` in `tests` when the information
-needed to decide was unavailable offline.

@@ -30,12 +30,6 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <head>
-        <link
-          rel="describedby"
-          href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/llms.txt`}
-        />
-      </head>
       <body className="flex min-h-full bg-white antialiased dark:bg-brand-950">
         <a
           href="#content"

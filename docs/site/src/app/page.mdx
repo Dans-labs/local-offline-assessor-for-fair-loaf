@@ -9,8 +9,17 @@ export const metadata = {
 that describes a dataset, such as its title, creator and licence. The checks
 address FAIR principles: Findable, Accessible, Interoperable and Reusable.
 
-An assessor defines what to check and how to assign points. The library currently
-supports [F-UJI](/assessors/fuji).
+An assessor defines what to check and how to assign points.
+
+## Supported assessors
+
+| Assessor                 | Latest supported version | Checks offline / total | Metrics with offline checks / total |
+| ------------------------ | ------------------------ | ---------------------- | ----------------------------------- |
+| [F-UJI](/assessors/fuji) | 3.5.1                    | 24 / 31                | 14 / 17                             |
+
+Versions are those supported by this library. A metric groups checks; the metric
+count includes partial support. F-UJI supports all checks in 13 metrics and some
+checks in one more.
 
 ## How it works
 
@@ -18,12 +27,7 @@ supports [F-UJI](/assessors/fuji).
 2. Supply the dataset's metadata.
 3. The assessor uses its own mappings to recognise fields, then applies its checks
    and scoring rules.
-4. Read the check results, scores and messages. `raw` contains the assessor's
-   original results from the run, unchanged.
-
-The response uses the same field names regardless of assessor. This gives
-applications one way to read results while keeping each assessor's check IDs
-and scoring rules.
+4. Read the check results, scores and messages.
 
 ## What offline means
 
