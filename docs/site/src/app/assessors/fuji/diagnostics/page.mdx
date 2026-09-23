@@ -1,0 +1,97 @@
+export const metadata = {
+  title: 'F-UJI diagnostics',
+  description: 'Interpret F-UJI input findings and indeterminate checks.',
+}
+
+# F-UJI diagnostics
+
+Input findings appear in `result.diagnostics`. Individual checks explain their
+outcome through `reason_code` and `message`. Invalid or unsupported evidence
+leaves affected checks indeterminate; unrelated checks can still run.
+
+## Inspect a finding
+
+<Row>
+<Col>
+
+This context URL is not bundled or supplied locally. The assessment returns an
+`unknown_context` diagnostic instead of downloading the context.
+
+Supply the document through `local_contexts`, or use an inline context. See
+[F-UJI contexts](/assessors/fuji#contexts).
+
+The result can still have `status="completed"`: that status records whether
+evaluators finished, not whether input was valid.
+
+</Col>
+<Col>
+<CodeGroup title="Unavailable context">
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI").assess(
+    metadata={
+        "@context": "https://example.org/context",
+        "@type": "Dataset",
+    }
+)
+
+print(result.diagnostics[0].model_dump_json(indent=2))
+```
+
+</CodeGroup>
+<CodeGroup title="Returned diagnostic">
+
+```json
+{
+  "code": "unknown_context",
+  "message": "Context unavailable locally: https://example.org/context",
+  "location": "/metadata"
+}
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Input diagnostics
+
+| Code                    | What to do                                                                        |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `invalid_json`          | Supply valid JSON without non-finite numbers such as `NaN`.                       |
+| `unsupported_input`     | Supply a JSON-LD object or array of objects.                                      |
+| `invalid_jsonld`        | Correct the JSON-LD syntax identified by the message.                             |
+| `unknown_context`       | Supply the missing context document locally.                                      |
+| `invalid_context`       | Include `@context` in the supplied context document.                              |
+| `context_conflict`      | Remove a local context that conflicts with a bundled one.                         |
+| `dataset_not_found`     | Supply a recognised dataset type, or select the dataset node with `subject`.      |
+| `ambiguous_dataset`     | Set `subject` to the dataset's `@id`.                                             |
+| `subject_not_found`     | Check that `subject` matches a node in the expanded graph.                        |
+| `ambiguous_subject`     | Avoid repeating the selected subject in separate named graphs.                    |
+| `unsupported_structure` | Simplify the value at the reported location to a structure F-UJI can interpret.   |
+| `unmapped_term`         | Use a recognised vocabulary term if the property should contribute to assessment. |
+| `invalid_access_free`   | Supply one consistent boolean for `isAccessibleForFree`.                          |
+
+Invalid argument types use codes such as `invalid_subject`, `invalid_metadata_url`
+or `invalid_local_contexts`. Check the message and the
+[argument types](/reference#assess-a-dataset).
+
+## Indeterminate checks and execution errors
+
+| Check reason        | Meaning                                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `missing_evidence`  | No conclusive evidence was supplied for this check. Supply the relevant metadata or `metadata_url` where applicable. |
+| `unsupported_check` | This release does not support the HTTP or HTML evidence required by the check. Additional JSON-LD cannot enable it.  |
+| `evaluator_error`   | The evaluator could not finish. The check has outcome `error` and the result has status `completed_with_errors`.     |
+
+Input diagnostic codes can also appear as a check's reason when that input blocks
+the check. For an unexpected evaluator error, report the library version, check
+identifier and a minimal input that reproduces it.
+
+## Selection errors
+
+`Assessor(...)` raises `ProfileError` for configuration problems before assessment
+starts. `assessor_not_found` means the name is unknown;
+`assessor_version_not_found` means that configuration version is unavailable.
+Use `Assessor("FUJI")` for the bundled default.

@@ -1,0 +1,122 @@
+export const metadata = {
+  title: 'Results',
+  description:
+    'Check outcomes, scores, coverage and diagnostics in AssessmentResult.',
+}
+
+# Results
+
+`assess()` returns an `AssessmentResult`. This is the library's shared result
+format. Assessor-specific check identifiers and scoring are retained inside it.
+
+## Read the result
+
+<Row>
+<Col>
+
+| Field            | Meaning                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| `tests`          | Individual checks, each with an outcome, reason, message and any evidence references. |
+| `metrics`        | Metric results grouping checks. A check's `metric` matches a metric's `id`.           |
+| `coverage`       | Counts of evaluated, indeterminate, error and not-applicable checks.                    |
+| `diagnostics`    | Input and interpretation findings with a code, message and optional location.         |
+| `status`         | `completed`, or `completed_with_errors` when an evaluator could not finish.           |
+| `profile`        | The selected configuration's identity, version and digest.                            |
+| `provenance`     | Library and JSON-LD processor versions, input digest and bundled resource versions.   |
+| `schema_version` | Version of the shared result format; currently `1`.                                   |
+
+`completed` describes execution. It does not mean all checks passed or the input
+had no diagnostics. Always inspect the findings and coverage.
+
+</Col>
+<Col>
+<CodeGroup title="Inspect an assessment">
+
+```python
+for check in result.tests:
+    print(check.id, check.outcome, check.reason_code)
+
+for diagnostic in result.diagnostics:
+    print(diagnostic.code, diagnostic.location)
+```
+
+</CodeGroup>
+<CodeGroup title="One check from the quickstart">
+
+```json
+{
+  "id": "FsF-F1-01MD-1",
+  "outcome": "indeterminate",
+  "score": null,
+  "level": null,
+  "metric": "FsF-F1-01MD",
+  "reason_code": "missing_evidence",
+  "message": "No conclusive evidence supplied.",
+  "evidence": []
+}
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Outcomes
+
+| Outcome          | Meaning                                                     |
+| ---------------- | ----------------------------------------------------------- |
+| `pass`           | The check's requirements were met.                          |
+| `partial`        | Some requirements were met.                                 |
+| `fail`           | The check ran and its requirements were not met.            |
+| `indeterminate`  | Required evidence was unavailable, unusable or unsupported. |
+| `not_applicable` | The check does not apply.                                   |
+| `error`          | The evaluator could not complete the check.                 |
+
+`coverage.evaluated` counts `pass`, `partial` and `fail`. An indeterminate check
+has no score; it is not counted as a zero-point failure.
+
+## Scores
+
+<Row>
+<Col>
+
+A score records `observed_earned` points, the `maximum` and whether it is
+`complete`. `percent` is calculated only for a complete score with a nonzero
+maximum; otherwise it is `null`.
+
+A metric may have an incomplete score when some of its checks were indeterminate.
+Do not present that score as a complete FAIR percentage.
+
+The bundled F-UJI assessor returns check and metric scores. It currently leaves
+`overall_score` as `null` and `principle_scores` empty. Where available, `level`
+records the assessor's maturity scheme and value.
+
+</Col>
+<Col>
+<CodeGroup title="An incomplete metric from the quickstart">
+
+```json
+{
+  "id": "FsF-F1-01MD",
+  "outcome": "indeterminate",
+  "score": {
+    "observed_earned": 0.0,
+    "maximum": 1.0,
+    "complete": false,
+    "percent": null
+  },
+  "level": null,
+  "principles": ["F1"]
+}
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Evidence
+
+Check evidence references identify the resource, its digest and a JSON Pointer
+location. F-UJI uses `assessment_input` for supplied input and `prepared_metadata`
+for the expanded, flattened graph used in assessment. A prepared-graph location
+is not a path into the original JSON-LD. The prepared graph itself is not included
+in the result.

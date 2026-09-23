@@ -11,6 +11,7 @@ for (const page of pages) {
   const route = page.replace(/page\.mdx$/, '')
   const markdown = toMarkdown(
     await readFile(path.join('src/app', page), 'utf8'),
+    process.env.NEXT_PUBLIC_BASE_PATH || '',
   )
   const title = markdown.match(/^# (.+)$/m)?.[1]
   if (!title) throw new Error(`Missing page heading: ${page}`)

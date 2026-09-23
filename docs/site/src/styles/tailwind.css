@@ -70,3 +70,13 @@
     display: none;
   }
 }
+
+@layer components {
+  .docs-prose > * {
+    max-width: var(--container-3xl);
+  }
+
+  .docs-prose > .reference-row {
+    max-width: none;
+  }
+}

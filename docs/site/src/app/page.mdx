@@ -1,52 +1,35 @@
 export const metadata = {
-  title: 'Quickstart · fair-offline-assessor',
-  description: 'Assess JSON-LD dataset metadata offline with F-UJI.',
+  title: 'Introduction',
+  description:
+    'Offline FAIR assessment for EOSC Data Commons and Python applications.',
 }
 
-# Quickstart
+# Introduction
 
-Assess JSON-LD dataset metadata against F-UJI checks, without network access.
+`fair-offline-assessor` is a Python library for assessing dataset metadata against
+FAIR principles: Findable, Accessible, Interoperable and Reusable.
 
-## Install
+It was developed for [EOSC Data Commons](https://www.eosc-data-commons.eu/),
+which builds services for research data discovery, access, sharing and reuse.
+The library provides reusable offline assessment logic for the project's FAIR
+assessment proxy and for other Python applications.
 
-Requires Python 3.12+ and access to the repository. Add the library to your
-[uv](https://docs.astral.sh/uv/) project:
+## How it works
 
-```sh
-uv add git+ssh://git@github.com/akeldamas/fair-offline-assessor.git
-```
+Supply JSON-LD metadata and select an assessor. The library interprets the metadata,
+runs the supported checks and returns an `AssessmentResult` with check outcomes,
+metric scores and diagnostics.
 
-## Assess metadata
+Assessment runs locally. The library does not fetch datasets, resolve identifiers
+or download remote JSON-LD contexts. This lets applications assess metadata before
+publishing it or in environments without network access.
 
-Pass your dataset's JSON-LD metadata to the assessor. URLs in the metadata are
-not fetched.
+[F-UJI](/assessors/fuji) is the first supported assessor. It assesses individual
+datasets. Its offline checks cannot establish whether a remote dataset or service
+is actually reachable.
 
-Save this as `assess.py`:
+## Start here
 
-```python
-from fair_offline_assessor import Assessor
-
-result = Assessor("FUJI").assess(
-    metadata={
-        "@context": "https://schema.org",
-        "@type": "Dataset",
-        "@id": "https://example.org/datasets/1",
-        "name": "Example dataset",
-        "license": "https://creativecommons.org/licenses/by/4.0/",
-    }
-)
-
-print(result.model_dump_json(indent=2))
-```
-
-Run it from your project:
-
-```sh
-uv run python assess.py
-```
-
-## Read the result
-
-The result contains individual check outcomes, metric scores and diagnostics.
-Missing metadata can cause checks to fail. Checks requiring HTTP or HTML
-evidence are marked `indeterminate` and receive no score.
+Follow the [quickstart](/quickstart) to install the library and run an assessment.
+The [Python API](/reference) explains the arguments and return value;
+[Results](/results) explains outcomes and scoring.

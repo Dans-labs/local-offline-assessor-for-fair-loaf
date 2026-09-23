@@ -13,7 +13,7 @@ export function Prose<T extends React.ElementType = 'div'>({
   return (
     <Component
       className={clsx(
-        'mx-auto prose w-full max-w-3xl dark:prose-invert',
+        'docs-prose mx-auto prose w-full max-w-7xl dark:prose-invert',
         className,
       )}
       {...props}

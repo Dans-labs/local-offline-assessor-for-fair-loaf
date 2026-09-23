@@ -1,0 +1,115 @@
+export const metadata = {
+  title: 'F-UJI',
+  description: 'Supported F-UJI checks, JSON-LD metadata and local contexts.',
+}
+
+# F-UJI
+
+Select `Assessor("FUJI")` to assess dataset metadata with bundled
+[F-UJI](https://github.com/pangaea-data-publisher/fuji) evaluators.
+The default version is F-UJI `3.5.1`, with metric definitions `0.8`.
+
+## Coverage
+
+The configuration contains **31 checks across 17 metrics**. This release supports
+24 checks using supplied evidence. Seven require HTTP or HTML evidence and remain
+`indeterminate` with reason `unsupported_check`.
+
+Supported checks cover identifiers, descriptive metadata, licences, access
+conditions, related resources, provenance, vocabularies, metadata standards,
+protocols and file formats. Actual coverage depends on what you supply.
+
+Offline results cannot establish live accessibility, identifier resolution or
+metadata discoverability. They may differ from an online assessment, which can
+harvest additional evidence.
+
+## Metadata
+
+<Row>
+<Col>
+
+Supply JSON-LD describing a dataset. F-UJI mappings recognise supported terms
+from Schema.org, Dublin Core and DCAT, including linked records present in the
+supplied graph. Valid JSON-LD alone does not guarantee that a term or structure
+has a F-UJI mapping.
+
+Without `subject`, the library selects the sole node typed as Schema.org
+`Dataset`, `dcat:Dataset` or `dcmitype:Dataset`. When several datasets are present,
+pass the chosen node's `@id` as `subject`.
+
+You can use a custom JSON-LD context to map your field names to recognised
+vocabulary terms. Unrecognised terms produce `unmapped_term` diagnostics.
+
+</Col>
+<Col>
+<CodeGroup title="DCAT with Dublin Core properties">
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI").assess(
+    metadata={
+        "@context": {
+            "dcat": "http://www.w3.org/ns/dcat#",
+            "dct": "http://purl.org/dc/terms/",
+        },
+        "@type": "dcat:Dataset",
+        "@id": "https://example.org/datasets/1",
+        "dct:title": "Example dataset",
+        "dct:license": {
+            "@id": "https://creativecommons.org/licenses/by/4.0/"
+        },
+    },
+    metadata_url="https://example.org/datasets/1",
+)
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Contexts
+
+<Row>
+<Col>
+
+The Schema.org context is bundled. The common `https://schema.org` context URL
+works without a network request.
+
+For other context URLs, pass the context document in `local_contexts`, or embed
+an inline `@context` in the metadata. Referenced contexts must also be available
+locally. A supplied document cannot replace a different bundled context.
+
+Context documents define the meaning of JSON-LD terms. They do not specify the
+fields required to pass every FAIR check.
+
+</Col>
+<Col>
+<CodeGroup title="Supply a local context document">
+
+```python
+result = Assessor("FUJI").assess(
+    metadata={
+        "@context": "https://example.org/context",
+        "@type": "Dataset",
+        "name": "Example dataset",
+    },
+    local_contexts={
+        "https://example.org/context": {
+            "@context": {
+                "@vocab": "https://schema.org/"
+            }
+        }
+    },
+)
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Diagnostics
+
+Check [F-UJI diagnostics](/assessors/fuji/diagnostics) when metadata cannot be
+interpreted or a check remains indeterminate. [Results](/results) explains the shared
+outcomes and score fields.

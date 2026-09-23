@@ -1,0 +1,160 @@
+export const metadata = {
+  title: 'Python API',
+  description:
+    'Select an assessor, supply metadata and read the returned assessment.',
+}
+
+# Python API
+
+Import `Assessor` from `fair_offline_assessor`. Select an assessor once, then call
+`assess()` for each dataset.
+
+## Select an assessor
+
+<Row>
+<Col>
+
+`Assessor(name, *, version=None)` returns an assessor instance. Selection loads
+bundled configuration; it makes no network requests.
+
+<Properties>
+<Property name="name" type="str">
+
+Assessor name, case-insensitive. Currently only `FUJI` is available.
+
+</Property>
+<Property name="version" type="str | None">
+
+Optional bundled assessor version. F-UJI currently defaults to `3.5.1`, matching
+the pinned upstream release.
+
+</Property>
+</Properties>
+
+An unknown name or unavailable version raises `ProfileError`. The exception's
+`code` identifies the selection problem.
+
+</Col>
+<Col>
+<CodeGroup title="Create an assessor">
+
+```python
+from fair_offline_assessor import Assessor
+
+assessor = Assessor("FUJI")
+```
+
+</CodeGroup>
+<CodeGroup title="Pin the F-UJI version">
+
+```python
+assessor = Assessor("FUJI", version="3.5.1")
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Assess a dataset
+
+<Row>
+<Col>
+
+`assessor.assess(...)` runs synchronously and returns an
+[`AssessmentResult`](/results). All arguments are keyword-only.
+
+<Properties>
+<Property name="metadata" type="dict | list[dict] | str">
+
+Required JSON-LD metadata. Pass a parsed object, an array of objects or a JSON
+string containing either. The assessor determines which terms and structures it
+can interpret; see [F-UJI input](/assessors/fuji#metadata).
+
+</Property>
+<Property name="subject" type="str | None">
+
+The `@id` of the node to assess. Omit it when the input contains exactly one
+recognised dataset. For relative identifiers, supply the expanded identifier
+resolved against `metadata_url`.
+
+</Property>
+<Property name="metadata_url" type="str | None">
+
+The original metadata URL or identifier. Used as the base for relative JSON-LD
+identifiers and as evidence for identifier and protocol checks. It is never fetched.
+
+</Property>
+<Property name="local_contexts" type="dict[str, dict] | None">
+
+Additional context documents keyed by their URL. Each document must contain
+`@context`. Bundled contexts are already available; see
+[F-UJI contexts](/assessors/fuji#contexts).
+
+</Property>
+</Properties>
+
+The returned object stays in your Python process. The library does not save it
+or send it anywhere. Use `model_dump()` for a dictionary or
+`model_dump_json()` for a JSON string.
+
+</Col>
+<Col>
+<CodeGroup title="Assess supplied metadata">
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FUJI").assess(
+    metadata={
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "@id": "https://example.org/datasets/1",
+        "name": "Example dataset",
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+    }
+)
+
+print(result.coverage.model_dump_json(indent=2))
+```
+
+</CodeGroup>
+<CodeGroup title="Returned coverage">
+
+```json
+{
+  "evaluated": 15,
+  "indeterminate": 16,
+  "errors": 0,
+  "not_applicable": 0,
+  "total": 31
+}
+```
+
+</CodeGroup>
+
+This small example supplies enough evidence to evaluate 15 checks. Coverage
+changes with the supplied metadata.
+
+<CodeGroup title="Save the full result">
+
+```python
+from pathlib import Path
+
+Path("assessment.json").write_text(
+    result.model_dump_json(indent=2),
+    encoding="utf-8",
+)
+```
+
+</CodeGroup>
+</Col>
+</Row>
+
+## Handle input findings
+
+Invalid or unsupported metadata is reported in `result.diagnostics`. Checks
+that depend on unusable evidence remain `indeterminate`; other checks can still run.
+Missing fields can produce failed or indeterminate checks, depending on the check.
+
+Read both the individual check's `reason_code` and the diagnostics. See
+[F-UJI diagnostics](/assessors/fuji/diagnostics) for common codes and fixes.

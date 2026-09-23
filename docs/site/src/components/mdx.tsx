@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import Link from 'next/link'
 
 import { Heading } from '@/components/Heading'
@@ -5,6 +6,15 @@ import { PageLinks } from '@/components/PageLinks'
 import { Prose } from '@/components/Prose'
 
 export const a = Link
+
+export function table(props: React.ComponentPropsWithoutRef<'table'>) {
+  return (
+    <div className="overflow-x-auto">
+      <table {...props} />
+    </div>
+  )
+}
+
 export { Button } from '@/components/Button'
 export { Code as code, CodeGroup, Pre as pre } from '@/components/Code'
 
@@ -45,5 +55,78 @@ export function Note({ children }: { children: React.ReactNode }) {
       <InfoIcon className="mt-1 h-4 w-4 flex-none fill-brand-500 stroke-white dark:fill-brand-200/20 dark:stroke-brand-200" />
       <div className="*:first:mt-0 *:last:mb-0">{children}</div>
     </div>
+  )
+}
+
+export function Row({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="reference-row grid grid-cols-1 items-start gap-x-10 gap-y-10 xl:grid-cols-2">
+      {children}
+    </div>
+  )
+}
+
+export function Col({
+  children,
+  sticky = false,
+}: {
+  children: React.ReactNode
+  sticky?: boolean
+}) {
+  return (
+    <div
+      className={clsx(
+        'min-w-0 *:first:mt-0 *:last:mb-0',
+        sticky && 'xl:sticky xl:top-24',
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
+export function Properties({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="my-6">
+      <ul
+        role="list"
+        className="m-0 list-none divide-y divide-brand-950/5 p-0 dark:divide-white/5"
+      >
+        {children}
+      </ul>
+    </div>
+  )
+}
+
+export function Property({
+  name,
+  children,
+  type,
+}: {
+  name: string
+  children: React.ReactNode
+  type?: string
+}) {
+  return (
+    <li className="m-0 px-0 py-4 first:pt-0 last:pb-0">
+      <dl className="m-0 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <dt className="sr-only">Name</dt>
+        <dd>
+          <code>{name}</code>
+        </dd>
+        {type && (
+          <>
+            <dt className="sr-only">Type</dt>
+            <dd className="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+              {type}
+            </dd>
+          </>
+        )}
+        <dt className="sr-only">Description</dt>
+        <dd className="w-full flex-none *:first:mt-0 *:last:mb-0">
+          {children}
+        </dd>
+      </dl>
+    </li>
   )
 }

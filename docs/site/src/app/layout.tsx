@@ -22,7 +22,7 @@ export default async function RootLayout({
   let pages = await glob('**/*.mdx', { cwd: 'src/app' })
   let allSectionsEntries = (await Promise.all(
     pages.map(async (filename) => [
-      '/' + filename.replace(/(^|\/)page\.mdx$/, ''),
+      '/' + filename.replace(/(^|\/)page\.mdx$/, '').replace(/\/$/, ''),
       (await import(`./${filename}`)).sections,
     ]),
   )) as Array<[string, Array<Section>]>

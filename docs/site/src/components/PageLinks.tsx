@@ -8,7 +8,7 @@ export function PageLinks() {
   const markdown = `${basePath}${pathname}/index.md`
 
   return (
-    <div className="mx-auto mb-8 flex w-full max-w-3xl items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+    <div className="mx-auto mb-8 flex w-full max-w-7xl items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
       <link rel="alternate" type="text/markdown" href={markdown} />
       <a
         href={markdown}

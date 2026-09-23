@@ -236,7 +236,27 @@ function NavigationGroup({
 }
 
 export const navigation: Array<NavGroup> = [
-  { title: 'Documentation', links: [{ title: 'Quickstart', href: '/' }] },
+  {
+    title: 'Getting started',
+    links: [
+      { title: 'Introduction', href: '/' },
+      { title: 'Quickstart', href: '/quickstart' },
+    ],
+  },
+  {
+    title: 'Reference',
+    links: [
+      { title: 'Python API', href: '/reference' },
+      { title: 'Results', href: '/results' },
+    ],
+  },
+  {
+    title: 'Assessors',
+    links: [
+      { title: 'F-UJI', href: '/assessors/fuji' },
+      { title: 'F-UJI diagnostics', href: '/assessors/fuji/diagnostics' },
+    ],
+  },
 ]
 
 export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {

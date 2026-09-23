@@ -8,8 +8,9 @@ npm run dev
 ```
 
 Edit pages in `src/app/**/page.mdx` and navigation in
-`src/components/Navigation.tsx`. Use Markdown for content; plain `Note` and
-`CodeGroup` wrappers are also supported by the text exporter.
+`src/components/Navigation.tsx`. Use Markdown for content and follow
+`src/app/reference/page.mdx` for side-by-side examples and parameter descriptions.
+The build rejects MDX that the text exporter cannot preserve.
 
 Build for GitHub Pages:
 

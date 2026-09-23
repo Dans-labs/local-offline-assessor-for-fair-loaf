@@ -54,10 +54,54 @@ test('rejects components and expressions whose text cannot be exported', () => {
   for (const source of [
     '# Guide\n\n<Example />',
     '# Guide\n\nValue: {value}',
-    '# Guide\n\n<CodeGroup title="Example">\n\nText.\n\n</CodeGroup>',
+    '# Guide\n\n<CodeGroup label="Hidden text">\n\nText.\n\n</CodeGroup>',
+    '# Guide\n\n<CodeGroup title={title}>\n\nText.\n\n</CodeGroup>',
   ]) {
     assert.throws(() => toMarkdown(source), /Unsupported MDX/)
   }
+})
+
+test('keeps parameter names, types and example titles in reference layouts', () => {
+  const result = toMarkdown(`# Reference
+
+<Row>
+<Col>
+<Properties>
+<Property name="metadata" type="dict">
+
+The supplied JSON-LD.
+
+</Property>
+</Properties>
+</Col>
+<Col>
+<CodeGroup title="Example">
+
+\`\`\`python
+assessor.assess(metadata=metadata)
+\`\`\`
+
+</CodeGroup>
+</Col>
+</Row>
+`)
+  assert.match(result, /\*\*`metadata`\*\* — `dict`\n\nThe supplied JSON-LD\./)
+  assert.match(result, /\*\*Example\*\*\n\n```python/)
+  assert.match(result, /assessor\.assess\(metadata=metadata\)/)
+  assert.doesNotMatch(result, /<\/?(?:Row|Col|Property|Properties|CodeGroup)/)
+})
+
+test('keeps documentation links inside the GitHub Pages base path', () => {
+  const source = '[Results](/results#scores) · [Project](https://example.org)'
+  assert.match(
+    toMarkdown(source, '/library'),
+    /\[Results\]\(\/library\/results#scores\)/,
+  )
+  assert.match(
+    toMarkdown(source, '/library'),
+    /\[Project\]\(https:\/\/example.org\)/,
+  )
+  assert.match(toMarkdown(source), /\[Results\]\(\/results#scores\)/)
 })
 
 test('generates text and discovery links for root and nested pages', () => {
