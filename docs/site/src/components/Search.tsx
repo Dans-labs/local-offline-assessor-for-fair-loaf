@@ -326,8 +326,6 @@ function SearchDialog({
   className?: string
   onNavigate?: () => void
 }) {
-  let formRef = useRef<React.ElementRef<'form'>>(null)
-  let panelRef = useRef<React.ElementRef<'div'>>(null)
   let inputRef = useRef<React.ElementRef<typeof SearchInput>>(null)
   let { autocomplete, autocompleteState } = useAutocomplete({
     onNavigate() {
@@ -382,7 +380,6 @@ function SearchDialog({
         >
           <div {...autocomplete.getRootProps({})}>
             <form
-              ref={formRef}
               {...autocomplete.getFormProps({
                 // eslint-disable-next-line react-hooks/refs
                 inputElement: inputRef.current,
@@ -395,7 +392,6 @@ function SearchDialog({
                 onClose={() => setOpen(false)}
               />
               <div
-                ref={panelRef}
                 className="border-t border-zinc-200 bg-white empty:hidden dark:border-zinc-100/5 dark:bg-white/2.5"
                 {...autocomplete.getPanelProps({})}
               >

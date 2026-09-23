@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
@@ -46,5 +46,23 @@ def test_adapter_selection_requires_exact_implementation_and_definitions():
         with pytest.raises(ProfileError) as exc:
             resolve_adapter(profile, adapters=candidates)
         assert exc.value.code == code
-    with pytest.raises(ProfileError, match="not available"):
-        resolve_adapter(profile)
+
+
+def test_adapter_versions_remain_independently_selectable():
+    original = load_profile("fusji-offline@3.5.1")
+    newer = replace(
+        original,
+        profile=original.profile.model_copy(update={"adapter_version": "2.0.0"}),
+        info=original.info.model_copy(update={"adapter_version": "2.0.0"}),
+    )
+    first = ExampleAdapter("fuji", "1.0.0", ())
+    second = ExampleAdapter("fuji", "2.0.0", ())
+    unrelated = ExampleAdapter("example", "1.0.0", ())
+    adapters = (unrelated, second, first)
+
+    assert resolve_adapter(original, adapters=adapters) is first
+    assert resolve_adapter(newer, adapters=adapters) is second
+    assert resolve_adapter(original, adapters=adapters) is first
+    with pytest.raises(ProfileError) as error:
+        resolve_adapter(original, adapters=(unrelated, second))
+    assert error.value.code == "adapter_unavailable"

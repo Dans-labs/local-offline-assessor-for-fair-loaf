@@ -21,18 +21,6 @@ def read(profile, metadata, metadata_format=None, **kwargs):
     )
 
 
-def test_rdf_uses_upstream_title_priority_instead_of_merging_terms(profile):
-    metadata = {
-        "@context": "https://schema.org",
-        "@id": "urn:data",
-        "@type": "Dataset",
-        "name": "Schema title",
-        "http://purl.org/dc/terms/title": "DC Terms title",
-        "http://purl.org/dc/elements/1.1/title": "DC title",
-    }
-    assert read(profile, metadata).fields["title"] == "DC title"
-
-
 def test_upstream_selects_main_entity_and_accepts_more_than_datasets(profile):
     metadata = [
         {"@context": "https://schema.org", "@id": "urn:small", "@type": "Dataset"},

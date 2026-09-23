@@ -4,8 +4,6 @@ from importlib.resources import files
 
 import pytest
 import yaml
-from pyld import jsonld
-from pyld.documentloader.frozen import FrozenDocumentLoader
 
 from fair_offline_assessor import list_profiles, load_profile
 from fair_offline_assessor.models import AssessmentResult, Profile
@@ -64,32 +62,3 @@ def test_bundled_fuji_profile_loads_pinned_definitions():
         == 31
     )
     assert sum(metric["total_score"] for metric in metrics) == 26
-
-
-def test_bundled_context_expands_dataset_without_network():
-    resource, content = read_resources()["schemaorg:context"]
-    loader = FrozenDocumentLoader(
-        documents={alias: json.loads(content) for alias in resource["aliases"]}
-    )
-    for alias in (
-        "http://schema.org",
-        "http://schema.org/",
-        "https://schema.org",
-        "https://schema.org/",
-        "https://schema.org/version/30.0/schemaorgcontext.jsonld",
-    ):
-        assert jsonld.expand(
-            {
-                "@context": alias,
-                "@type": "Dataset",
-                "name": "Example",
-                "isAccessibleForFree": False,
-            },
-            options={"documentLoader": loader},
-        ) == [
-            {
-                "@type": ["http://schema.org/Dataset"],
-                "http://schema.org/name": [{"@value": "Example"}],
-                "http://schema.org/isAccessibleForFree": [{"@value": False}],
-            }
-        ]

@@ -17,6 +17,12 @@ uv run --group release twine check dist/*
 Tests block network connections. For documentation changes, follow the
 [documentation site instructions](site/README.md).
 
+Keep tests focused on distinct behaviour or regressions. Before adding or removing
+a case, check what existing tests already cover. Test an interpretation through
+the library rather than repeating a dependency's own tests. Invalid-input tests
+must check the intended error; an unrelated validation failure can hide a broken
+test. Preserve coverage for offline execution, version pins and result compatibility.
+
 ## Where to make changes
 
 `Assessor(name, version=...)` chooses the code and data used for an assessment.

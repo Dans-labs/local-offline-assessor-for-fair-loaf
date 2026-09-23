@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 from pydantic import JsonValue
 
-from fair_offline_assessor.adapters import resolve_adapter
+from fair_offline_assessor.adapters import AssessorAdapter, resolve_adapter
 from fair_offline_assessor.assessors.fuji.assessment import FujiAdapter
 from fair_offline_assessor.models import (
     AssessmentInput,
@@ -13,6 +13,11 @@ from fair_offline_assessor.models.v1 import JsonObject
 from fair_offline_assessor.profiles import ProfileProvider, load_profile
 
 _DEFAULT_PROFILES = {"FUJI": "fusji-offline@3.5.1"}
+
+
+def _builtin_adapters() -> tuple[AssessorAdapter, ...]:
+    """Return the built-in implementations available to both public entry points."""
+    return (FujiAdapter(),)
 
 
 class Assessor:
@@ -36,7 +41,7 @@ class Assessor:
                     f"Assessor version not found: {name}@{version}",
                 ) from exc
             raise
-        self._adapter = resolve_adapter(self._profile, adapters=(FujiAdapter(),))
+        self._adapter = resolve_adapter(self._profile, adapters=_builtin_adapters())
 
     def assess(
         self,
@@ -66,5 +71,5 @@ def assess(
 ) -> AssessmentResult:
     """Assess supplied evidence offline using an exact profile ID@version."""
     loaded = load_profile(profile, provider=provider)
-    adapter = resolve_adapter(loaded, adapters=(FujiAdapter(),))
+    adapter = resolve_adapter(loaded, adapters=_builtin_adapters())
     return adapter.assess(request, loaded)

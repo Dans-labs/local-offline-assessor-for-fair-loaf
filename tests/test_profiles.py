@@ -53,18 +53,13 @@ def test_profile_model_rejects_invalid_definitions(problem):
         case "adapter":
             data["adapter"] = ""
         case "duplicate_resource":
-            data["resources"] = [
-                {
-                    "id": "reference",
-                    "version": "1",
-                    "kind": "reference",
-                    "digest": "0" * 64,
-                }
-            ] * 2
+            data["resources"] = [{"id": "reference", "version": "1"}] * 2
         case "metrics":
             data["metrics"] = []
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as error:
         Profile.model_validate(data)
+    if problem == "duplicate_resource":
+        assert "Duplicate resource identifier" in str(error.value)
 
 
 class MemoryProvider:

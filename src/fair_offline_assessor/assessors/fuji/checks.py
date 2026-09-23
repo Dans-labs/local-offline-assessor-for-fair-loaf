@@ -163,8 +163,6 @@ class Evaluator:
     check_fields: Mapping[str, str] = field(default_factory=dict)
     check_evidence: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     unsupported_checks: tuple[str, ...] = ()
-    # These checks can pass on a readable subset; a failure needs all the evidence.
-    partial_passes: tuple[str, ...] = ()
 
 
 EVALUATORS = {
@@ -177,7 +175,6 @@ EVALUATORS = {
             "FsF-F1-02MD-4": "object_content_identifier",
         },
         unsupported_checks=("FsF-F1-02MD-2", "FsF-F1-02MD-5"),
-        partial_passes=("FsF-F1-02MD-4",),
     ),
     "FsF-I2-01M": Evaluator(
         semantic_vocabulary.FAIREvaluatorSemanticVocabulary,
@@ -194,7 +191,6 @@ EVALUATORS = {
         (),
         (FILE_FORMATS,),
         {"FsF-R1.3-02D-1": "file_formats"},
-        partial_passes=("FsF-R1.3-02D-1",),
     ),
     "FsF-R1-01M": Evaluator(
         data_content.FAIREvaluatorDataContentMetadata,
@@ -209,19 +205,16 @@ EVALUATORS = {
             ),
             "FsF-R1-01M-3": ("measured_variable", "object_content_identifier"),
         },
-        partial_passes=("FsF-R1-01M-1", "FsF-R1-01M-2", "FsF-R1-01M-3"),
     ),
     "FsF-R1.2-01M": Evaluator(
         provenance.FAIREvaluatorDataProvenance,
         (*Mapper.PROVENANCE_MAPPING.value, "related_resources"),
         check_evidence={"FsF-R1.2-01M-2": ("provenance_namespaces",)},
-        partial_passes=("FsF-R1.2-01M-1",),
     ),
     "FsF-I3-01M": Evaluator(
         related_resources.FAIREvaluatorRelatedResources,
         ("related_resources",),
         (IDENTIFIERS,),
-        partial_passes=("FsF-I3-01M-1", "FsF-I3-01M-2"),
     ),
     "FsF-F1-01MD": Evaluator(
         identifiers.FAIREvaluatorUniqueIdentifierMetadata,
@@ -231,7 +224,6 @@ EVALUATORS = {
             "FsF-F1-01MD-1": "metadata_url",
             "FsF-F1-01MD-2": "object_content_identifier",
         },
-        partial_passes=("FsF-F1-01MD-2",),
     ),
     "FsF-F2-01M": Evaluator(
         core_metadata.FAIREvaluatorCoreMetadata,
@@ -246,24 +238,20 @@ EVALUATORS = {
                 "object_type",
             )
         },
-        partial_passes=("FsF-F2-01M-2", "FsF-F2-01M-3"),
     ),
     "FsF-F3-01M": Evaluator(
         data_links.FAIREvaluatorDataIdentifierIncluded,
         ("object_content_identifier",),
-        partial_passes=("FsF-F3-01M-2",),
     ),
     "FsF-R1.1-01M": Evaluator(
         license_metadata.FAIREvaluatorLicense,
         ("license",),
         (LICENSES,),
-        partial_passes=("FsF-R1.1-01M-1", "FsF-R1.1-01M-2"),
     ),
     "FsF-A1-01M": Evaluator(
         access_metadata.FAIREvaluatorDataAccessLevel,
         ("access_level", "access_free"),
         (LICENSES, ACCESS_RIGHTS),
-        partial_passes=("FsF-A1-01M-1",),
     ),
     "FsF-A1.1-01MD": Evaluator(
         protocols.FAIREvaluatorStandardisedProtocolMetadata,
@@ -273,7 +261,6 @@ EVALUATORS = {
             "FsF-A1.1-01MD-1": "metadata_url",
             "FsF-A1.1-01MD-2": "object_content_identifier",
         },
-        partial_passes=("FsF-A1.1-01MD-2",),
     ),
     "FsF-A1.2-01MD": Evaluator(
         authentication.FAIREvaluatorStandardisedProtocolAuthentication,
@@ -283,7 +270,6 @@ EVALUATORS = {
             "FsF-A1.2-01MD-1": "metadata_url",
             "FsF-A1.2-01MD-2": "object_content_identifier",
         },
-        partial_passes=("FsF-A1.2-01MD-2",),
     ),
 }
 REFERENCES = (

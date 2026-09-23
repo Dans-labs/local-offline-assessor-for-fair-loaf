@@ -77,18 +77,13 @@ function useVisibleSections(sectionStore: StoreApi<SectionState>) {
         sectionIndex < sections.length;
         sectionIndex++
       ) {
-        let { id, headingRef, offsetRem = 0 } = sections[sectionIndex]
+        let { id, headingRef } = sections[sectionIndex]
 
         if (!headingRef?.current) {
           continue
         }
 
-        let offset = remToPx(offsetRem)
         let top = headingRef.current.getBoundingClientRect().top + scrollY
-
-        if (sectionIndex === 0 && top - offset > scrollY) {
-          newVisibleSections.push('_top')
-        }
 
         let nextSection = sections[sectionIndex + 1]
         let bottom =

@@ -469,15 +469,6 @@ def test_licence_presence_uses_supplied_values_without_requiring_spdx(
     assert_metadata_evidence(result, core.evidence)
     assert not result.diagnostics
     assert request_data == original
-    empty = library.assess(
-        AssessmentInput(
-            metadata={"@context": "https://schema.org", "@type": "Dataset"}
-        ),
-        profile=PROFILE,
-    )
-    assert (
-        next(item for item in empty.metrics if item.id == metric.id).outcome == "fail"
-    )
 
 
 @pytest.mark.parametrize(

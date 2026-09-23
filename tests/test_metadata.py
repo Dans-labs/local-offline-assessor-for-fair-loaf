@@ -19,14 +19,26 @@ def profile():
 
 
 def test_bundled_context_aliases_expand_without_network(profile):
-    for alias in next(r.aliases for r in profile.references if r.kind == "context"):
+    for alias in (
+        "http://schema.org",
+        "http://schema.org/",
+        "https://schema.org",
+        "https://schema.org/",
+        "https://schema.org/version/30.0/schemaorgcontext.jsonld",
+    ):
         request = AssessmentInput(
-            metadata={"@context": alias, "@type": "Dataset", "name": "Example"}
+            metadata={
+                "@context": alias,
+                "@type": "Dataset",
+                "name": "Example",
+                "isAccessibleForFree": False,
+            }
         )
         assert expand_metadata(request, profile) == [
             {
                 "@type": ["http://schema.org/Dataset"],
                 "http://schema.org/name": [{"@value": "Example"}],
+                "http://schema.org/isAccessibleForFree": [{"@value": False}],
             }
         ]
     with pytest.raises(InputError) as error:

@@ -54,7 +54,6 @@ dev = [
 ]
 release = [
     "twine>=6",
-    "cffconvert>=2",
 ]
 
 [tool.uv.build-backend]

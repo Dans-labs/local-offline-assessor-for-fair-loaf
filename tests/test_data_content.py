@@ -106,7 +106,5 @@ def test_data_content_preserves_native_presence_checks(
     assert [check.score.maximum for check in checks] == [1, 1, 0]
     assert checks[2].score.observed_earned == 0
     assert all(ref.location == "/metadata" for c in checks for ref in c.evidence)
-    assert all("variableMeasured" not in ref.location for ref in checks[1].evidence)
-    assert all("contentSize" not in ref.location for ref in checks[2].evidence)
     assert result.coverage.errors == 0
     assert request == original

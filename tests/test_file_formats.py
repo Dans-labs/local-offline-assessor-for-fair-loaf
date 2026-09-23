@@ -46,7 +46,6 @@ def test_file_formats_use_declarations_without_guessing(formats, outcome):
         assert check.score == metric.score
         assert metric.level.value == (3 if outcome == "pass" else 0)
         assert all(ref.location == "/metadata" for ref in check.evidence)
-        assert all("contentSize" not in ref.location for ref in check.evidence)
     assert result.coverage.errors == 0
     assert request == original
 

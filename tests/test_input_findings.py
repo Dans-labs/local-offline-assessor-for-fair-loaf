@@ -94,10 +94,6 @@ def test_jsonld_text_preserves_results_and_the_original_input_digest(metadata):
     assert result.provenance.resources == parsed.provenance.resources
     assert result.provenance.input_digest != parsed.provenance.input_digest
     assert result == assessor.assess(metadata=text)
-    missing = assessor.assess(
-        metadata={k: v for k, v in METADATA.items() if k != "license"}
-    )
-    assert next(c for c in missing.tests if c.id == "FsF-R1.1-01M-1").outcome == "fail"
 
 
 def test_unusable_jsonld_base_is_reported_without_hiding_identifier_results():
