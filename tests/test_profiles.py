@@ -1,12 +1,21 @@
 import json
 from copy import deepcopy
+from functools import partial
 from hashlib import sha256
 from zipfile import ZipFile
 
 import pytest
 from pydantic import ValidationError
 
-from fair_offline_assessor import list_profiles, load_profile, profiles
+from fair_offline_assessor import (
+    Assessor,
+    assess,
+    assessment,
+    list_profiles,
+    load_profile,
+    profiles,
+)
+from fair_offline_assessor.assessors.champion.v0_5_12.adapter import ChampionAdapter
 from fair_offline_assessor.models import (
     Profile,
     ProfileError,
@@ -95,6 +104,48 @@ class MemoryProvider:
             == (profile_id, version)
         )
         return ProfileBundle(content, self.resources, self.references)
+
+
+def test_champion_version_selection_retains_existing_instances(monkeypatch):
+    loaded = load_profile("fair-champion-offline@0.5.12")
+    first = loaded.profile.model_dump()
+    second = first | {"version": "0.5.12.post1", "adapter_version": "2.0.0"}
+    provider = MemoryProvider(
+        first, second, resources=loaded.resources, references=loaded.references
+    )
+
+    class FutureAdapter(ChampionAdapter):
+        version = "2.0.0"  # Synthetic configuration: reuse these rules for routing.
+
+    monkeypatch.setattr(
+        assessment, "_builtin_adapters", lambda: (ChampionAdapter(), FutureAdapter())
+    )
+    monkeypatch.setattr(
+        assessment, "load_profile", partial(load_profile, provider=provider)
+    )
+    existing = Assessor("FAIR_CHAMPION")
+    baseline = existing.assess(metadata={}).model_dump(exclude={"raw"})
+    monkeypatch.setattr(
+        assessment,
+        "_DEFAULT_PROFILES",
+        {"FAIR_CHAMPION": "fair-champion-offline@0.5.12.post1"},
+    )
+    for selected in ("0.5.12", "0.5.12.post1"):
+        named = Assessor("FAIR_CHAMPION", version=selected).assess(metadata={})
+        direct = assess(
+            {"metadata": {}},
+            profile=f"fair-champion-offline@{selected}",
+            provider=provider,
+        )
+        assert named.model_dump(exclude={"raw"}) == direct.model_dump(exclude={"raw"})
+        assert named.profile.version == selected
+        adapter_version = "1.0.0" if selected == "0.5.12" else "2.0.0"
+        assert named.profile.adapter_version == adapter_version
+        assert f"PythonAdapter:{adapter_version}" in named.model_dump_json()
+    assert (
+        Assessor("FAIR_CHAMPION").assess(metadata={}).profile.version == "0.5.12.post1"
+    )
+    assert existing.assess(metadata={}).model_dump(exclude={"raw"}) == baseline
 
 
 @pytest.mark.parametrize("profile_id", ["example:metadata", "fusji-offline"])

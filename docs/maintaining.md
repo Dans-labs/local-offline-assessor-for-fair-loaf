@@ -84,7 +84,9 @@ The generated `upstream.json` records the original commit and file checksums;
 
 ## Prepare Champion definitions
 
-Champion is under development and cannot yet be selected for assessment.
+Select Champion with `Assessor("FAIR_CHAMPION", version="0.5.12")` or the profile
+`fair-champion-offline@0.5.12`. This version refers to FAIR Core Tests, not the
+Champion web application's release.
 The settings in [scripts/champion/0.5.12.json](../scripts/champion/0.5.12.json)
 pin FAIR-Core-Tests 0.5.12, Harvester 0.1.17, source checksums and offline limitations.
 Preparation extracts 16 check definitions, their 13 metric identifiers, ordered
@@ -109,12 +111,14 @@ uv run python scripts/resources/prepare_resources.py --check
 
 `--source` must contain the pinned Git commit; checkout edits are ignored.
 Change the settings or extraction script, then regenerate and review the diff.
-Keep other versions intact. Future Python checks belong beside `definitions.py`
-in `assessors/champion/v0_5_12/`; public registration waits until they are ready.
+Keep other versions intact. The Python implementation is in
+`assessors/champion/v0_5_12/`; its profile pins those definitions and
+`schemaorg:context@30.0`. Future implementations need their own directory,
+adapter version and profile, registered in `assessment.py` alongside retained versions.
 
 `ChampionInput` adds `target_identifier` for the identifier being assessed.
-`input.py` retains valid fields and reports invalid ones separately. Callers must
-use those diagnostics to decide which evidence is usable. `graph.py`
+`input.py` retains valid fields and reports invalid ones separately. The adapter
+uses those diagnostics to decide which checks can run. `graph.py`
 turns supplied JSON-LD objects or document text into RDF using local contexts.
 It accepts any RDF subject type, without F-UJI's dataset selection rules.
 
@@ -128,7 +132,12 @@ one appearing in multiple graphs produces a diagnostic. Relative IDs use
 `checks.py` handles all 16 pinned checks.
 Protocol and authentication results classify identifiers; they do not demonstrate
 successful retrieval or login. Missing evidence remains `indeterminate`.
-Public Champion registration and result assembly are not implemented yet.
+`adapter.py` returns all 16 checks and 13 metric summaries. An unexpected exception
+marks only affected checks as `error`; independent checks continue. Input problems
+remain `indeterminate`, with diagnostics. No numeric scores or maturity levels are
+assigned. Metric summaries use `error` first, then `indeterminate`, then a unanimous
+`pass` or `fail`; mixed pass/fail results become `partial`. These summaries are the
+library's grouping rule, not an upstream Champion score.
 
 - Both RDF checks require a nonempty graph. Licence checks inspect the first value
   of each supported predicate across that graph; the strong check requires an IRI.
@@ -148,6 +157,23 @@ Fixtures under `tests/fixtures/champion/0.5.12/` record expected decisions, sour
 paths, hashes and rationale. They are reviewed against source, not obtained by
 executing Ruby. Preserve upstream query quirks when updating the port; changing
 them requires an explicitly versioned adaptation.
+
+### Champion raw output
+
+`raw` contains one FTR JSON-LD document per completed Python check. `raw.py` follows
+the graph structure in `ftr_ruby` 0.1.12 (`OutputVersion:1.1.1`), identifying the test,
+execution, outcome and supplied target. The source hashes and a reviewed example
+are in `tests/fixtures/champion/0.5.12/raw.json`.
+
+This is output from the offline port, not a captured Ruby service response. It uses
+the port's software URN, descriptions, logs and adapter version. Service endpoints,
+the DataService type and upstream licence assertions are omitted. A missing target
+has no identifier; a check that errors has no raw entry. `ftr:completion` describes
+execution completion, not a FAIR score.
+
+Fresh UUIDs and timestamps identify each run, so complete responses differ between
+runs. Outcomes, input hashes and pinned resource hashes remain reproducible for the
+same input and software versions.
 
 ## Add a F-UJI version
 

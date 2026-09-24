@@ -37,6 +37,7 @@ def test_assessor_matches_profile_entry_point_with_all_evidence(name, version):
         ("unknown", None, "assessor_not_found"),
         ("FUJI", "2.0.0", "assessor_version_not_found"),
         ("FUJI", "", "assessor_version_not_found"),
+        ("FAIR_CHAMPION", "0.0.0", "assessor_version_not_found"),
     ],
 )
 def test_assessor_rejects_unknown_selection_without_falling_back(name, version, code):

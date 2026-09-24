@@ -1,0 +1,57 @@
+{
+  "source": {
+    "url": "https://rubygems.org/downloads/ftr_ruby-0.1.12.gem",
+    "sha256": "30d13896407793aebdd80b532b882ebe7844c9397a2a7317eb52bd1aafcfc13f",
+    "path": "lib/output.rb",
+    "method": "FtrRuby::Output#createEvaluationResponse",
+    "literal_serialization": {
+      "url": "https://rubygems.org/downloads/triple_easy-0.1.0.gem",
+      "sha256": "3a196210fd505fa98ff5aa58348e62775f454a5f419eff4ec46f3b09666512ff"
+    }
+  },
+  "rationale": "Hand-reviewed FTR graph structure, not a captured Ruby response. The Python port uses its own software URN, description, log and adapter version. It omits service endpoints, DataService type and upstream license assertions. Missing targets omit their identifier. Run UUIDs and time are replaced by tokens only in this fixture. Completion 100 describes a finished execution, not a FAIR score.",
+  "expected": {
+    "@context": {
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "prov": "http://www.w3.org/ns/prov#",
+      "dct": "http://purl.org/dc/terms/",
+      "dcat": "http://www.w3.org/ns/dcat#",
+      "ftr": "https://w3id.org/ftr#",
+      "sio": "http://semanticscience.org/resource/",
+      "schema": "http://schema.org/"
+    },
+    "@graph": [
+      {
+        "@id": "EXECUTION",
+        "@type": "ftr:TestExecutionActivity",
+        "prov:wasAssociatedWith": {"@id": "urn:fair-offline-assessor:champion:0.5.12:1.0.0:test_FM_F1_M_IdentUnique"},
+        "prov:used": {"@id": "TARGET"}
+      },
+      {
+        "@id": "RESULT",
+        "@type": "ftr:TestResult",
+        "prov:wasGeneratedBy": {"@id": "EXECUTION"},
+        "dct:identifier": "RESULT",
+        "dct:title": {"@value": "OSTrails Core: Unique Identifier OUTPUT", "@language": "en"},
+        "dct:description": {"@value": "OUTPUT OF Offline Python implementation of OSTrails Core: Unique Identifier.", "@language": "en"},
+        "prov:value": {"@value": "pass", "@language": "en"},
+        "ftr:summary": {"@value": "Summary:", "@language": "en"},
+        "prov:generatedAtTime": {"@value": "TIMESTAMP", "@type": "xsd:dateTime"},
+        "ftr:log": {"@value": "Offline Python assessment.\nThe target matches Champion's doi identifier pattern.", "@language": "en"},
+        "ftr:completion": {"@value": "100", "@type": "xsd:integer"},
+        "ftr:outputFromTest": {"@id": "urn:fair-offline-assessor:champion:0.5.12:1.0.0:test_FM_F1_M_IdentUnique"},
+        "ftr:assessmentTarget": {"@id": "TARGET"}
+      },
+      {
+        "@id": "urn:fair-offline-assessor:champion:0.5.12:1.0.0:test_FM_F1_M_IdentUnique",
+        "@type": ["ftr:Test", "schema:SoftwareApplication"],
+        "dct:identifier": "urn:fair-offline-assessor:champion:0.5.12:1.0.0:test_FM_F1_M_IdentUnique",
+        "dct:title": {"@value": "OSTrails Core: Unique Identifier", "@language": "en"},
+        "dct:description": {"@value": "Offline Python implementation of OSTrails Core: Unique Identifier.", "@language": "en"},
+        "dcat:version": {"@value": "Hvst-0.1.17:Tst-3.0.1 OutputVersion:1.1.1 PythonAdapter:1.0.0", "@language": "en"},
+        "sio:SIO_000233": {"@id": "https://w3id.org/fair-metrics/general/FM_F1_M_IdentUnique"}
+      },
+      {"@id": "TARGET", "@type": "prov:Entity", "dct:identifier": "10.1234/abc"}
+    ]
+  }
+}

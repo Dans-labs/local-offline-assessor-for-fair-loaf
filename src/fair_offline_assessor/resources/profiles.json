@@ -1,5 +1,14 @@
 [
   {
+    "id": "fair-champion-offline",
+    "version": "0.5.12",
+    "title": "FAIR Champion offline",
+    "adapter": "champion",
+    "engine_requires": ">=0.1,<0.2",
+    "adapter_version": "1.0.0",
+    "digest": "1d6c22c056e1c8127f471b8ca3d18223dfaa9924a03b3069a45d10e6d504f219"
+  },
+  {
     "id": "fusji-offline",
     "version": "3.5.1",
     "title": "F-UJI offline",

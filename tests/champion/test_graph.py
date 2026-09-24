@@ -1,6 +1,6 @@
 import json
 from copy import deepcopy
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from hashlib import sha256
 
 import pytest
@@ -12,13 +12,7 @@ from fair_offline_assessor.assessors.champion.v0_5_12.graph import prepare_graph
 
 @pytest.fixture
 def profile():
-    loaded = load_profile("fusji-offline@3.5.1")
-    contexts = tuple(r for r in loaded.references if r.kind == "context")
-    return replace(
-        loaded,
-        references=contexts,
-        resources={r.id: loaded.resources[r.id] for r in contexts},
-    )
+    return load_profile("fair-champion-offline@0.5.12")
 
 
 def graph(metadata, profile, **options):

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "fair-champion-offline",
+  "version": "0.5.12",
+  "title": "FAIR Champion offline",
+  "adapter": "champion",
+  "adapter_version": "1.0.0",
+  "engine_requires": ">=0.1,<0.2",
+  "resources": [
+    {"id": "champion:tests", "version": "0.5.12"},
+    {"id": "champion:references", "version": "0.5.12"},
+    {"id": "champion:offline-policy", "version": "0.5.12"},
+    {"id": "champion:upstream", "version": "0.5.12"},
+    {"id": "schemaorg:context", "version": "30.0"}
+  ],
+  "limitations": [
+    "Python port of FAIR Core Tests 0.5.12 decisions on supplied JSON-LD and target identifiers.",
+    "Checks needing retrieval or other unavailable evidence remain indeterminate.",
+    "Raw results use FTR JSON-LD for the offline port; no Ruby service is called.",
+    "Metric outcomes summarize check outcomes; numerical scores and maturity levels are not assigned."
+  ]
+}

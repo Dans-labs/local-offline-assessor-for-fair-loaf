@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from pydantic import JsonValue
 
 from fair_offline_assessor.adapters import AssessorAdapter, resolve_adapter
+from fair_offline_assessor.assessors.champion.v0_5_12.adapter import ChampionAdapter
 from fair_offline_assessor.assessors.fuji.assessment import FujiAdapter
 from fair_offline_assessor.models import (
     AssessmentInput,
@@ -12,12 +13,15 @@ from fair_offline_assessor.models import (
 from fair_offline_assessor.models.v1 import JsonObject
 from fair_offline_assessor.profiles import ProfileProvider, load_profile
 
-_DEFAULT_PROFILES = {"FUJI": "fusji-offline@3.5.1"}
+_DEFAULT_PROFILES = {
+    "FUJI": "fusji-offline@3.5.1",
+    "FAIR_CHAMPION": "fair-champion-offline@0.5.12",
+}
 
 
 def _builtin_adapters() -> tuple[AssessorAdapter, ...]:
     """Return the built-in implementations available to both public entry points."""
-    return (FujiAdapter(),)
+    return (FujiAdapter(), ChampionAdapter())
 
 
 class Assessor:
@@ -43,7 +47,7 @@ class Assessor:
             raise
         self._adapter = resolve_adapter(self._profile, adapters=_builtin_adapters())
 
-    def assess(
+    def assess(  # noqa: PLR0913 - Keep evidence fields explicit in the public API.
         self,
         *,
         metadata: JsonValue,
@@ -51,8 +55,9 @@ class Assessor:
         subject: str | None = None,
         metadata_url: str | None = None,
         local_contexts: dict[str, JsonObject] | None = None,
+        target_identifier: str | None = None,
     ) -> AssessmentResult:
-        """Assess supplied metadata using this assessor's readers, without fetching."""
+        """Assess supplied metadata using this assessor's rules, without fetching."""
         request = {
             "metadata": metadata,
             "metadata_format": metadata_format,
@@ -60,6 +65,8 @@ class Assessor:
             "metadata_url": metadata_url,
             "local_contexts": local_contexts if local_contexts is not None else {},
         }
+        if target_identifier is not None:
+            request["target_identifier"] = target_identifier
         return self._adapter.assess(request, self._profile)
 
 
