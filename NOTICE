@@ -13,6 +13,17 @@ Copyright (c) 2020 PANGAEA (https://www.pangaea.de/).
 The MIT license is included in LICENSES/F-UJI-MIT.txt.
 Source: https://github.com/pangaea-data-publisher/fuji
 
+Includes FAIR-Core-Tests 0.5.12 definitions and FAIR Champion Harvester 0.1.17
+reference values, extracted with Python. Source commits, input checksums and
+offline adaptations are recorded in resources/assessors/champion/0.5.12/upstream.json
+under src/fair_offline_assessor/. Test fixtures include selected source excerpts.
+Copyright (c) 2024 Wilkinson Laboratory for Biological Informatics.
+Copyright (c) 2026 markwilkinson.
+The MIT licenses are included in LICENSES/FAIR-Core-Tests-MIT.txt and
+LICENSES/FAIR-Champion-Harvester-MIT.txt.
+Sources: https://github.com/wilkinsonlab/FAIR-Core-Tests
+         https://rubygems.org/gems/fair_champion_harvester/versions/0.1.17
+
 Includes the unmodified Schema.org 30.0 JSON-LD context, by the Schema.org
 contributors and sponsors (Google, Microsoft, Yahoo and Yandex), under
 CC-BY-SA-3.0: https://creativecommons.org/licenses/by-sa/3.0/

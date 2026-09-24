@@ -82,6 +82,36 @@ Do not edit files in `_vendor/`. Make changes in
 The generated `upstream.json` records the original commit and file checksums;
 `source.patch` records the changes made to F-UJI's code.
 
+## Prepare Champion definitions
+
+Champion is under development and cannot yet be selected for assessment.
+The settings in [scripts/champion/0.5.12.json](../scripts/champion/0.5.12.json)
+pin FAIR-Core-Tests 0.5.12, Harvester 0.1.17, source checksums and offline limitations.
+Preparation extracts 16 check definitions, their 13 metric identifiers, ordered
+identifier patterns and predicates. It does not translate or run Ruby checks.
+
+```sh
+uv run python scripts/champion/prepare_champion.py
+uv run python scripts/resources/prepare_resources.py
+```
+
+The first command downloads the pinned sources unless local inputs are supplied.
+It writes `resources/assessors/champion/0.5.12/` and the fixed resource checksums in
+`assessors/champion/v0_5_12/bindings.py`, both under `src/fair_offline_assessor/`.
+It also copies the upstream licence notices into `LICENSES/`.
+
+To verify generated files without downloads or writes, supply both local inputs:
+
+```sh
+uv run python scripts/champion/prepare_champion.py --source /path/to/FAIR-Core-Tests --harvester-gem /path/to/fair_champion_harvester-0.1.17.gem --check
+uv run python scripts/resources/prepare_resources.py --check
+```
+
+`--source` must contain the pinned Git commit; checkout edits are ignored.
+Change the settings or extraction script, then regenerate and review the diff.
+Keep other versions intact. Future Python checks belong beside `definitions.py`
+in `assessors/champion/v0_5_12/`; public registration waits until they are ready.
+
 ## Add a F-UJI version
 
 1. Copy the settings file to `scripts/fuji/<version>.json` and the data-file list to
@@ -139,8 +169,8 @@ configuration and run `prepare_resources.py`.
 
 ## Keep versions reproducible
 
-The package version is in `pyproject.toml`. F-UJI versions and commits are in
-`scripts/fuji/`. Each assessment configuration records its code and data versions;
+The package version is in `pyproject.toml`. Assessor versions and source commits are in
+`scripts/<assessor>/`. Each assessment configuration records its code and data versions;
 `engine_requires` states which library versions can use it. The public `version`
 argument selects this configuration version.
 

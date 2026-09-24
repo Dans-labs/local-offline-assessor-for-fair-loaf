@@ -1,0 +1,267 @@
+{
+  "reason_codes": [
+    "passed",
+    "failed",
+    "upstream_indeterminate",
+    "missing_evidence",
+    "unsupported_check",
+    "evaluator_error"
+  ],
+  "adaptations": [
+    "Python port of reviewed decisions, not execution of upstream Ruby.",
+    "Preserve Ruby regex source and predicate order; Python translations require source-reviewed tests.",
+    "Preserve harvester query quirks, including unbound schema distribution/DCAT variables.",
+    "No benchmark weights or numeric scores.",
+    "Candidate order follows pinned PyLD traversal, not arbitrary online harvest order."
+  ],
+  "tests": {
+    "test_FM_A1_1_M_OpenProt": {
+      "principles": [
+        "A"
+      ],
+      "requires": [
+        "target_identifier"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use the explicitly supplied target identifier; do not derive it from metadata."
+      ]
+    },
+    "test_FM_A1_1_M_OpenProt_Data": {
+      "principles": [
+        "A"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_A1_2_M_Auth": {
+      "principles": [
+        "A"
+      ],
+      "requires": [
+        "target_identifier"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use the explicitly supplied target identifier; do not derive it from metadata."
+      ]
+    },
+    "test_FM_A1_2_M_DataAuth": {
+      "principles": [
+        "A"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_A2_M_MetaLong": {
+      "principles": [
+        "A"
+      ],
+      "requires": [
+        "target_identifier",
+        "graph",
+        "policy_response"
+      ],
+      "support": "conditional",
+      "branches": [
+        "DOI shortcut",
+        "local policy inspection; retrieval remains indeterminate"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target.",
+        "Do not execute or repair the upstream misspelled variables in the network policy branch."
+      ]
+    },
+    "test_FM_F1_M_IdentPersistent": {
+      "principles": [
+        "F"
+      ],
+      "requires": [
+        "target_identifier"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use the explicitly supplied target identifier; do not derive it from metadata."
+      ]
+    },
+    "test_FM_F1_M_IdentUnique": {
+      "principles": [
+        "F"
+      ],
+      "requires": [
+        "target_identifier"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use the explicitly supplied target identifier; do not derive it from metadata."
+      ]
+    },
+    "test_FM_F3_M_DataIdent": {
+      "principles": [
+        "F"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_F3_M_MetaIdent": {
+      "principles": [
+        "F"
+      ],
+      "requires": [
+        "graph",
+        "target_identifier"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_F4_M_MetaIndexed": {
+      "principles": [
+        "F"
+      ],
+      "requires": [
+        "search_response"
+      ],
+      "support": "unsupported",
+      "branches": [],
+      "adaptations": [
+        "Return indeterminate/unsupported_check; no search evidence is accepted in this profile."
+      ]
+    },
+    "test_FM_I1_M_FormLangSemantic_Data": {
+      "principles": [
+        "I"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_I1_M_FormalLangSyntax": {
+      "principles": [
+        "I"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_I2_M_FAIRVocabSyntax": {
+      "principles": [
+        "I"
+      ],
+      "requires": [
+        "graph",
+        "vocabulary_response"
+      ],
+      "support": "conditional",
+      "branches": [
+        "accepted vocabulary patterns",
+        "zero eligible predicates",
+        "known successes sufficient at upstream threshold; unresolved domains remain indeterminate"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_I3_M_QualRef": {
+      "principles": [
+        "I"
+      ],
+      "requires": [
+        "graph",
+        "metadata_url"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target.",
+        "Use one caller-supplied metadata origin, not an inferred DOI host or merged origins."
+      ]
+    },
+    "test_FM_R1_1_M_StdLic": {
+      "principles": [
+        "R"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    },
+    "test_FM_R1_1_M_StdLic_strong": {
+      "principles": [
+        "R"
+      ],
+      "requires": [
+        "graph"
+      ],
+      "support": "offline",
+      "branches": [
+        "Reviewed upstream logic over supplied evidence"
+      ],
+      "adaptations": [
+        "Use supplied evidence instead of harvesting; do not block graph-only decisions on a missing target."
+      ]
+    }
+  }
+}

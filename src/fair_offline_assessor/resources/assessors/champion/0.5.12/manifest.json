@@ -1,0 +1,51 @@
+{
+  "version": "0.5.12",
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+    "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+    "version": "0.5.12"
+  },
+  "files": [
+    {
+      "id": "champion:tests",
+      "path": "catalog.json",
+      "kind": "reference",
+      "format": "json",
+      "source": {
+        "path": "app/tests",
+        "transform": "python-static-extraction"
+      }
+    },
+    {
+      "id": "champion:references",
+      "path": "references.json",
+      "kind": "reference",
+      "format": "json",
+      "source": {
+        "path": "app/tests",
+        "transform": "python-static-extraction"
+      }
+    },
+    {
+      "id": "champion:offline-policy",
+      "path": "offline-policy.json",
+      "kind": "reference",
+      "format": "json",
+      "source": {
+        "path": "app/tests",
+        "transform": "python-static-extraction"
+      }
+    },
+    {
+      "id": "champion:upstream",
+      "path": "upstream.json",
+      "kind": "reference",
+      "format": "json",
+      "source": {
+        "path": "app/tests",
+        "transform": "python-static-extraction"
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+  "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+  "version": "0.5.12",
+  "source_hashes": {
+    "VERSION": "4462b1f034e3998274af75ec691467a10fbfe60e2c3189489cb16c80c091e60d",
+    "Gemfile.lock": "3805abad336f9145f0c77a05257eab2bdb3ad34d4d21b85d8957f8d2ab87a51e",
+    "LICENSE": "797567b41aec914ef967fc590e1dad4f29c1bfb31244894f55199e8335a1a09f",
+    "app/tests/test_FM_A1_1_M_OpenProt.rb": "e291640ca1752fad011a4c307b7d0f1066d7b6e9a29595661b59c68f7af39bad",
+    "app/tests/test_FM_A1_1_M_OpenProt_Data.rb": "0ad4b025908e97330f0c444ea8f6d0ad8431d522f0fc2dfddfc2c71d4ff17719",
+    "app/tests/test_FM_A1_2_M_Auth.rb": "8c067e043766be1f9aa0384537f47415f9b7dda6055ad47d3eafaa2fbe70a7b4",
+    "app/tests/test_FM_A1_2_M_DataAuth.rb": "86fca4c1b0dfbb84edb455feba039b84689b9f59b86487816cbc6f805cec050a",
+    "app/tests/test_FM_A2_M_MetaLong.rb": "79da040fbce6932405ef3d5d74f1c657759d82d63d07f53a9498a9044b29e03a",
+    "app/tests/test_FM_F1_M_IdentPersistent.rb": "612e7fc7931866d0e766798816e68cd2478b9a8df6f6def7d7be1929f36b3ad2",
+    "app/tests/test_FM_F1_M_IdentUnique.rb": "e21f8d282d12a85b835b98ecc80308426a9c7e8027971b973de2ba37f15ac24b",
+    "app/tests/test_FM_F3_M_DataIdent.rb": "cbbfee412f67d0efd7e973d74ef12a88449d763b1902e48fd163e302532acc10",
+    "app/tests/test_FM_F3_M_MetaIdent.rb": "d72040def6b628d6284b5e864556a678a626a2c76e624aa540c2072a07ee8caf",
+    "app/tests/test_FM_F4_M_MetaIndexed.rb": "a743aa166d7626a4334b9ecad564c4b424b05e9bfe15ef341d37418af4e7763e",
+    "app/tests/test_FM_I1_M_FormLangSemantic_Data.rb": "031b3cf02a761e02eb22b7697611234aa10b0f78cb4c5d42d03b82a700f35392",
+    "app/tests/test_FM_I1_M_FormalLangSyntax.rb": "9d644479206a8ddd0e3e72384f3a8a8cc418bda28fffbbd16e78eb10bc4cb4ff",
+    "app/tests/test_FM_I2_M_FAIRVocabSyntax.rb": "86850c63b475ad9ef2c64c0675b3f3414b85cc3b582508f4c9dc019ba93ccc08",
+    "app/tests/test_FM_I3_M_QualRef.rb": "57be89aa99a250081509c6a81cf3b90ca80f2fe1f4578e7668a8ab32c7b36f59",
+    "app/tests/test_FM_R1_1_M_StdLic.rb": "52cc236a39aa38fc9ca417222f8ddf47584e987eebac912132188df65a40f96d",
+    "app/tests/test_FM_R1_1_M_StdLic_strong.rb": "ac2d492ebf53512c95aeb987a35660e1ec1e4c16f839bf2c61b8547c80a27ca3"
+  },
+  "harvester": {
+    "version": "0.1.17",
+    "url": "https://rubygems.org/downloads/fair_champion_harvester-0.1.17.gem",
+    "sha256": "45b8e5d34d2376a098d86efa956d8140012c03bf79e72d8c6d6fafdcd3983b57",
+    "files": {
+      "lib/utils.rb": "53f5fa39104767b60dcf03524ab2ce6081ca56078603d97e8d22d013e2e408d4",
+      "lib/common_queries.rb": "b6a9d49e6ac3fc9b5179420c32e9a17042a2026e1a2ee30437b651f932b5c40a",
+      "lib/harvester.rb": "96d3dc2bfb69c9f28839c229101867dc71b2391b87b4939c8cd23e1fa7882ee2",
+      "lib/fair_champion_harvester/version.rb": "d9f59c192e0c276ef6f3c97cd6bcd462595e4c5c431478e6ce91d5aec940362a",
+      "LICENSE.txt": "0425d28c7d91fe26f28c02e8f7fe71b1ca893c106ba8433eb29465b7674cc9ce"
+    }
+  },
+  "adaptations": [
+    "Python port of reviewed decisions, not execution of upstream Ruby.",
+    "Preserve Ruby regex source and predicate order; Python translations require source-reviewed tests.",
+    "Preserve harvester query quirks, including unbound schema distribution/DCAT variables.",
+    "No benchmark weights or numeric scores.",
+    "Candidate order follows pinned PyLD traversal, not arbitrary online harvest order."
+  ]
+}

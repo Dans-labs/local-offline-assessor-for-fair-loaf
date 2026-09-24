@@ -1,0 +1,247 @@
+[
+  {
+    "id": "test_FM_A1_1_M_OpenProt",
+    "name": "OSTrails Core: Uses open free protocol for metadata retrieval",
+    "metric": "https://w3id.org/fair-metrics/general/FM_A1-1_M_OpenProt",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.7612c1",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_A1_1_M_OpenProt.rb",
+    "source_digest": "e291640ca1752fad011a4c307b7d0f1066d7b6e9a29595661b59c68f7af39bad",
+    "principles": [
+      "A"
+    ],
+    "requires": [
+      "target_identifier"
+    ]
+  },
+  {
+    "id": "test_FM_A1_1_M_OpenProt_Data",
+    "name": "OSTrails Core: Data Protocol",
+    "metric": "https://w3id.org/fair-metrics/general/FM_A1-1_M_OpenProt",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.7612c1",
+    "test_version": "Hvst-0.1.17:Tst-3.1.0",
+    "source_path": "app/tests/test_FM_A1_1_M_OpenProt_Data.rb",
+    "source_digest": "0ad4b025908e97330f0c444ea8f6d0ad8431d522f0fc2dfddfc2c71d4ff17719",
+    "principles": [
+      "A"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_A1_2_M_Auth",
+    "name": "OSTrails Core: Data Authorization",
+    "metric": "https://w3id.org/fair-metrics/general/FM_A1-2_M_Auth",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.8e0027",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_A1_2_M_Auth.rb",
+    "source_digest": "8c067e043766be1f9aa0384537f47415f9b7dda6055ad47d3eafaa2fbe70a7b4",
+    "principles": [
+      "A"
+    ],
+    "requires": [
+      "target_identifier"
+    ]
+  },
+  {
+    "id": "test_FM_A1_2_M_DataAuth",
+    "name": "OSTrails Core: Data Authorization",
+    "metric": "https://w3id.org/fair-metrics/general/FM_A1-2_M_Auth",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.8e0027",
+    "test_version": "Hvst-0.1.17:Tst-3.1.0",
+    "source_path": "app/tests/test_FM_A1_2_M_DataAuth.rb",
+    "source_digest": "86fca4c1b0dfbb84edb455feba039b84689b9f59b86487816cbc6f805cec050a",
+    "principles": [
+      "A"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_A2_M_MetaLong",
+    "name": "OSTrails Core: Metadata Persistence",
+    "metric": "https://w3id.org/fair-metrics/general/FM_A2_M_MetaLong",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.7c4d7f",
+    "test_version": "Hvst-0.1.17:Tst-3.0.1",
+    "source_path": "app/tests/test_FM_A2_M_MetaLong.rb",
+    "source_digest": "79da040fbce6932405ef3d5d74f1c657759d82d63d07f53a9498a9044b29e03a",
+    "principles": [
+      "A"
+    ],
+    "requires": [
+      "target_identifier",
+      "graph",
+      "policy_response"
+    ]
+  },
+  {
+    "id": "test_FM_F1_M_IdentPersistent",
+    "name": "OSTrails Core: Identifier Persistence",
+    "metric": "https://w3id.org/fair-metrics/general/FM_F1_M_IdentPersistent",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.e226cb",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_F1_M_IdentPersistent.rb",
+    "source_digest": "612e7fc7931866d0e766798816e68cd2478b9a8df6f6def7d7be1929f36b3ad2",
+    "principles": [
+      "F"
+    ],
+    "requires": [
+      "target_identifier"
+    ]
+  },
+  {
+    "id": "test_FM_F1_M_IdentUnique",
+    "name": "OSTrails Core: Unique Identifier",
+    "metric": "https://w3id.org/fair-metrics/general/FM_F1_M_IdentUnique",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.b7f1ab",
+    "test_version": "Hvst-0.1.17:Tst-3.0.1",
+    "source_path": "app/tests/test_FM_F1_M_IdentUnique.rb",
+    "source_digest": "e21f8d282d12a85b835b98ecc80308426a9c7e8027971b973de2ba37f15ac24b",
+    "principles": [
+      "F"
+    ],
+    "requires": [
+      "target_identifier"
+    ]
+  },
+  {
+    "id": "test_FM_F3_M_DataIdent",
+    "name": "OSTrails Core: Data Identifier in Metadata",
+    "metric": "https://w3id.org/fair-metrics/general/FM_F3_M_DataIdent",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.820324",
+    "test_version": "Hvst-0.1.17:Tst-3.0.1",
+    "source_path": "app/tests/test_FM_F3_M_DataIdent.rb",
+    "source_digest": "cbbfee412f67d0efd7e973d74ef12a88449d763b1902e48fd163e302532acc10",
+    "principles": [
+      "F"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_F3_M_MetaIdent",
+    "name": "OSTrails Core: Data Identifier in Metadata",
+    "metric": "https://w3id.org/fair-metrics/general/FM_F3_M_MetaIdent",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.820324",
+    "test_version": "Hvst-0.1.17:Tst-4.0.1",
+    "source_path": "app/tests/test_FM_F3_M_MetaIdent.rb",
+    "source_digest": "d72040def6b628d6284b5e864556a678a626a2c76e624aa540c2072a07ee8caf",
+    "principles": [
+      "F"
+    ],
+    "requires": [
+      "graph",
+      "target_identifier"
+    ]
+  },
+  {
+    "id": "test_FM_F4_M_MetaIndexed",
+    "name": "OSTrails Core: Searchable in major search engine",
+    "metric": "https://w3id.org/fair-metrics/general/FM_F4_M_MetaIndexed",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.0c0d21",
+    "test_version": "Hvst-0.1.17:Tst-4.1.0",
+    "source_path": "app/tests/test_FM_F4_M_MetaIndexed.rb",
+    "source_digest": "a743aa166d7626a4334b9ecad564c4b424b05e9bfe15ef341d37418af4e7763e",
+    "principles": [
+      "F"
+    ],
+    "requires": [
+      "search_response"
+    ]
+  },
+  {
+    "id": "test_FM_I1_M_FormLangSemantic_Data",
+    "name": "OSTrails Core: Data record is represented as Linked Data",
+    "metric": "https://w3id.org/fair-metrics/general/FM_I1_M_FormLangSemantic",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.ec5648",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_I1_M_FormLangSemantic_Data.rb",
+    "source_digest": "031b3cf02a761e02eb22b7697611234aa10b0f78cb4c5d42d03b82a700f35392",
+    "principles": [
+      "I"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_I1_M_FormalLangSyntax",
+    "name": "OSTrails Core: Data Knowlege Representation Language (Weak Test)",
+    "metric": "https://w3id.org/fair-metrics/general/FM_I1_M_FormLangSyntax",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.ec5648",
+    "test_version": "Hvst-0.1.17:Tst-3.0.1",
+    "source_path": "app/tests/test_FM_I1_M_FormalLangSyntax.rb",
+    "source_digest": "9d644479206a8ddd0e3e72384f3a8a8cc418bda28fffbbd16e78eb10bc4cb4ff",
+    "principles": [
+      "I"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_I2_M_FAIRVocabSyntax",
+    "name": "OSTrails Core: Metadata uses FAIR vocabularies (syntax)",
+    "metric": "https://w3id.org/fair-metrics/general/FM_I2_M_FAIRVocabSyntax",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.96d4af",
+    "test_version": "Hvst-0.1.17:Tst-2.0.0",
+    "source_path": "app/tests/test_FM_I2_M_FAIRVocabSyntax.rb",
+    "source_digest": "86850c63b475ad9ef2c64c0675b3f3414b85cc3b582508f4c9dc019ba93ccc08",
+    "principles": [
+      "I"
+    ],
+    "requires": [
+      "graph",
+      "vocabulary_response"
+    ]
+  },
+  {
+    "id": "test_FM_I3_M_QualRef",
+    "name": "OSTrails Core: Metadata Contains Outward Links",
+    "metric": "https://w3id.org/fair-metrics/general/FM_I3_M_QualRef",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.ae22b8",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_I3_M_QualRef.rb",
+    "source_digest": "57be89aa99a250081509c6a81cf3b90ca80f2fe1f4578e7668a8ab32c7b36f59",
+    "principles": [
+      "I"
+    ],
+    "requires": [
+      "graph",
+      "metadata_url"
+    ]
+  },
+  {
+    "id": "test_FM_R1_1_M_StdLic",
+    "name": "OSTrails Core: Metadata Includes License",
+    "metric": "https://w3id.org/fair-metrics/general/FM_R1-1_M_StdLic",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.aff99f",
+    "test_version": "Hvst-0.1.17:Tst-3.0.2",
+    "source_path": "app/tests/test_FM_R1_1_M_StdLic.rb",
+    "source_digest": "52cc236a39aa38fc9ca417222f8ddf47584e987eebac912132188df65a40f96d",
+    "principles": [
+      "R"
+    ],
+    "requires": [
+      "graph"
+    ]
+  },
+  {
+    "id": "test_FM_R1_1_M_StdLic_strong",
+    "name": "OSTrails Core: Metadata Includes License (strong)",
+    "metric": "https://w3id.org/fair-metrics/general/FM_R1-1_M_StdLic",
+    "indicators": "https://doi.org/10.25504/FAIRsharing.8e0027",
+    "test_version": "Hvst-0.1.17:Tst-3.0.0",
+    "source_path": "app/tests/test_FM_R1_1_M_StdLic_strong.rb",
+    "source_digest": "ac2d492ebf53512c95aeb987a35660e1ec1e4c16f839bf2c61b8547c80a27ca3",
+    "principles": [
+      "R"
+    ],
+    "requires": [
+      "graph"
+    ]
+  }
+]

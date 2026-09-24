@@ -1,5 +1,73 @@
 [
   {
+    "id": "champion:offline-policy",
+    "version": "0.5.12",
+    "kind": "reference",
+    "format": "json",
+    "digest": "21daa161eec452f3cbfc10f9c02ef2645209fcc85a15c449449a9aa252828a29",
+    "path": "assessors/champion/0.5.12/offline-policy.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+      "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+      "version": "0.5.12",
+      "path": "app/tests",
+      "transform": "python-static-extraction"
+    },
+    "aliases": []
+  },
+  {
+    "id": "champion:references",
+    "version": "0.5.12",
+    "kind": "reference",
+    "format": "json",
+    "digest": "d01d09c2dd81b198fd8e2ea807d34c146be778751ecef20cc9c04fdc1f102e6e",
+    "path": "assessors/champion/0.5.12/references.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+      "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+      "version": "0.5.12",
+      "path": "app/tests",
+      "transform": "python-static-extraction"
+    },
+    "aliases": []
+  },
+  {
+    "id": "champion:tests",
+    "version": "0.5.12",
+    "kind": "reference",
+    "format": "json",
+    "digest": "f71412bcc78488a05e09ffaf52f197d6efb62b98bd35dd65a179e977bf76cd90",
+    "path": "assessors/champion/0.5.12/catalog.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+      "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+      "version": "0.5.12",
+      "path": "app/tests",
+      "transform": "python-static-extraction"
+    },
+    "aliases": []
+  },
+  {
+    "id": "champion:upstream",
+    "version": "0.5.12",
+    "kind": "reference",
+    "format": "json",
+    "digest": "9e91e5c6670d9e675323ab868504b00d42ce653fb5e841c0bcb14daf53163f43",
+    "path": "assessors/champion/0.5.12/upstream.json",
+    "license": "MIT",
+    "source": {
+      "repository": "https://github.com/wilkinsonlab/FAIR-Core-Tests",
+      "commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+      "version": "0.5.12",
+      "path": "app/tests",
+      "transform": "python-static-extraction"
+    },
+    "aliases": []
+  },
+  {
     "id": "fuji:access-rights",
     "version": "3.5.1",
     "kind": "reference",
