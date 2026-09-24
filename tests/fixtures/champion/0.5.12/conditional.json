@@ -1,0 +1,176 @@
+{
+  "provenance": {
+    "core_commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+    "rdf_uri": {
+      "gem_version": "3.3.4",
+      "gem_sha256": "a77fa0821e5b4e2bea9fdbb7c9d980564c89d27e81979690ce5c9e6bc80859c1",
+      "path": "lib/rdf/model/uri.rb",
+      "sha256": "90408bbbfbfc2653d80739e921168cd556e75917c4d23d88333a7209b1c89f6c"
+    },
+    "method": "Expected outcomes reviewed against pinned Ruby source and the declared offline policy; Ruby was not executed."
+  },
+  "sources": {
+    "test_FM_A2_M_MetaLong": {
+      "path": "app/tests/test_FM_A2_M_MetaLong.rb",
+      "sha256": "79da040fbce6932405ef3d5d74f1c657759d82d63d07f53a9498a9044b29e03a"
+    },
+    "test_FM_I1_M_FormalLangSyntax": {
+      "path": "app/tests/test_FM_I1_M_FormalLangSyntax.rb",
+      "sha256": "9d644479206a8ddd0e3e72384f3a8a8cc418bda28fffbbd16e78eb10bc4cb4ff"
+    },
+    "test_FM_F4_M_MetaIndexed": {
+      "path": "app/tests/test_FM_F4_M_MetaIndexed.rb",
+      "sha256": "a743aa166d7626a4334b9ecad564c4b424b05e9bfe15ef341d37418af4e7763e"
+    },
+    "test_FM_I2_M_FAIRVocabSyntax": {
+      "path": "app/tests/test_FM_I2_M_FAIRVocabSyntax.rb",
+      "sha256": "86850c63b475ad9ef2c64c0675b3f3414b85cc3b582508f4c9dc019ba93ccc08"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "bare-doi-with-invalid-metadata",
+      "request": {
+        "target_identifier": "10.1234/abc",
+        "metadata": null
+      },
+      "expected": {
+        "test_FM_A2_M_MetaLong": ["pass", "passed"],
+        "test_FM_I1_M_FormalLangSyntax": ["indeterminate", "unsupported_input"],
+        "test_FM_F4_M_MetaIndexed": ["indeterminate", "unsupported_check"]
+      },
+      "rationale": "The bare DOI shortcut runs without graph evidence. Invalid metadata blocks I1, while search remains explicitly unsupported."
+    },
+    {
+      "case_id": "doi-url-without-policy",
+      "request": {
+        "target_identifier": "https://doi.org/10.1234/abc",
+        "metadata": {
+          "http://purl.org/dc/terms/title": "Dataset",
+          "keywords": [
+            "data"
+          ]
+        }
+      },
+      "expected": {
+        "test_FM_A2_M_MetaLong": ["indeterminate", "upstream_indeterminate"],
+        "test_FM_I2_M_FAIRVocabSyntax": ["pass", "passed"],
+        "test_FM_F4_M_MetaIndexed": ["indeterminate", "unsupported_check"]
+      },
+      "rationale": "A DOI URL classifies as URI, so it needs a policy. One DC predicate satisfies the actual I2 threshold despite the upstream minimum-three message. Titles and keywords do not prove indexing."
+    },
+    {
+      "case_id": "invalid-first-policy",
+      "request": {
+        "target_identifier": 42,
+        "metadata": {
+          "http://www.w3.org/2000/10/swap/pim/doc#persistencePolicy": [
+            "not a URL",
+            {
+              "@id": "https://example.org/policy"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "test_FM_A2_M_MetaLong": ["fail", "failed"]
+      },
+      "rationale": "The first policy value fails the declared local URL-pattern decision, even with a later URL. A malformed target does not prevent graph-only inspection. The Ruby failure comment contains a misspelled variable; this expectation follows the reviewed decision, not executed Ruby."
+    },
+    {
+      "case_id": "policy-requires-retrieval",
+      "request": {
+        "metadata": {
+          "http://www.w3.org/2000/10/swap/pim/doc#persistencePolicy": [
+            "https://example.org/policy",
+            "not a URL"
+          ]
+        }
+      },
+      "expected": {
+        "test_FM_A2_M_MetaLong": ["indeterminate", "missing_evidence"]
+      },
+      "rationale": "The first literal policy value matches the upstream URL pattern. Resolution evidence is unavailable; do not execute the misspelled policyURI retrieval branch."
+    },
+    {
+      "case_id": "no-eligible-vocabulary-predicates",
+      "request": {
+        "metadata": {
+          "@type": "https://types.example/Dataset",
+          "http://www.w3.org/1999/xhtml/vocab#next": {
+            "@id": "https://example.org/next"
+          }
+        }
+      },
+      "expected": {
+        "test_FM_I2_M_FAIRVocabSyntax": ["fail", "failed"]
+      },
+      "rationale": "I2 excludes RDF syntax and XHTML structural predicates; zero eligible predicates fails."
+    },
+    {
+      "case_id": "vocabulary-threshold-met",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/title": "Dataset",
+          "http://purl.org/dc/terms/creator": "Author",
+          "https://unknown：example.org/term": ["x", "y"]
+        }
+      },
+      "expected": {
+        "test_FM_I2_M_FAIRVocabSyntax": ["pass", "passed"]
+      },
+      "rationale": "Two accepted DC predicates out of three distinct predicates meet the generated 0.66 threshold. Repeated values do not increase the count. RDF 3.3.4 accepts the Unicode host (U+FF1A); Python URL normalization must not reject it before the threshold can settle the check."
+    },
+    {
+      "case_id": "local-context-does-not-prove-resolution",
+      "request": {
+        "local_contexts": {
+          "https://local.example/context": {
+            "@context": {
+              "title": "http://purl.org/dc/terms/title",
+              "x": "https://unknown.example/x",
+              "y": "https://unknown.example/y"
+            }
+          }
+        },
+        "metadata": {
+          "@context": "https://local.example/context",
+          "title": "Dataset",
+          "x": "one",
+          "y": "two"
+        }
+      },
+      "expected": {
+        "test_FM_I2_M_FAIRVocabSyntax": ["indeterminate", "missing_evidence"]
+      },
+      "rationale": "One accepted predicate among three is insufficient. Local interpretation of the other two predicates is not evidence that they resolve online."
+    },
+    {
+      "case_id": "lexical-first-predicate-per-host",
+      "request": {
+        "metadata": {
+          "http://purl.org/aaa": "unknown",
+          "http://purl.org/dc/terms/title": "Dataset",
+          "http://purl.org/dc/terms/creator": "Author"
+        }
+      },
+      "expected": {
+        "test_FM_I2_M_FAIRVocabSyntax": ["indeterminate", "missing_evidence"]
+      },
+      "rationale": "The lexically first predicate represents all three from purl.org. Testing each predicate independently would incorrectly pass on the two DC terms."
+    },
+    {
+      "case_id": "pinned-ipv6-vocabulary-grouping",
+      "request": {
+        "metadata": {
+          "http://[2001:db8::1]/vcard/name": "accepted first",
+          "http://[2001:db8::2]/term": "same upstream host group"
+        }
+      },
+      "expected": {
+        "test_FM_I2_M_FAIRVocabSyntax": ["pass", "passed"]
+      },
+      "rationale": "RDF 3.3.4 splits authority at the first colon, grouping both hosts as [2001. The lexical first predicate matches the accepted vcard pattern, so both count as successes. Python hostname parsing would incorrectly split the group and return indeterminate."
+    }
+  ]
+}

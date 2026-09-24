@@ -1,0 +1,159 @@
+{
+  "provenance": {
+    "core_commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+    "method": "Expected outcomes reviewed against pinned Ruby source and the declared offline policy; Ruby was not executed."
+  },
+  "sources": {
+    "test_FM_I1_M_FormalLangSyntax": {
+      "path": "app/tests/test_FM_I1_M_FormalLangSyntax.rb",
+      "sha256": "9d644479206a8ddd0e3e72384f3a8a8cc418bda28fffbbd16e78eb10bc4cb4ff"
+    },
+    "test_FM_I1_M_FormLangSemantic_Data": {
+      "path": "app/tests/test_FM_I1_M_FormLangSemantic_Data.rb",
+      "sha256": "031b3cf02a761e02eb22b7697611234aa10b0f78cb4c5d42d03b82a700f35392"
+    },
+    "test_FM_R1_1_M_StdLic": {
+      "path": "app/tests/test_FM_R1_1_M_StdLic.rb",
+      "sha256": "52cc236a39aa38fc9ca417222f8ddf47584e987eebac912132188df65a40f96d"
+    },
+    "test_FM_R1_1_M_StdLic_strong": {
+      "path": "app/tests/test_FM_R1_1_M_StdLic_strong.rb",
+      "sha256": "ac2d492ebf53512c95aeb987a35660e1ec1e4c16f839bf2c61b8547c80a27ca3"
+    },
+    "test_FM_I3_M_QualRef": {
+      "path": "app/tests/test_FM_I3_M_QualRef.rb",
+      "sha256": "57be89aa99a250081509c6a81cf3b90ca80f2fe1f4578e7668a8ab32c7b36f59"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "unmapped-compact-keys",
+      "request": {
+        "metadata": {
+          "license": "CC0",
+          "title": "Dataset"
+        }
+      },
+      "expected": {
+        "test_FM_I1_M_FormalLangSyntax": ["fail", "failed"],
+        "test_FM_I1_M_FormLangSemantic_Data": ["fail", "failed"],
+        "test_FM_R1_1_M_StdLic": ["fail", "failed"],
+        "test_FM_R1_1_M_StdLic_strong": ["fail", "failed"],
+        "test_FM_I3_M_QualRef": ["fail", "failed"]
+      },
+      "rationale": "Unmapped compact keys produce an empty RDF graph. This profile does not run the plain-JSON harvesting branch, and empty-graph I3 can fail without an origin."
+    },
+    {
+      "case_id": "literal-first-license-and-rdf-type",
+      "request": {
+        "metadata_url": "https://example.org/metadata",
+        "metadata": {
+          "@type": "https://types.example/Dataset",
+          "http://purl.org/dc/terms/license": [
+            "https://licenses.example/first",
+            {
+              "@id": "https://example.org/license"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "test_FM_I1_M_FormalLangSyntax": ["pass", "passed"],
+        "test_FM_I1_M_FormLangSemantic_Data": ["pass", "passed"],
+        "test_FM_R1_1_M_StdLic": ["pass", "passed"],
+        "test_FM_R1_1_M_StdLic_strong": ["fail", "failed"],
+        "test_FM_I3_M_QualRef": ["pass", "passed"]
+      },
+      "rationale": "Nonempty RDF passes both I1 checks. A URL literal passes weak licensing but the first value blocks strong licensing despite a later IRI. An outward rdf:type counts for I3."
+    },
+    {
+      "case_id": "blank-license",
+      "request": {
+        "metadata": {
+          "https://schema.org/license": {
+            "@id": "_:license"
+          }
+        }
+      },
+      "expected": {
+        "test_FM_R1_1_M_StdLic": ["pass", "passed"],
+        "test_FM_R1_1_M_StdLic_strong": ["fail", "failed"]
+      },
+      "rationale": "A schema licence blank node passes the weak presence check but is not a non-anonymous resource for the strong check."
+    },
+    {
+      "case_id": "license-on-unrelated-node",
+      "request": {
+        "subject": "urn:selected",
+        "metadata": [
+          {
+            "@id": "urn:selected",
+            "http://purl.org/dc/terms/title": "Selected record"
+          },
+          {
+            "@id": "urn:other",
+            "http://purl.org/dc/terms/license": {
+              "@id": "https://licenses.example/cc0"
+            },
+            "https://schema.org/license": "later literal"
+          }
+        ]
+      },
+      "expected": {
+        "test_FM_R1_1_M_StdLic_strong": ["pass", "passed"]
+      },
+      "rationale": "Queries include unrelated nodes in the selected graph. A later literal under another predicate does not erase a valid resource licence."
+    },
+    {
+      "case_id": "same-origin-and-excluded-links",
+      "request": {
+        "metadata_url": "https://example.org/metadata",
+        "target_identifier": "https://elsewhere.example/id",
+        "metadata": {
+          "http://purl.org/dc/terms/relation": [
+            {
+              "@id": "https://example.org/data"
+            },
+            "https://outside.example/literal",
+            {
+              "@id": "_:blank"
+            }
+          ],
+          "http://www.w3.org/1999/xhtml/vocab#next": {
+            "@id": "https://outside.example/next"
+          }
+        }
+      },
+      "expected": {
+        "test_FM_I3_M_QualRef": ["fail", "failed"]
+      },
+      "rationale": "Compare with metadata origin, not target host. Ignore URL literals, blank nodes and XHTML structural links."
+    },
+    {
+      "case_id": "missing-metadata-origin",
+      "request": {
+        "target_identifier": "https://example.org/id",
+        "metadata": {
+          "@type": "https://types.example/Dataset"
+        }
+      },
+      "expected": {
+        "test_FM_I3_M_QualRef": ["indeterminate", "missing_evidence"]
+      },
+      "rationale": "A target URL cannot substitute for the missing metadata origin."
+    },
+    {
+      "case_id": "invalid-metadata-origin",
+      "request": {
+        "metadata_url": 42,
+        "metadata": {
+          "@type": "https://types.example/Dataset"
+        }
+      },
+      "expected": {
+        "test_FM_I3_M_QualRef": ["indeterminate", "invalid_metadata_url"]
+      },
+      "rationale": "Retain the invalid-origin diagnostic when a usable graph exists."
+    }
+  ]
+}

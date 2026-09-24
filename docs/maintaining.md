@@ -125,15 +125,29 @@ one appearing in multiple graphs produces a diagnostic. Relative IDs use
 `metadata_url` as their base; this URL is never fetched or inferred from the target.
 
 `identifiers.py` preserves the pinned identifier patterns and graph-query order.
-`checks.py` implements the eight F1, F3, open-protocol and authentication checks.
+`checks.py` handles all 16 pinned checks.
 Protocol and authentication results classify identifiers; they do not demonstrate
 successful retrieval or login. Missing evidence remains `indeterminate`.
-The remaining checks and public Champion registration are not implemented yet.
+Public Champion registration and result assembly are not implemented yet.
 
-Expected decisions in `tests/fixtures/champion/0.5.12/identifiers.json` record the
-reviewed source path, hash and rationale. They are source-reviewed expectations,
-not results obtained by executing Ruby. Preserve upstream query quirks when
-updating the port; changing them requires an explicitly versioned adaptation.
+- Both RDF checks require a nonempty graph. Licence checks inspect the first value
+  of each supported predicate across that graph; the strong check requires an IRI.
+- Outward-reference checks compare resource hosts with `metadata_url`, including
+  type links but excluding XHTML structural links. The target identifier is not
+  the metadata origin.
+- A bare DOI passes metadata preservation directly. Otherwise, a malformed first
+  policy value fails; a policy URL needs retrieval evidence and is `indeterminate`.
+  This follows the reviewed local decision without executing the upstream
+  misspelled variables in the failure message and retrieval code.
+- Vocabulary checks group predicates by host and use each group's first predicate
+  in lexical order. Accepted patterns can meet the pinned threshold without
+  retrieval; unresolved groups remain unknown. Local contexts do not prove resolution.
+- Search indexing is always `indeterminate` with `unsupported_check`.
+
+Fixtures under `tests/fixtures/champion/0.5.12/` record expected decisions, source
+paths, hashes and rationale. They are reviewed against source, not obtained by
+executing Ruby. Preserve upstream query quirks when updating the port; changing
+them requires an explicitly versioned adaptation.
 
 ## Add a F-UJI version
 

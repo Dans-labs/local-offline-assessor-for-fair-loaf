@@ -13,15 +13,27 @@ from fair_offline_assessor.assessors.champion.v0_5_12.input import (
     prepare_champion_input,
 )
 
-FIXTURES = json.loads(
-    (
-        Path(__file__).parents[1] / "fixtures/champion/0.5.12/identifiers.json"
-    ).read_text()
+FIXTURES = [
+    json.loads(
+        (
+            Path(__file__).parents[1] / f"fixtures/champion/0.5.12/{name}.json"
+        ).read_text()
+    )
+    for name in ("identifiers", "graph", "conditional")
+]
+
+
+@pytest.mark.parametrize(
+    ("sources", "case"),
+    [
+        pytest.param(fixture["sources"], case, id=case["case_id"])
+        for fixture in FIXTURES
+        for case in fixture["cases"]
+    ],
 )
-
-
-@pytest.mark.parametrize("case", FIXTURES["cases"], ids=lambda c: c["case_id"])
-def test_scenario_matches_reviewed_decisions(case, champion_profile, definitions):
+def test_scenario_matches_reviewed_decisions(
+    sources, case, champion_profile, definitions
+):
     prepared = prepare_champion_input(case["request"])
     graph = None
     if "metadata" not in prepared.invalid:
@@ -36,7 +48,7 @@ def test_scenario_matches_reviewed_decisions(case, champion_profile, definitions
     } == case["expected"]
     for test_id, decision in decisions.items():
         definition = next(d for d in definitions.tests if d.id == test_id)
-        assert FIXTURES["sources"][test_id] == {
+        assert sources[test_id] == {
             "path": definition.source_path,
             "sha256": definition.source_digest,
         }
@@ -45,7 +57,11 @@ def test_scenario_matches_reviewed_decisions(case, champion_profile, definitions
             for evidence in decision.evidence:
                 if evidence.resource == "assessment_input":
                     assert evidence.digest == prepared.digest
-                    assert evidence.location in ("/metadata", "/target_identifier")
+                    assert evidence.location in (
+                        "/metadata",
+                        "/target_identifier",
+                        "/metadata_url",
+                    )
                 else:
                     assert graph is not None
                     assert evidence in graph.evidence
