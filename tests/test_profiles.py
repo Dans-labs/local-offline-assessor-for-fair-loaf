@@ -2,6 +2,8 @@ import json
 from copy import deepcopy
 from functools import partial
 from hashlib import sha256
+from importlib.resources import files
+from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
@@ -325,3 +327,36 @@ def test_packaged_profiles_use_the_same_validation(tmp_path, monkeypatch, storag
                     profiles.load_profile("example:metadata@1.0.0", provider=provider)
                 assert error.value.code == code
             path.write_bytes(original)
+
+
+def test_both_assessors_use_resources_from_a_zip(tmp_path, monkeypatch):
+    root = Path(str(files("fair_offline_assessor").joinpath("resources")))
+    archive = tmp_path / "assessor_resources.zip"
+    package = "zipped_assessor_resources"
+    with ZipFile(archive, "w") as bundle:
+        bundle.writestr(f"{package}/__init__.py", "")
+        for path in root.rglob("*"):
+            if path.is_file():
+                bundle.write(path, f"{package}/resources/{path.relative_to(root)}")
+    monkeypatch.syspath_prepend(str(archive))
+    provider = profiles.BundledProfileProvider(package)
+    assert list_profiles(provider=provider) == list_profiles()
+    for name, profile, version, count in (
+        ("FUJI", "fusji-offline", "3.5.1", 31),
+        ("FAIR_CHAMPION", "fair-champion-offline", "0.5.12", 16),
+    ):
+        request = {
+            "metadata": {
+                "@context": "https://schema.org",
+                "@type": "Dataset",
+                "license": "CC0",
+            }
+        }
+        packaged = assess(request, profile=f"{profile}@{version}", provider=provider)
+        direct = Assessor(name, version=version).assess(**request)
+        assert packaged.model_dump(exclude={"raw"}) == direct.model_dump(
+            exclude={"raw"}
+        )
+        assert len(packaged.tests) == count
+        assert packaged.coverage.errors == 0
+        assert packaged.raw

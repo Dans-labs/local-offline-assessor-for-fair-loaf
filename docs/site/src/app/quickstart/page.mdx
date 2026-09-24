@@ -55,5 +55,12 @@ This small example does not meet every requirement. Missing information can
 cause a check to fail or leave it `indeterminate`, depending on the check.
 `indeterminate` means the library cannot decide; it receives no score.
 
-Omit `version` to use the default. See [F-UJI](/assessors/fuji) for its requirements
-and other formats, and [Results](/results) for a guide to the response.
+Omit `version` to use the selected assessor's default. See [F-UJI](/assessors/fuji)
+for its requirements and other formats, and [Results](/results) for the response.
+
+## Use FAIR Champion
+
+Choose `Assessor("FAIR_CHAMPION", version="0.5.12")` and pass the identifier being
+assessed as `target_identifier` alongside the JSON-LD metadata. It returns check
+outcomes without numerical scores. The version refers to FAIR Core Tests.
+See the [Champion example](/assessors/champion#assess-metadata) and its input requirements.

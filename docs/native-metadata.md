@@ -1,7 +1,7 @@
 # Metadata and results
 
-Choose an assessor and version to use its metadata mappings, checks and scoring
-rules. A mapping connects a field in your metadata to information the assessor
+Choose an assessor and version to use its metadata interpretation and checks.
+A mapping connects a field in your metadata to information the assessor
 checks. For example, F-UJI recognises Schema.org `name` as a dataset title.
 
 ## What F-UJI checks
@@ -23,7 +23,7 @@ See the [complete F-UJI check definitions](../src/fair_offline_assessor/resource
 Field names depend on the metadata standard; F-UJI's mappings connect them to
 these requirements.
 
-## Supplying metadata
+## Supplying metadata to F-UJI
 
 Pass document contents to `metadata` and choose their format with `metadata_format`.
 The library does not open file paths or URLs for you.
@@ -65,8 +65,19 @@ with agreed meanings. DataCite defines a **metadata schema**: fields and rules f
 a description. **RDF** describes things through statements such as “this dataset
 has this title”. JSON-LD and Turtle are ways to write those statements.
 
-The context gives names their meaning. The assessor determines which information
-must be present to earn points.
+The context gives names their meaning. The assessor determines what information
+each check requires.
+
+## FAIR Champion
+
+`Assessor("FAIR_CHAMPION", version="0.5.12")` uses a Python port of FAIR Core Tests
+on supplied JSON-LD. Its `target_identifier` is separate from the graph `subject`
+and document `metadata_url`. It accepts any RDF node type, without F-UJI's dataset
+selection or field mappings.
+
+All 16 checks remain visible, grouped into 13 metrics without numerical scores.
+Thirteen checks use local evidence; two can decide some cases offline; search
+indexing is unsupported. See [Champion inputs, checks and results](site/src/app/assessors/champion/page.mdx).
 
 ## Reading results
 
@@ -78,7 +89,7 @@ own check IDs and scoring rules.
 - `metrics` contains results for groups of checks about one aspect of FAIR.
 - `coverage` counts how many checks were decided, left undecided or encountered errors.
 - `diagnostics` explains problems with the supplied metadata.
-- `raw` contains the assessor's original results from this run, unchanged.
+- `raw` contains the selected assessor's output from the offline run.
 
 A check is `indeterminate` when the available information is insufficient to
 decide whether it passes. It receives no score. Scores for groups of checks are
@@ -90,5 +101,5 @@ and `coverage` for offline decisions: a failure in `raw` can be `indeterminate`
 in `tests` when the information needed to decide was unavailable.
 
 `profile` and `provenance` record the selected version and the software and data
-used. See [maintaining](maintaining.md) for generating F-UJI mappings and adding
+used. See [maintaining](maintaining.md) for preparing assessor code/data and adding
 assessor versions.

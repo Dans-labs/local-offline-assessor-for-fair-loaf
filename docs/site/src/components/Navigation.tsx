@@ -236,6 +236,10 @@ export const navigation: Array<NavGroup> = [
         title: 'F-UJI',
         href: '/assessors/fuji',
       },
+      {
+        title: 'FAIR Champion',
+        href: '/assessors/champion',
+      },
     ],
   },
 ]

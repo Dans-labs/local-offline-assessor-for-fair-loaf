@@ -68,12 +68,21 @@ def test_generation_is_repeatable_and_check_does_not_write(tmp_path):
 
 @pytest.mark.parametrize(
     "problem",
-    ["changed_resource", "changed_profile", "missing_version", "traversal", "unpinned"],
+    [
+        "changed_resource",
+        "changed_profile",
+        "changed_schema",
+        "missing_version",
+        "traversal",
+        "unpinned",
+    ],
 )
 def test_preparation_rejects_broken_or_changed_released_resources(tmp_path, problem):
     prepare = runpy.run_path(str(SCRIPT))["prepare"]
     root = tmp_path / "current"
     directory = bundle(root)
+    (root / "schemas").mkdir()
+    (root / "schemas/result-v1.json").write_text('{"type": "object"}')
     prepare(root)
     released = tmp_path / "released"
     copytree(root, released)
@@ -83,6 +92,8 @@ def test_preparation_rejects_broken_or_changed_released_resources(tmp_path, prob
         case "changed_profile":
             profile = root / "profiles/example/metadata/1.0.0.json"
             profile.write_text(profile.read_text().replace('"Example"', '"Changed"'))
+        case "changed_schema":
+            (root / "schemas/result-v1.json").write_text('{"type": "array"}')
         case "missing_version":
             (directory / "manifest.json").unlink()
         case "traversal":

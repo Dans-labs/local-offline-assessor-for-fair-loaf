@@ -1,8 +1,8 @@
 # fair-offline-assessor
 
 Check dataset metadata against FAIR requirements in Python, without network access.
-Choose an assessor and a version to use its metadata mappings, checks and scoring
-rules. F-UJI is currently the supported assessor.
+Choose an assessor and a version to use its metadata interpretation and checks.
+F-UJI 3.5.1 and FAIR Champion (Core Tests 0.5.12) are supported.
 
 ## Install
 
@@ -34,12 +34,32 @@ print(result.model_dump_json(indent=2))
 problems with the supplied metadata. A check is `indeterminate` when the library
 cannot decide whether it passes; that check receives no score.
 
-`result.raw` contains the assessor's original results from this run, unchanged.
-For F-UJI, these are results for each group of checks, called a metric.
+`result.raw` contains the selected assessor's output from the offline run.
 
-The version chooses the assessor's mappings and scoring rules, including the
-lists it uses to recognise licences, identifiers and file formats. Omit `version`
-to use the library's default.
+The version chooses the assessor's interpretation, check requirements and
+reference data. Omit `version` to use the library's default.
+
+## Use FAIR Champion
+
+Champion accepts JSON-LD and a separate target identifier:
+
+```python
+result = Assessor("FAIR_CHAMPION", version="0.5.12").assess(
+    metadata={
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "identifier": "10.1234/example",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    },
+    target_identifier="10.1234/example",
+    metadata_url="https://example.org/metadata",
+)
+```
+
+This Python port returns 16 check outcomes grouped into 13 metrics, without numeric
+scores. Thirteen checks use local evidence; two can decide some cases offline;
+search indexing remains indeterminate. The selected version pins FAIR Core Tests,
+not the Champion web application. See [Champion's inputs and limitations](docs/site/src/app/assessors/champion/page.mdx).
 
 ## Other formats
 
@@ -56,6 +76,6 @@ result = Assessor("FUJI", version="3.5.1").assess(
 
 See [metadata and results](docs/native-metadata.md) for supported formats and
 examples of scoring requirements. See [maintaining the library](docs/maintaining.md)
-for development, generating F-UJI mappings and adding versions.
+for development, preparing assessor code and data, and adding versions.
 
 [Issues](https://github.com/akeldamas/fair-offline-assessor/issues) · [License](LICENSE) · [Third-party notices](NOTICE)

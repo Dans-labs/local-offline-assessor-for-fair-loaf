@@ -7,7 +7,7 @@ export const metadata = {
 
 `assess()` returns an `AssessmentResult`. The library uses a common response
 format so applications can read the same fields regardless of assessor. Check IDs
-and scoring rules belong to the selected assessor.
+belong to the selected assessor; scores are present only when that assessor supplies them.
 
 A **check** answers one question, such as whether licence information is present.
 A **metric** groups checks about one aspect of FAIR. The `tests` field holds
@@ -25,7 +25,7 @@ individual checks; `metrics` holds their group results.
 | `coverage`       | Counts of decided checks, undecided checks, errors and checks that do not apply. |
 | `diagnostics`    | Messages about problems with the supplied metadata.                              |
 | `status`         | Whether the assessment finished normally or encountered an error.                |
-| `raw`            | The selected assessor's original, unmodified results.                            |
+| `raw`            | The selected assessor's output from the offline run.                             |
 | `profile`        | The chosen assessment configuration and its version.                             |
 | `provenance`     | The software and data versions used, and a checksum identifying the input.       |
 | `schema_version` | Version of the library's response format; currently `1`.                         |
@@ -97,7 +97,11 @@ what the assessment established.
 <Row>
 <Col>
 
-A score contains:
+`score` and `level` may be `null`. Champion returns outcomes without numerical
+scores or maturity levels; its [metric summaries](/assessors/champion#results)
+are not benchmark scores.
+
+Where supplied, a score contains:
 
 - `observed_earned`: points awarded by the checks that could run.
 - `maximum`: the maximum points for the check or metric.

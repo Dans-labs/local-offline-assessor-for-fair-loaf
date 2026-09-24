@@ -37,6 +37,7 @@ The Python code is in `src/fair_offline_assessor/`:
 | `assessors/fuji/metadata.py`, `assessors/fuji/html.py` | Apply F-UJI's mappings to supplied documents without fetching more information |
 | `assessors/fuji/checks.py` | Run F-UJI checks and keep their original results |
 | `assessors/fuji/assessment.py` | Convert F-UJI results into the common response and report input problems |
+| `assessors/champion/v0_5_12/` | Prepare Champion's graph, run its Python checks and assemble common/FTR results |
 | `_metadata.py` | Interpret JSON-LD field names using locally available context definitions |
 | `models/v1.py` | Fields and allowed values for the library's input configuration and response |
 
@@ -174,6 +175,30 @@ execution completion, not a FAIR score.
 Fresh UUIDs and timestamps identify each run, so complete responses differ between
 runs. Outcomes, input hashes and pinned resource hashes remain reproducible for the
 same input and software versions.
+
+## Add a Champion version
+
+1. Add `scripts/champion/<core-version>.json` with the upstream commit, check
+   inventory, Harvester archive and source hashes. Review changed rules, query
+   behaviour and offline limitations; update extraction for new source syntax.
+2. Run `prepare_champion.py --recipe scripts/champion/<core-version>.json`, using
+   local `--source` and `--harvester-gem` inputs when available. Commit the recipe,
+   generated resources, bindings and required licence notices together.
+3. Add the Python implementation under `assessors/champion/v<version>/` with a
+   distinct adapter version. Keep existing code and generated resources intact.
+   Add a profile selecting that adapter and its exact resource versions; register
+   it in `assessment.py` and regenerate the resource/profile indexes.
+4. Review representative decisions against the pinned source. Check missing input,
+   error isolation and both assessors from an installed wheel with sockets blocked.
+   Run preparation with `--check` and retained-resource verification with `--released`.
+   Update the support tables before changing the default.
+
+An outcome-changing fix to an existing implementation needs a new configuration,
+for example `0.5.12.post1`, and a new adapter version. Keep `0.5.12` selectable.
+Unchanged definitions can retain their original resource versions; the recipe's
+version must still match the upstream Core Tests release. Do not label that
+upstream release `.post1` merely to version a Python change. Changes to generated
+resources also need a new bundle and a review of the generator's version handling.
 
 ## Add a F-UJI version
 

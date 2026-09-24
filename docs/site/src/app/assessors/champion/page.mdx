@@ -1,0 +1,128 @@
+export const metadata = {
+  title: 'FAIR Champion',
+  description:
+    'Use pinned FAIR Core Tests on supplied JSON-LD and identifiers.',
+}
+
+# FAIR Champion
+
+This assessor is a Python implementation of selected
+[FAIR Core Tests](https://github.com/wilkinsonlab/FAIR-Core-Tests/tree/ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c/app/tests)
+used by FAIR Champion. It runs on supplied metadata without Ruby or network access.
+
+## Supported versions
+
+| Core Tests version | Harvester definitions | Checks offline / total  | Metrics with offline checks / total |
+| ------------------ | --------------------- | ----------------------- | ----------------------------------- |
+| 0.5.12 (default)   | 0.1.17                | 13 + 2 conditional / 16 | 12 / 13                             |
+
+`version="0.5.12"` pins the Core Tests rules. It is not the Champion web
+application's version. Harvester definitions provide the identifier patterns and
+metadata predicates: the named relationships in RDF. The library prepares these
+from pinned source files; it does not run the online harvester.
+
+## Assess metadata
+
+```python
+from fair_offline_assessor import Assessor
+
+result = Assessor("FAIR_CHAMPION", version="0.5.12").assess(
+    metadata={
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "identifier": "10.1234/example",
+        "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+    },
+    target_identifier="10.1234/example",
+    metadata_url="https://example.org/metadata",
+)
+
+for check in result.tests:
+    print(check.id, check.outcome)
+```
+
+| Argument            | Meaning                                                                     |
+| ------------------- | --------------------------------------------------------------------------- |
+| `target_identifier` | Identifier being assessed; never inferred from metadata                     |
+| `subject`           | Optional node selecting one graph in the supplied metadata                  |
+| `metadata_url`      | Metadata document's origin and base for relative identifiers; never fetched |
+
+These arguments describe different things. A dataset DOI can be the target while
+its metadata document is hosted at a separate URL.
+
+## Metadata
+
+Supply JSON-LD as a dictionary, an array of dictionaries or JSON text. Leave
+`metadata_format` unset or use `json-ld`. Other formats are not supported by this
+Champion version.
+
+Champion checks the RDF relationships expressed by the JSON-LD. It accepts any
+node type and does not apply F-UJI's dataset-selection rules. A bare JSON key such
+as `license` needs a context defining its meaning before graph checks can use it.
+The bundled Schema.org context is version 30.0. Supply other contexts using
+`local_contexts`; a context explains terms but does not prove that their URLs resolve.
+
+Without `subject`, the metadata must contain at most one nonempty graph. With
+`subject`, Champion uses the whole graph containing that node's outgoing
+statements, including other nodes in that graph. Named graphs remain separate.
+A missing subject or a subject appearing in multiple graphs is indeterminate for
+dependent checks. Valid empty metadata is usable evidence and can fail checks.
+
+## What can run offline
+
+| Checks                                 | Decision from supplied evidence                                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Unique and persistent identifiers      | Recognise identifier patterns; persistence also uses known URL patterns                                           |
+| Identifiers in metadata and data links | Inspect the supported relationships and compare with the target where required                                    |
+| Open protocols and authentication      | Classify identifiers; a pass does not prove retrieval or login works                                              |
+| RDF syntax and semantics               | Require statements in the supplied graph                                                                          |
+| Weak and strong licences               | Find a supported licence relationship; the strong check requires an IRI, an RDF identifier rather than plain text |
+| Outward references                     | Compare linked resource hosts with `metadata_url`                                                                 |
+| Metadata preservation (conditional)    | A bare DOI passes directly; resolving a policy URL requires unavailable evidence                                  |
+| FAIR vocabularies (conditional)        | Recognised predicate patterns may establish a pass; other vocabularies require retrieval                          |
+| Search indexing (unsupported)          | Always `indeterminate` with `unsupported_check`                                                                   |
+
+The first six rows cover 13 checks. The two conditional checks can decide some
+cases locally; they are not fully supported offline. All 16 checks remain visible
+in the response. Actual coverage depends on the supplied evidence.
+
+Rules retain the pinned source's order and query behaviour. For example, licence
+checks use the first value per supported predicate. Some distribution/DCAT queries
+leave a variable unbound and therefore yield no data identifier. The Python port
+preserves that behaviour. Expected decisions were reviewed against source;
+equivalence was not established by running the Ruby implementation.
+
+## Results
+
+The common response contains 16 checks grouped by 13 upstream metric identifiers.
+It assigns no numerical scores, FAIR percentage or maturity levels.
+
+Metric summaries use this library's rule: an error takes precedence, then an
+indeterminate result. Otherwise, unanimous pass/fail results keep that outcome;
+mixed passes and failures become `partial`. This is not Champion benchmark scoring.
+
+`raw` contains the Python port's FTR JSON-LD results, using the FAIR Test Registry
+vocabulary to describe each test, outcome, execution and target. These identify
+the offline implementation and omit online service endpoints. A check that errors
+has no raw entry. `ftr:completion` describes execution completion, not a FAIR score.
+
+Pin the library and its dependencies as well as the assessor version to reproduce
+decisions. Raw execution UUIDs and timestamps change between runs, so complete
+responses are not byte-identical.
+
+## Input problems
+
+Read `diagnostics` alongside each check's `reason_code` and `message`.
+
+| Reason                                   | Action                                                                                                         |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `missing_evidence`                       | Supply the required target or metadata origin; retrieval-dependent evidence cannot be supplied in this version |
+| `unknown_context`                        | Supply the context document through `local_contexts`                                                           |
+| `ambiguous_graph` or `ambiguous_subject` | Supply one graph or select a subject unique to one graph                                                       |
+| `subject_not_found`                      | Choose a node with outgoing statements in the metadata                                                         |
+| `unsupported_metadata_format`            | Supply JSON-LD                                                                                                 |
+| `evaluator_error`                        | An unexpected error prevented a check; report it with the selected versions and a minimal input                |
+
+Input problems affect only checks needing that evidence. For example, a bare DOI
+can still settle preservation when the metadata is invalid. Unexpected execution
+errors are separate from failed FAIR checks.

@@ -9,25 +9,27 @@ export const metadata = {
 that describes a dataset, such as its title, creator and licence. The checks
 address FAIR principles: Findable, Accessible, Interoperable and Reusable.
 
-An assessor defines what to check and how to assign points.
+An assessor defines what to check and, where applicable, how to assign points.
 
 ## Supported assessors
 
-| Assessor                 | Latest supported version | Checks offline / total | Metrics with offline checks / total |
-| ------------------------ | ------------------------ | ---------------------- | ----------------------------------- |
-| [F-UJI](/assessors/fuji) | 3.5.1                    | 24 / 31                | 14 / 17                             |
+| Assessor                             | Latest supported version | Checks offline / total  | Metrics with offline checks / total |
+| ------------------------------------ | ------------------------ | ----------------------- | ----------------------------------- |
+| [F-UJI](/assessors/fuji)             | 3.5.1                    | 24 / 31                 | 14 / 17                             |
+| [FAIR Champion](/assessors/champion) | Core Tests 0.5.12        | 13 + 2 conditional / 16 | 12 / 13                             |
 
 Versions are those supported by this library. A metric groups checks; the metric
 count includes partial support. F-UJI supports all checks in 13 metrics and some
-checks in one more.
+checks in one more. Champion's two conditional checks can decide only some cases
+offline; search indexing is unsupported. These counts describe capability, not
+how many checks will reach a decision for every input.
 
 ## How it works
 
 1. Choose an assessor and version.
 2. Supply the dataset's metadata.
-3. The assessor uses its own mappings to recognise fields, then applies its checks
-   and scoring rules.
-4. Read the check results, scores and messages.
+3. The assessor interprets the metadata and applies its own checks.
+4. Read the results, messages and any scores the assessor provides.
 
 ## What offline means
 
@@ -42,7 +44,7 @@ without network access.
 
 Use the [quickstart](/quickstart) to run an assessment. The [Python API](/reference)
 explains the arguments; [Results](/results) explains the response.
-[What F-UJI checks](/assessors/fuji#what-it-checks) gives examples of requirements
-and points.
+The [F-UJI](/assessors/fuji) and [FAIR Champion](/assessors/champion) pages explain
+their requirements and offline limits.
 
 Developed for [EOSC Data Commons](https://www.eosc-data-commons.eu/).
