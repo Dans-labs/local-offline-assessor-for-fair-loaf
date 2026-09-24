@@ -124,6 +124,17 @@ nodes in that graph. Nested named graphs remain separate. A missing subject or
 one appearing in multiple graphs produces a diagnostic. Relative IDs use
 `metadata_url` as their base; this URL is never fetched or inferred from the target.
 
+`identifiers.py` preserves the pinned identifier patterns and graph-query order.
+`checks.py` implements the eight F1, F3, open-protocol and authentication checks.
+Protocol and authentication results classify identifiers; they do not demonstrate
+successful retrieval or login. Missing evidence remains `indeterminate`.
+The remaining checks and public Champion registration are not implemented yet.
+
+Expected decisions in `tests/fixtures/champion/0.5.12/identifiers.json` record the
+reviewed source path, hash and rationale. They are source-reviewed expectations,
+not results obtained by executing Ruby. Preserve upstream query quirks when
+updating the port; changing them requires an explicitly versioned adaptation.
+
 ## Add a F-UJI version
 
 1. Copy the settings file to `scripts/fuji/<version>.json` and the data-file list to

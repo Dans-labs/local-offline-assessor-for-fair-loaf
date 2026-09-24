@@ -1,0 +1,303 @@
+{
+  "provenance": {
+    "core_commit": "ac7b7f1cf5bcc2a86b1caca649fc052d2dcf331c",
+    "harvester_version": "0.1.17",
+    "helpers": {
+      "lib/utils.rb": "53f5fa39104767b60dcf03524ab2ce6081ca56078603d97e8d22d013e2e408d4",
+      "lib/common_queries.rb": "b6a9d49e6ac3fc9b5179420c32e9a17042a2026e1a2ee30437b651f932b5c40a",
+      "lib/harvester.rb": "96d3dc2bfb69c9f28839c229101867dc71b2391b87b4939c8cd23e1fa7882ee2"
+    },
+    "method": "Expected outcomes reviewed against pinned Ruby source; Ruby was not executed."
+  },
+  "sources": {
+    "test_FM_F1_M_IdentUnique": {
+      "path": "app/tests/test_FM_F1_M_IdentUnique.rb",
+      "sha256": "e21f8d282d12a85b835b98ecc80308426a9c7e8027971b973de2ba37f15ac24b"
+    },
+    "test_FM_A1_1_M_OpenProt": {
+      "path": "app/tests/test_FM_A1_1_M_OpenProt.rb",
+      "sha256": "e291640ca1752fad011a4c307b7d0f1066d7b6e9a29595661b59c68f7af39bad"
+    },
+    "test_FM_A1_2_M_Auth": {
+      "path": "app/tests/test_FM_A1_2_M_Auth.rb",
+      "sha256": "8c067e043766be1f9aa0384537f47415f9b7dda6055ad47d3eafaa2fbe70a7b4"
+    },
+    "test_FM_F1_M_IdentPersistent": {
+      "path": "app/tests/test_FM_F1_M_IdentPersistent.rb",
+      "sha256": "612e7fc7931866d0e766798816e68cd2478b9a8df6f6def7d7be1929f36b3ad2"
+    },
+    "test_FM_F3_M_MetaIdent": {
+      "path": "app/tests/test_FM_F3_M_MetaIdent.rb",
+      "sha256": "d72040def6b628d6284b5e864556a678a626a2c76e624aa540c2072a07ee8caf"
+    },
+    "test_FM_F3_M_DataIdent": {
+      "path": "app/tests/test_FM_F3_M_DataIdent.rb",
+      "sha256": "cbbfee412f67d0efd7e973d74ef12a88449d763b1902e48fd163e302532acc10"
+    },
+    "test_FM_A1_1_M_OpenProt_Data": {
+      "path": "app/tests/test_FM_A1_1_M_OpenProt_Data.rb",
+      "sha256": "0ad4b025908e97330f0c444ea8f6d0ad8431d522f0fc2dfddfc2c71d4ff17719"
+    },
+    "test_FM_A1_2_M_DataAuth": {
+      "path": "app/tests/test_FM_A1_2_M_DataAuth.rb",
+      "sha256": "86fca4c1b0dfbb84edb455feba039b84689b9f59b86487816cbc6f805cec050a"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "ordinary-url",
+      "request": {
+        "target_identifier": "https://example.org/record",
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": {
+            "@id": "https://example.org/record"
+          },
+          "http://schema.org/contentUrl": {
+            "@id": "https://example.org/file"
+          }
+        }
+      },
+      "expected": {
+        "test_FM_A1_1_M_OpenProt": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_A1_2_M_Auth": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_F1_M_IdentPersistent": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ],
+        "test_FM_F3_M_MetaIdent": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_A1_1_M_OpenProt_Data": [
+          "pass",
+          "passed"
+        ]
+      },
+      "rationale": "An ordinary URL passes classification and exact self-reference but has no known persistence pattern. The data URI is classified without retrieval."
+    },
+    {
+      "case_id": "invalid-metadata",
+      "request": {
+        "metadata": null,
+        "target_identifier": "https://example.org/item"
+      },
+      "expected": {
+        "test_FM_F1_M_IdentUnique": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_F3_M_DataIdent": [
+          "indeterminate",
+          "unsupported_input"
+        ]
+      },
+      "rationale": "Invalid metadata blocks graph-dependent checks with its diagnostic, while the independent target check still passes."
+    },
+    {
+      "case_id": "unknown-target",
+      "request": {
+        "target_identifier": "unknown",
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": "unknown"
+        }
+      },
+      "expected": {
+        "test_FM_F1_M_IdentUnique": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ],
+        "test_FM_F3_M_MetaIdent": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ]
+      },
+      "rationale": "Unrecognized targets remain indeterminate, including when the metadata repeats the same value."
+    },
+    {
+      "case_id": "bare-doi",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": "https://doi.org/10.1234/abc"
+        },
+        "target_identifier": "10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F1_M_IdentPersistent": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_F3_M_MetaIdent": [
+          "pass",
+          "passed"
+        ]
+      },
+      "rationale": "A bare DOI passes persistence directly and matches its resolver form in metadata."
+    },
+    {
+      "case_id": "doi-resolver",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": "10.1234/abc"
+        },
+        "target_identifier": "https://dx.doi.org/10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F1_M_IdentPersistent": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_F3_M_MetaIdent": [
+          "pass",
+          "passed"
+        ]
+      },
+      "rationale": "A resolver URL passes the persistent-URL pattern and matches its extracted bare DOI. The dx.doi.org resolver is accepted upstream."
+    },
+    {
+      "case_id": "empty-first-self-id",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": [
+            "",
+            "10.1234/abc"
+          ]
+        },
+        "target_identifier": "10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F3_M_MetaIdent": [
+          "fail",
+          "failed"
+        ]
+      },
+      "rationale": "The first identifier must contain a word character even if a later one matches."
+    },
+    {
+      "case_id": "self-id-mismatch",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": "10.1234/ABC"
+        },
+        "target_identifier": "10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F3_M_MetaIdent": [
+          "fail",
+          "failed"
+        ]
+      },
+      "rationale": "DOI forms are compared exactly; suffix case is not normalized."
+    },
+    {
+      "case_id": "empty-graph",
+      "request": {
+        "metadata": {},
+        "target_identifier": "10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F3_M_MetaIdent": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ],
+        "test_FM_F3_M_DataIdent": [
+          "fail",
+          "failed"
+        ],
+        "test_FM_A1_2_M_DataAuth": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ]
+      },
+      "rationale": "A valid empty graph gives different upstream decisions: metadata self-reference and data authentication are indeterminate, while the missing data identifier fails F3."
+    },
+    {
+      "case_id": "missing-self-id",
+      "request": {
+        "metadata": {
+          "urn:title": "Title"
+        },
+        "target_identifier": "10.1234/abc"
+      },
+      "expected": {
+        "test_FM_F3_M_MetaIdent": [
+          "fail",
+          "failed"
+        ]
+      },
+      "rationale": "Nonempty graph without a recognized self-identifier fails."
+    },
+    {
+      "case_id": "unrecognized-data-id",
+      "request": {
+        "metadata": {
+          "http://schema.org/contentUrl": "unrecognized"
+        }
+      },
+      "expected": {
+        "test_FM_F3_M_DataIdent": [
+          "pass",
+          "passed"
+        ],
+        "test_FM_A1_1_M_OpenProt_Data": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ]
+      },
+      "rationale": "Without a target, a word-like data value passes F3 existence but remains unrecognized by protocol classification."
+    },
+    {
+      "case_id": "missing-target",
+      "request": {
+        "metadata": {
+          "http://purl.org/dc/terms/identifier": "10.1234/abc"
+        }
+      },
+      "expected": {
+        "test_FM_F3_M_MetaIdent": [
+          "indeterminate",
+          "missing_evidence"
+        ]
+      },
+      "rationale": "Offline guard: target cannot be inferred from the metadata being assessed."
+    },
+    {
+      "case_id": "invalid-target",
+      "request": {
+        "metadata": {},
+        "target_identifier": 42
+      },
+      "expected": {
+        "test_FM_F1_M_IdentUnique": [
+          "indeterminate",
+          "invalid_target_identifier"
+        ]
+      },
+      "rationale": "Offline guard: retain the specific validation diagnostic."
+    },
+    {
+      "case_id": "punctuation-data-id",
+      "request": {
+        "metadata": {
+          "http://schema.org/contentUrl": "!!!/!!!"
+        }
+      },
+      "expected": {
+        "test_FM_A1_1_M_OpenProt_Data": [
+          "indeterminate",
+          "upstream_indeterminate"
+        ],
+        "test_FM_A1_2_M_DataAuth": [
+          "pass",
+          "passed"
+        ]
+      },
+      "rationale": "Regression: OpenProt_Data requires an ASCII word character; DataAuth classifies directly and accepts the broad handle pattern."
+    }
+  ]
+}
