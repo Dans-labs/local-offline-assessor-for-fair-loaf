@@ -1,3 +1,4 @@
+from fair_offline_assessor.models.champion import ChampionInput
 from fair_offline_assessor.models.v1 import (
     AssessmentInput,
     AssessmentResult,
@@ -21,6 +22,7 @@ from fair_offline_assessor.models.v1 import (
 __all__ = [
     "AssessmentInput",
     "AssessmentResult",
+    "ChampionInput",
     "CheckResult",
     "Coverage",
     "Diagnostic",

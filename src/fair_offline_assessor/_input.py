@@ -16,6 +16,17 @@ class PreparedInput:
     invalid: dict[str, Diagnostic]
 
 
+def digest_input(values: Mapping[str, object]) -> str:
+    """Hash complete evidence using the existing canonical input representation."""
+    content = json.dumps(
+        to_jsonable_python(values),
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8", errors="surrogatepass")
+    return sha256(content).hexdigest()
+
+
 def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedInput:
     """Validate each evidence field, retaining invalid input in the digest."""
     defaults: dict[str, object] = {
@@ -28,13 +39,7 @@ def prepare_input(request: AssessmentInput | Mapping[str, object]) -> PreparedIn
     original = defaults | (
         request.model_dump() if isinstance(request, AssessmentInput) else dict(request)
     )
-    content = json.dumps(
-        to_jsonable_python(original),
-        sort_keys=True,
-        ensure_ascii=False,
-        separators=(",", ":"),
-    ).encode("utf-8", errors="surrogatepass")
-    digest = sha256(content).hexdigest()
+    digest = digest_input(original)
     invalid = {}
     values = dict(original)
     metadata = values["metadata"]

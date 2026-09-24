@@ -6,8 +6,8 @@ Run commands from the repository root unless stated otherwise.
 
 ```sh
 uv sync --locked
-uv run ruff check .
-uv run ruff format --check .
+uv run ruff check src scripts tests
+uv run ruff format --check src scripts tests
 uv run mypy src scripts
 uv run pytest
 uv build
@@ -111,6 +111,18 @@ uv run python scripts/resources/prepare_resources.py --check
 Change the settings or extraction script, then regenerate and review the diff.
 Keep other versions intact. Future Python checks belong beside `definitions.py`
 in `assessors/champion/v0_5_12/`; public registration waits until they are ready.
+
+`ChampionInput` adds `target_identifier` for the identifier being assessed.
+`input.py` retains valid fields and reports invalid ones separately. Callers must
+use those diagnostics to decide which evidence is usable. `graph.py`
+turns supplied JSON-LD objects or document text into RDF using local contexts.
+It accepts any RDF subject type, without F-UJI's dataset selection rules.
+
+With no `subject`, there must be at most one nonempty graph. An explicit `subject`
+selects the entire graph containing its outgoing statements, including other
+nodes in that graph. Nested named graphs remain separate. A missing subject or
+one appearing in multiple graphs produces a diagnostic. Relative IDs use
+`metadata_url` as their base; this URL is never fetched or inferred from the target.
 
 ## Add a F-UJI version
 

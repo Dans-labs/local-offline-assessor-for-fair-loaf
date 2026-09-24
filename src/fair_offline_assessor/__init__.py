@@ -4,6 +4,7 @@ from fair_offline_assessor.assessment import Assessor, assess
 from fair_offline_assessor.models import (
     AssessmentInput,
     AssessmentResult,
+    ChampionInput,
     InputError,
     ProfileError,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "AssessmentResult",
     "Assessor",
     "BundledProfileProvider",
+    "ChampionInput",
     "InputError",
     "ProfileBundle",
     "ProfileError",
