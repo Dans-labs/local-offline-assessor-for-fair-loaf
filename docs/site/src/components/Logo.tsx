@@ -3,13 +3,13 @@ import clsx from 'clsx'
 export function Logo({ className }: { className?: string }) {
   return (
     <span
+      aria-label="Local Offline Assessor for FAIR (LOAF)"
       className={clsx(
-        'inline-flex items-center gap-2 font-semibold tracking-tight text-brand-950 dark:text-white',
+        'inline-flex items-center font-semibold tracking-tight text-brand-700 dark:text-brand-400',
         className,
       )}
     >
-      <span className="text-brand-700 dark:text-brand-400">FAIR</span>
-      <span>offline assessor</span>
+      LOAF
     </span>
   )
 }

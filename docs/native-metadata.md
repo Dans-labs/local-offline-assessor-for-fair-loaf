@@ -1,4 +1,4 @@
-# Metadata and results
+# LOAF metadata and results
 
 Choose an assessor and version to use its metadata interpretation and checks.
 A mapping connects a field in your metadata to information the assessor

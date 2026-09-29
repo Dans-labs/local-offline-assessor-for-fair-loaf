@@ -248,7 +248,7 @@ export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {
   return (
     <nav {...props}>
       <ul role="list">
-        <TopLevelNavItem href="https://github.com/akeldamas/fair-offline-assessor">
+        <TopLevelNavItem href="https://github.com/Dans-labs/local-offline-assessor-for-fair-loaf">
           <GitHubIcon className="size-5" />
           <span className="sr-only">GitHub</span>
         </TopLevelNavItem>

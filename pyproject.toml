@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "fair-offline-assessor"
 version = "0.1.0"
-description = "Offline FAIR assessment using versioned metric profiles"
+description = "Local Offline Assessor for FAIR (LOAF)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0 AND CC-BY-SA-3.0 AND MIT"

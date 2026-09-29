@@ -9,9 +9,11 @@ import '@/styles/tailwind.css'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s · fair-offline-assessor',
-    default: 'fair-offline-assessor',
+    template: '%s · LOAF',
+    default: 'Local Offline Assessor for FAIR (LOAF)',
   },
+  description:
+    'Local Offline Assessor for FAIR (LOAF): assess metadata in Python without network access.',
 }
 
 export default async function RootLayout({

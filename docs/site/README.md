@@ -1,4 +1,4 @@
-# Documentation site
+# LOAF documentation site
 
 Requires Node.js 22+ and npm. Run from this directory:
 
@@ -42,7 +42,7 @@ in those text copies.
 ## Build for GitHub Pages
 
 ```sh
-NEXT_PUBLIC_BASE_PATH=/fair-offline-assessor npm run build
+NEXT_PUBLIC_BASE_PATH=/local-offline-assessor-for-fair-loaf npm run build
 ```
 
 Omit `NEXT_PUBLIC_BASE_PATH` when serving the site at the domain root.

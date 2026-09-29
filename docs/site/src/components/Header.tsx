@@ -74,14 +74,14 @@ export const Header = forwardRef<
       <Search />
       <div className="flex items-center gap-5 lg:hidden">
         <MobileNavigation />
-        <CloseButton as={Link} href="/" aria-label="Home">
+        <CloseButton as={Link} href="/" aria-label="LOAF home">
           <Logo className="h-6" />
         </CloseButton>
       </div>
       <div className="flex items-center gap-5">
         <nav className="hidden md:block">
           <ul role="list" className="flex items-center gap-8">
-            <TopLevelNavItem href="https://github.com/akeldamas/fair-offline-assessor">
+            <TopLevelNavItem href="https://github.com/Dans-labs/local-offline-assessor-for-fair-loaf">
               <GitHubIcon className="size-5" />
               <span className="sr-only">GitHub</span>
             </TopLevelNavItem>

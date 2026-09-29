@@ -1,4 +1,4 @@
-# Maintaining the library
+# Maintaining LOAF
 
 Run commands from the repository root unless stated otherwise.
 
