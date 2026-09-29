@@ -168,9 +168,9 @@ are in `tests/fixtures/champion/0.5.12/raw.json`.
 
 This is output from the offline port, not a captured Ruby service response. It uses
 the port's software URN, descriptions, logs and adapter version. Service endpoints,
-the DataService type and upstream licence assertions are omitted. A missing target
-has no identifier; a check that errors has no raw entry. `ftr:completion` describes
-execution completion, not a FAIR score.
+the DataService type, upstream licence assertions and empty summaries are omitted.
+A missing target has no identifier; a check that errors has no raw entry.
+`ftr:completion` describes execution completion, not a FAIR score.
 
 Fresh UUIDs and timestamps identify each run, so complete responses differ between
 runs. Outcomes, input hashes and pinned resource hashes remain reproducible for the

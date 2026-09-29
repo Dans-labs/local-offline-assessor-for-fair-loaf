@@ -9,7 +9,7 @@
       "sha256": "3a196210fd505fa98ff5aa58348e62775f454a5f419eff4ec46f3b09666512ff"
     }
   },
-  "rationale": "Hand-reviewed FTR graph structure, not a captured Ruby response. The Python port uses its own software URN, description, log and adapter version. It omits service endpoints, DataService type and upstream license assertions. Missing targets omit their identifier. Run UUIDs and time are replaced by tokens only in this fixture. Completion 100 describes a finished execution, not a FAIR score.",
+  "rationale": "Hand-reviewed FTR graph structure, not a captured Ruby response. The Python port uses its own software URN, description, log and adapter version. It omits service endpoints, DataService type, upstream license assertions and the empty summary label. Missing targets omit their identifier. Run UUIDs and time are replaced by tokens only in this fixture. Completion 100 describes a finished execution, not a FAIR score.",
   "expected": {
     "@context": {
       "xsd": "http://www.w3.org/2001/XMLSchema#",
@@ -35,7 +35,6 @@
         "dct:title": {"@value": "OSTrails Core: Unique Identifier OUTPUT", "@language": "en"},
         "dct:description": {"@value": "OUTPUT OF Offline Python implementation of OSTrails Core: Unique Identifier.", "@language": "en"},
         "prov:value": {"@value": "pass", "@language": "en"},
-        "ftr:summary": {"@value": "Summary:", "@language": "en"},
         "prov:generatedAtTime": {"@value": "TIMESTAMP", "@type": "xsd:dateTime"},
         "ftr:log": {"@value": "Offline Python assessment.\nThe target matches Champion's doi identifier pattern.", "@language": "en"},
         "ftr:completion": {"@value": "100", "@type": "xsd:integer"},

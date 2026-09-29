@@ -58,7 +58,6 @@ def test_output(
                 "dct:title": _english(f"{definition.name} OUTPUT"),
                 "dct:description": _english(f"OUTPUT OF {description}"),
                 "prov:value": _english(decision.outcome),
-                "ftr:summary": _english("Summary:"),
                 "prov:generatedAtTime": {
                     "@value": datetime.now(UTC).isoformat(timespec="seconds"),
                     "@type": "xsd:dateTime",
