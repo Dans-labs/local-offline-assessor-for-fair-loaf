@@ -244,8 +244,6 @@ def test_public_assessment_reports_core_results_and_full_coverage(
                 )
                 metric = next(m for m in result.metrics if m.id == check.metric)
                 assert metric.score is None or not metric.score.complete
-    assert result.overall_score is None
-    assert result.principle_scores == {}
     assert result.status == "completed"
     assert result.provenance.engine_version == version("fair-offline-assessor")
     assert result.provenance.processor_version == version("PyLD")

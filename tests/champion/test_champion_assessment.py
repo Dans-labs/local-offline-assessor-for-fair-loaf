@@ -55,8 +55,6 @@ def test_public_champion_result_preserves_pins_outcomes_and_raw():
         "total": 16,
     }
     assert result.status == "completed"
-    assert result.overall_score is None
-    assert result.principle_scores == {}
     assert all(
         item.score is None and item.level is None
         for item in (*result.tests, *result.metrics)

@@ -51,7 +51,6 @@ def test_score_round_trip_rejects_incorrect_derived_percentage():
 def test_alternative_checks_keep_adapter_score_and_separate_coverage():
     result = AssessmentResult.model_validate(result_data())
     assert result.metrics[0].score.percent == 100
-    assert result.overall_score is None
     assert result.coverage.model_dump() == {
         "evaluated": 1,
         "indeterminate": 1,
@@ -82,7 +81,7 @@ def test_unscored_maturity_and_not_applicable_are_preserved():
 
 @pytest.mark.parametrize(
     "problem",
-    ["coverage", "orphan", "duplicate", "empty_score", "status", "unmeasured_score"],
+    ["coverage", "orphan", "duplicate", "status", "unmeasured_score"],
 )
 def test_inconsistent_results_are_rejected(problem):
     data = result_data()
@@ -99,10 +98,6 @@ def test_inconsistent_results_are_rejected(problem):
             data["tests"][0]["metric"] = "missing"
         case "duplicate":
             data["tests"].append(data["tests"][0])
-        case "empty_score":
-            data["overall_score"] = data["metrics"][0]["score"]
-            data["metrics"] = []
-            data["tests"] = []
         case "status":
             data["tests"][0]["outcome"] = "error"
             data["status"] = "completed"

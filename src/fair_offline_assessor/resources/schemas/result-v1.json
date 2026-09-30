@@ -183,18 +183,6 @@
     "MaturityLevel": {
       "additionalProperties": false,
       "properties": {
-        "label": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Label"
-        },
         "scheme": {
           "minLength": 1,
           "title": "Scheme",
@@ -467,32 +455,6 @@
       },
       "title": "Metrics",
       "type": "array"
-    },
-    "overall_score": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/Score"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null
-    },
-    "principle_scores": {
-      "additionalProperties": {
-        "$ref": "#/$defs/Score"
-      },
-      "propertyNames": {
-        "enum": [
-          "F",
-          "A",
-          "I",
-          "R"
-        ]
-      },
-      "title": "Principle Scores",
-      "type": "object"
     },
     "profile": {
       "$ref": "#/$defs/ProfileInfo"

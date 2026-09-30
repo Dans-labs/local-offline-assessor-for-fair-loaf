@@ -154,7 +154,6 @@ class Score(Model):
 class MaturityLevel(Model):
     scheme: str = Field(min_length=1)
     value: int | str
-    label: str | None = None
 
 
 class Finding(Model):
@@ -223,10 +222,6 @@ class AssessmentResult(Model):
     provenance: Provenance
     tests: tuple[CheckResult, ...]
     metrics: tuple[MetricResult, ...]
-    principle_scores: dict[Literal["F", "A", "I", "R"], Score] = Field(
-        default_factory=dict
-    )
-    overall_score: Score | None = None
     coverage: Coverage = Field(default_factory=Coverage)
     diagnostics: tuple[Diagnostic, ...] = ()
     raw: JsonValue = None
@@ -241,10 +236,6 @@ class AssessmentResult(Model):
             raise ValueError("Duplicate finding identifier")
         if any(test.metric not in metrics for test in self.tests):
             raise ValueError("Check refers to an unknown metric")
-        if not self.metrics and (
-            self.overall_score is not None or self.principle_scores
-        ):
-            raise ValueError("An empty assessment cannot have summary scores")
         coverage = Coverage(
             evaluated=sum(
                 test.outcome in {"pass", "partial", "fail"} for test in self.tests
