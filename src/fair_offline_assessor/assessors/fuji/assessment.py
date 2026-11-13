@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Mapping
+from hashlib import sha256
 from importlib.metadata import version
 from typing import Literal
 
@@ -159,24 +160,49 @@ def _assess_metric(
     return metric, tuple(checks)
 
 
+CREATIVEWORKS_REFERENCE = ResourceRef(
+    id="fuji:creativeworks",
+    version="3.5.1",
+    kind="reference",
+    format="json",
+    digest="13a7713c5f401c08b0296eadb771d4d5925ce01093aa90d15eedc44c125cc2f0",
+)
+
+
 class FujiAdapter:
     id = "fuji"
     version = "1.0.0"
     definitions: tuple[ResourceRef, ...] = (
         *fuji_checks.REFERENCES,
-        ResourceRef(
-            id="fuji:creativeworks",
-            version="3.5.1",
-            kind="reference",
-            format="json",
-            digest="13a7713c5f401c08b0296eadb771d4d5925ce01093aa90d15eedc44c125cc2f0",
-        ),
+        CREATIVEWORKS_REFERENCE,
     )
 
     def assess(
         self, request: AssessmentInput | Mapping[str, object], profile: LoadedProfile
     ) -> AssessmentResult:
         """Use pinned native readers and run the supported F-UJI metrics."""
+        # Verify the selected evaluator and pinned resources before inspecting input.
+        if (
+            profile.profile.adapter != self.id
+            or profile.profile.adapter_version != self.version
+        ):
+            raise ProfileError(
+                "adapter_unavailable", "Unsupported F-UJI adapter version"
+            )
+        # Runner checks the metric and evaluator catalogues. Creative-work
+        # types are consumed by the metadata reader instead, so validate its
+        # pinned digest here *before* input parsing (including invalid input).
+        creativeworks_ref = CREATIVEWORKS_REFERENCE
+        creativeworks = profile.resources.get(creativeworks_ref.id)
+        if (
+            creativeworks is None
+            or sha256(creativeworks).hexdigest() != creativeworks_ref.digest
+        ):
+            raise ProfileError(
+                "unsupported_definitions",
+                f"Altered pinned F-UJI resource: {creativeworks_ref.id}",
+            )
+        runner = fuji_checks.Runner(profile.resources)
         supplied = prepare_input(request)
         request = supplied.request
         input_digest = supplied.digest
@@ -211,7 +237,6 @@ class FujiAdapter:
                     location="/metadata_url",
                 ),
             )
-        runner = fuji_checks.Runner(profile.resources)
         metrics = []
         tests: list[CheckResult] = []
         for definition in runner.metrics.values():
