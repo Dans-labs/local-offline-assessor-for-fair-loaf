@@ -5,7 +5,7 @@ from importlib.resources import files
 import pytest
 import yaml
 
-from fair_offline_assessor import list_profiles, load_profile
+from fair_offline_assessor.profiles import list_profiles, load_profile
 from fair_offline_assessor.models import AssessmentResult, Profile
 
 

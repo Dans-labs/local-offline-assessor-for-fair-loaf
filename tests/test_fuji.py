@@ -231,3 +231,53 @@ def test_evaluators_cannot_change_cached_catalogues_or_definitions(runner, monke
     )
     assert len(first.tests) == 1
     assert first.metric.score.observed_earned == 1
+
+
+def test_large_reference_catalogues_are_shared_without_recursive_copies(
+    runner, monkeypatch
+):
+    """Large cached indexes are reused; an evaluator still owns its metric state."""
+    seen = []
+    original_context = fuji_checks.Runner._context
+
+    def capture_context(self, *args, **kwargs):
+        context = original_context(self, *args, **kwargs)
+        seen.append(context)
+        return context
+
+    monkeypatch.setattr(fuji_checks.Runner, "_context", capture_context)
+
+    runner.evaluate("FsF-F1-01MD", {}, metadata_url="https://doi.org/10.5072/example")
+    index_context = seen[-1]
+    assert index_context.IDENTIFIERS_ORG_DATA is runner._resources[
+        fuji_checks.IDENTIFIERS.id
+    ]["IDENTIFIERS_ORG_DATA"]
+
+    runner.evaluate("FsF-R1.1-01M", {"license": ["MIT License"]})
+    license_context = seen[-1]
+    original_licenses = runner._resources[fuji_checks.LICENSES.id]["SPDX_LICENSES"]
+    assert license_context.SPDX_LICENSES is not original_licenses
+    assert license_context.SPDX_LICENSES[0] is original_licenses[0]
+    assert "agnostic_identifier" not in runner.metrics["FsF-R1.1-01M"]
+    assert "agnostic_test_identifier" not in runner.metrics[
+        "FsF-R1.1-01M"
+    ]["metric_tests"][0]
+
+
+def test_access_rights_evaluator_cannot_mutate_supplied_license_list(
+    runner, monkeypatch
+):
+    """The only native mutation of nested metadata has a private list."""
+    evaluator_class = fuji_checks.EVALUATORS["FsF-A1-01M"].implementation
+    original_evaluate = evaluator_class.evaluate
+
+    def mutate_then_evaluate(self):
+        self.fuji.metadata_merged["license"].append("changed by evaluator")
+        return original_evaluate(self)
+
+    monkeypatch.setattr(evaluator_class, "evaluate", mutate_then_evaluate)
+    supplied = {"license": ["MIT License"], "access_level": ["public"]}
+    before = deepcopy(supplied)
+    runner.evaluate("FsF-A1-01M", supplied)
+    runner.evaluate("FsF-A1-01M", supplied)
+    assert supplied == before

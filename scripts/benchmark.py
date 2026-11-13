@@ -1,9 +1,8 @@
 """Compare cold profile setup and successive warm-process assessment times."""
-
 from statistics import median
 from time import perf_counter
 
-from fair_offline_assessor import Assessor
+from fair_offline_assessor import FairAssessor
 
 metadata = {
     "@context": "https://schema.org",
@@ -13,7 +12,7 @@ metadata = {
     "license": "https://creativecommons.org/licenses/by/4.0/",
 }
 start = perf_counter()
-a = Assessor("FUJI", version="3.5.1")
+a = FairAssessor()
 print(f"setup: {perf_counter() - start:.3f}s")
 times = []
 for n in range(10):

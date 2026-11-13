@@ -542,12 +542,14 @@ def test_access_free_preserves_native_literal_truthiness(
     assert result.coverage.errors == 0
 
 
-def test_reference_files_are_parsed_once_per_reader_and_runner(
+def test_reference_files_are_parsed_once_per_bundle_but_metadata_still_reads(
     request_data, monkeypatch
 ):
+    fuji_checks._prepared_lookups.cache_clear()
+    fuji_checks._parsed_catalogues.cache_clear()
     parsed = []
 
-    for module, name in ((fuji_checks.yaml, "safe_load"), (fuji_checks.json, "loads")):
+    for module, name in ((fuji_checks.yaml, "load"), (fuji_checks.json, "loads")):
         original = getattr(module, name)
 
         def read(content, *args, _loader=original, **kwargs):
@@ -563,7 +565,7 @@ def test_reference_files_are_parsed_once_per_reader_and_runner(
         reference.id: parsed.count(resources[reference.id])
         for reference in fuji_checks.REFERENCES
     } == {
-        reference.id: 4 if reference.id == "fuji:vocabularies" else 2
+        reference.id: 3 if reference.id == "fuji:vocabularies" else 1
         for reference in fuji_checks.REFERENCES
     }
     assert parsed.count(resources["fuji:creativeworks"]) == 2
