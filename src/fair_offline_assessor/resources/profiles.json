@@ -4,7 +4,7 @@
     "version": "3.5.1",
     "title": "F-UJI offline",
     "adapter": "fuji",
-    "engine_requires": ">=0.1,<0.2",
+    "engine_requires": ">=0.1,<0.3",
     "adapter_version": "1.0.0",
     "digest": "c16000dbd4ce8d41bb49584f5accd8e30c3a3ba81c016d823d94eac388e12d24"
   }
