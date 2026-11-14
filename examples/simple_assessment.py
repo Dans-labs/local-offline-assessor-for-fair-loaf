@@ -1,6 +1,6 @@
-from fair_offline_assessor import Assessor
+from fair_offline_assessor import FairAssessor
 
-result = Assessor("FUJI", version="3.5.1").assess(
+result = FairAssessor().assess(
     metadata={
         "@context": "https://schema.org",
         "@type": "Dataset",

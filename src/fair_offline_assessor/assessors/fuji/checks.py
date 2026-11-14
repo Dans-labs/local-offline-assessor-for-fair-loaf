@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from hashlib import sha256
+from functools import lru_cache
 from types import SimpleNamespace
 from typing import Literal, NotRequired, TypedDict, cast
 
@@ -280,95 +281,136 @@ REFERENCES = (
 )
 
 
+
+@lru_cache(maxsize=2)
+def _parsed_catalogues(contents: tuple[bytes, ...]):
+    """Parse pinned reference catalogues at most once per process."""
+    return {
+        ref.id: (json.loads(raw) if ref.format == "json" else yaml.load(raw, Loader=yaml.CSafeLoader))
+        for ref, raw in zip(REFERENCES, contents, strict=True)
+    }
+
+
+@lru_cache(maxsize=2)
+def _prepared_lookups(contents: tuple[bytes, ...]):
+    """Build expensive derived reference indexes once per resource bundle."""
+    loaded = _parsed_catalogues(contents)
+    licences = loaded[LICENSES.id]
+    standards = MetadataHarvester()
+    standards.COMMUNITY_METADATA_STANDARDS = loaded[METADATA_STANDARDS.id]  # type: ignore[attr-defined]
+    standards.COMMUNITY_METADATA_STANDARDS_URIS = {  # type: ignore[attr-defined]
+        uri.strip().strip("#/"): key
+        for key, entry in loaded[METADATA_STANDARDS.id].items()
+        for uri in entry["urls"]
+    }
+    vocabularies = loaded[VOCABULARIES.id]
+    vocabulary_helper = LinkedVocabHelper({})  # type: ignore[no-untyped-call]
+    vocabulary_helper.linked_vocab_dict = vocabularies["vocabularies"]
+    vocabulary_helper.set_linked_vocab_index()  # type: ignore[no-untyped-call]
+    return {
+        VOCABULARIES.id: {
+            "LINKED_VOCAB_INDEX": vocabulary_helper.linked_vocab_index,
+            "DEFAULT_NAMESPACES": vocabularies["default_namespaces"],
+        },
+        METADATA_STANDARDS.id: {"metadata_harvester": standards},
+        LICENSES.id: {
+            "SPDX_LICENSES": licences,
+            "SPDX_LICENSE_NAMES": [item["name"] for item in licences],
+        },
+        ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
+        PROTOCOLS.id: {"STANDARD_PROTOCOLS": loaded[PROTOCOLS.id]},
+        FILE_FORMATS.id: {
+            name: {
+                mime: entry["domain"][0] if entry.get("domain") else None
+                for entry in loaded[FILE_FORMATS.id].values()
+                if reason in entry["reason"]
+                for mime in entry["mime"]
+            }
+            for name, reason in (
+                ("SCIENCE_FILE_FORMATS", "scientific format"),
+                ("LONG_TERM_FILE_FORMATS", "long term format"),
+                ("OPEN_FILE_FORMATS", "open format"),
+            )
+        },
+        IDENTIFIERS.id: {
+            "IDENTIFIERS_ORG_DATA": {
+                item["prefix"]: {
+                    "pattern": item["pattern"],
+                    "url_pattern": item["resources"][0]["urlPattern"],
+                }
+                for item in loaded[IDENTIFIERS.id]["payload"]["namespaces"]
+            }
+        },
+    }
+
+
 class Runner:
     def __init__(self, resources: Mapping[str, bytes]) -> None:
         """Load the pinned definitions and catalogues once for this assessment."""
         self._native_results: dict[str, dict[str, JsonValue]] = {}
-        loaded = {}
+        contents = []
         for reference in REFERENCES:
             content = resources.get(reference.id)
-            if content is None or sha256(content).hexdigest() != reference.digest:
+            if content is None:
+                raise ProfileError(
+                    "resource_integrity", f"Missing F-UJI resource: {reference.id}"
+                )
+            if sha256(content).hexdigest() != reference.digest:
                 raise ProfileError(
                     "unsupported_definitions",
-                    f"Unsupported F-UJI resource: {reference.id}",
+                    f"Altered pinned F-UJI resource: {reference.id}",
                 )
-            loaded[reference.id] = (
-                json.loads(content)
-                if reference.format == "json"
-                else yaml.safe_load(content)
-            )
+            contents.append(content)
+        loaded = _parsed_catalogues(tuple(contents))
         self.metrics = {
             metric["metric_identifier"]: metric
             for metric in cast(
                 "list[MetricDefinition]", loaded[DEFINITION.id]["metrics"]
             )
         }
-        licences = loaded[LICENSES.id]
-        standards = MetadataHarvester()
-        standards.COMMUNITY_METADATA_STANDARDS = loaded[METADATA_STANDARDS.id]  # type: ignore[attr-defined]
-        standards.COMMUNITY_METADATA_STANDARDS_URIS = {  # type: ignore[attr-defined]
-            uri.strip().strip("#/"): key
-            for key, entry in loaded[METADATA_STANDARDS.id].items()
-            for uri in entry["urls"]
-        }
-        vocabularies = loaded[VOCABULARIES.id]
-        vocabulary_helper = LinkedVocabHelper({})  # type: ignore[no-untyped-call]
-        vocabulary_helper.linked_vocab_dict = vocabularies["vocabularies"]
-        vocabulary_helper.set_linked_vocab_index()  # type: ignore[no-untyped-call]
-        self._resources = {
-            VOCABULARIES.id: {
-                "LINKED_VOCAB_INDEX": vocabulary_helper.linked_vocab_index,
-                "DEFAULT_NAMESPACES": vocabularies["default_namespaces"],
-            },
-            METADATA_STANDARDS.id: {"metadata_harvester": standards},
-            LICENSES.id: {
-                "SPDX_LICENSES": licences,
-                "SPDX_LICENSE_NAMES": [item["name"] for item in licences],
-            },
-            ACCESS_RIGHTS.id: {"ACCESS_RIGHTS": loaded[ACCESS_RIGHTS.id]},
-            PROTOCOLS.id: {"STANDARD_PROTOCOLS": loaded[PROTOCOLS.id]},
-            FILE_FORMATS.id: {
-                name: {
-                    mime: entry["domain"][0] if entry.get("domain") else None
-                    for entry in loaded[FILE_FORMATS.id].values()
-                    if reason in entry["reason"]
-                    for mime in entry["mime"]
-                }
-                for name, reason in (
-                    ("SCIENCE_FILE_FORMATS", "scientific format"),
-                    ("LONG_TERM_FILE_FORMATS", "long term format"),
-                    ("OPEN_FILE_FORMATS", "open format"),
-                )
-            },
-            IDENTIFIERS.id: {
-                "IDENTIFIERS_ORG_DATA": {
-                    item["prefix"]: {
-                        "pattern": item["pattern"],
-                        "url_pattern": item["resources"][0]["urlPattern"],
-                    }
-                    for item in loaded[IDENTIFIERS.id]["payload"]["namespaces"]
-                }
-            },
-        }
+        self._resources = _prepared_lookups(tuple(contents))
 
     @property
     def native_results(self) -> list[JsonValue]:
         """Return a detached snapshot of the final native result for each metric."""
         return deepcopy(list(self._native_results.values()))
 
-    def _context(self, identifier: str, **evidence: object) -> SimpleNamespace:
-        """Give each evaluator private definitions, metadata and catalogues."""
-        metric = deepcopy(self.metrics[identifier])
-        metric["agnostic_identifier"] = identifier
-        for test in metric["metric_tests"]:
-            test["agnostic_test_identifier"] = test["metric_test_identifier"]
+    def _context(
+        self,
+        identifier: str,
+        state: Mapping[str, object],
+        resources: Mapping[str, object],
+    ) -> SimpleNamespace:
+        """Isolate evaluator state without copying the pinned reference catalogues.
+
+        Vendored F-UJI reads metric definitions and reference tables; only the
+        top-level metric/test dictionaries get temporary identifier fields.
+        Keep those dictionaries private while sharing nested, read-only metric
+        configuration. Resources are prepared once and only queried by the
+        pinned evaluator implementations.
+
+        The per-evaluation metadata mapping is already a new dictionary. The
+        access-rights evaluator additionally appends to the ``license`` list;
+        its licence list must therefore be private. Other metadata collections
+        are read-only in the pinned evaluators.
+        """
+        definition = self.metrics[identifier]
+        metric = {
+            **definition,
+            "agnostic_identifier": identifier,
+            "metric_tests": [
+                {**test, "agnostic_test_identifier": test["metric_test_identifier"]}
+                for test in definition["metric_tests"]
+            ],
+        }
         return SimpleNamespace(
             isDebug=False,
             count=0,
             logger=logging.getLogger(__name__),
             LOG_SUCCESS=25,
             METRICS={identifier: metric},
-            **deepcopy(evidence),
+            **resources,
+            **state,
         )
 
     def evaluate(
@@ -421,9 +463,26 @@ class Runner:
             # Metrics 0.8 checks type presence, not the legacy type whitelist.
             "VALID_RESOURCE_TYPES": (),
         }
-        for resource in registration.resources:
-            state.update(self._resources[resource.id])
-        context = self._context(identifier, **state)
+        # The pinned evaluators only look up entries in these large static
+        # catalogues. Reuse their nested data instead of recursively copying it.
+        references = {
+            key: value
+            for resource in registration.resources
+            for key, value in self._resources[resource.id].items()
+        }
+        if "SPDX_LICENSES" in references:
+            # Preserve the existing evaluator-isolation contract (including
+            # outer-list mutations) without copying hundreds of licence dicts.
+            # The pinned native licence evaluator only reads the inner dicts.
+            references["SPDX_LICENSES"] = list(references["SPDX_LICENSES"])
+        # The access-level evaluator can append a reclassified access right to
+        # metadata_merged['license']. Give it a private list; do not mutate the
+        # caller's metadata or leak changes into a later metric evaluation.
+        if identifier == "FsF-A1-01M":
+            licence = prepared.get("license")
+            if isinstance(licence, list):
+                prepared["license"] = list(licence)
+        context = self._context(identifier, state, references)
         if identifier == "FsF-I2-01M":
             vocabulary_helper = LinkedVocabHelper(context.LINKED_VOCAB_INDEX)  # type: ignore[no-untyped-call]
             context.linked_namespace_uri = list(
@@ -470,8 +529,10 @@ class Runner:
             check for check in checks if check["metric_test_identifier"] not in missing
         ]
         evaluator = registration.implementation(context)
-        native = cast("dict[str, JsonValue]", evaluator.getResult())  # type: ignore[no-untyped-call]
-        # Capture before conversion so a harmonization failure cannot discard it.
+        # Native output can retain references to caller-supplied metadata lists.
+        # Snapshot the relatively small result instead of copying entire catalogues.
+        native = deepcopy(cast("dict[str, JsonValue]", evaluator.getResult()))  # type: ignore[no-untyped-call]
+        # Keep an independent snapshot for Runner.native_results.
         self._native_results[identifier] = deepcopy(native)
         return _evaluate(
             evaluator,
