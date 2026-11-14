@@ -4,7 +4,7 @@
   "version": "3.5.1",
   "title": "F-UJI offline",
   "adapter": "fuji",
-  "engine_requires": ">=0.1,<0.2",
+  "engine_requires": ">=0.1,<0.3",
   "resources": [
     {
       "id": "fuji:creativeworks",
