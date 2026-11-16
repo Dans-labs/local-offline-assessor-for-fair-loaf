@@ -37,6 +37,9 @@ from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_collector_xml imp
 from fair_offline_assessor._vendor.fuji.v3_5_1.helper.metadata_mapper import Mapper
 from fair_offline_assessor.models import AssessmentInput, Diagnostic, InputError
 from fair_offline_assessor.profiles import LoadedProfile
+from fair_offline_assessor.assessors.fuji.datacite_xml import (
+    unwrap_oai_datacite,
+)
 
 _LOGGER = logging.getLogger(__name__)
 _RDF_FORMATS = {"turtle", "n3", "nt", "nquads", "trig", "rdfxml"}
@@ -270,8 +273,14 @@ def _read_document(
             "/subject",
         )
     if format_ == "xml":
+        # transport = _LocalDocument(
+        #     _text_document(request).encode(), MetadataFormats.XML
+        # )
+        content = unwrap_oai_datacite(_text_document(request))
+
         transport = _LocalDocument(
-            _text_document(request).encode(), MetadataFormats.XML
+            content.encode("utf-8"),
+            MetadataFormats.XML,
         )
         collector = MetaDataCollectorXML(  # type: ignore[no-untyped-call]
             _LOGGER,

@@ -11,7 +11,7 @@ from fair_offline_assessor.profiles import load_profile
 
 @pytest.fixture(scope="module")
 def profile():
-    return load_profile("fusji-offline@3.5.1")
+    return load_profile("fuji-offline@3.5.1")
 
 
 def read(profile, metadata, metadata_format=None, **kwargs):

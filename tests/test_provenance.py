@@ -47,7 +47,7 @@ def test_provenance_keeps_native_scoring_and_scopes_evidence(
         }
     )
     original = request.model_copy(deep=True)
-    result = assess(request, profile="fusji-offline@3.5.1")
+    result = assess(request, profile="fuji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1.2-01M")
     checks = [check for check in result.tests if check.metric == metric.id]
     assert tuple(check.outcome for check in checks) == outcomes

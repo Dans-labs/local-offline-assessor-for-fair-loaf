@@ -10,7 +10,7 @@ from fair_offline_assessor import AssessmentInput, ProfileError
 from fair_offline_assessor.assessors.fuji import checks as fuji_checks
 from fair_offline_assessor.models import EvidenceRef
 
-PROFILE = "fusji-offline@3.5.1"
+PROFILE = "fuji-offline@3.5.1"
 
 
 @pytest.fixture
@@ -194,9 +194,9 @@ def test_public_assessment_reports_core_results_and_full_coverage(
     ).principles == ("F4",)
     assert result.coverage.model_dump() == {
         "evaluated": 19,
-        "indeterminate": 12,
+        "indeterminate": 10,
         "errors": 0,
-        "not_applicable": 0,
+        "not_applicable": 2,
         "total": 31,
     }
     evaluated = {
@@ -315,7 +315,7 @@ def test_evidence_and_digests_are_reproducible(request_data):
 )
 def test_configuration_is_checked_before_input(problem):
     base = library.BundledProfileProvider()
-    bundle = base.load("fusji-offline", "3.5.1")
+    bundle = base.load("fuji-offline", "3.5.1")
     info = library.load_profile(PROFILE).info
     if problem == "adapter":
         document = json.loads(bundle.content)

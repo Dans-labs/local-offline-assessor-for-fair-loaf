@@ -94,7 +94,7 @@ def test_data_content_preserves_native_presence_checks(
         },
     )
     original = request.model_copy(deep=True)
-    result = assess(request, profile="fusji-offline@3.5.1")
+    result = assess(request, profile="fuji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1-01M")
     checks = [check for check in result.tests if check.metric == metric.id]
     assert tuple(check.outcome for check in checks) == outcomes

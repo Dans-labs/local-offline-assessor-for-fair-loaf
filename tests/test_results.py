@@ -7,7 +7,7 @@ from fair_offline_assessor.models import AssessmentResult, Score
 
 def result_data():
     return {
-        "profile": load_profile("fusji-offline@3.5.1").info.model_dump(),
+        "profile": load_profile("fuji-offline@3.5.1").info.model_dump(),
         "provenance": {
             "engine_version": "0.1.0",
             "processor_version": "3.3",

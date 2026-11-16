@@ -15,7 +15,7 @@ from fair_offline_assessor.assessors.fuji.checks import Runner
 def test_community_standards_use_declared_namespaces(term, outcomes, maturity):
     request = AssessmentInput(metadata={"@id": "urn:data", term: "Sample"})
     original = request.model_copy(deep=True)
-    result = assess(request, profile="fusji-offline@3.5.1")
+    result = assess(request, profile="fuji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1.3-01M")
     checks = [item for item in result.tests if item.metric == metric.id]
     assert [check.outcome for check in checks] == outcomes
@@ -47,13 +47,13 @@ def test_community_namespaces_follow_native_union_of_supplied_graphs():
     }
     first = assess(
         AssessmentInput(metadata=metadata),
-        profile="fusji-offline@3.5.1",
+        profile="fuji-offline@3.5.1",
     )
     assert next(c for c in first.tests if c.id == "FsF-R1.3-01M-1").outcome == "pass"
     metadata["@graph"][0]["urn:related"] = {"@list": [{"@id": "urn:other"}]}
     second = assess(
         AssessmentInput(metadata=metadata),
-        profile="fusji-offline@3.5.1",
+        profile="fuji-offline@3.5.1",
     )
     check = next(item for item in second.tests if item.id == "FsF-R1.3-01M-1")
     assert check.outcome == "pass"
@@ -62,7 +62,7 @@ def test_community_namespaces_follow_native_union_of_supplied_graphs():
 
 
 def test_community_matching_preserves_native_fuzzy_lookup_and_alternative_score():
-    runner = Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = Runner(load_profile("fuji-offline@3.5.1").resources)
     result = runner.evaluate(
         "FsF-R1.3-01M",
         {"namespaces": ["http://rs.tdwg.org/dwc/term/", "http://purl.org/dc/terms/"]},

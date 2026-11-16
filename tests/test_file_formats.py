@@ -31,7 +31,7 @@ def test_file_formats_use_declarations_without_guessing(formats, outcome):
             for i, fmt in enumerate(formats)
         ]
     original = request.model_copy(deep=True)
-    result = assess(request, profile="fusji-offline@3.5.1")
+    result = assess(request, profile="fuji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-R1.3-02D")
     check = next(item for item in result.tests if item.metric == metric.id)
     assert metric.outcome == check.outcome == outcome
@@ -51,7 +51,7 @@ def test_file_formats_use_declarations_without_guessing(formats, outcome):
 
 
 def test_file_format_catalogue_preserves_native_reasons_and_score():
-    runner = Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = Runner(load_profile("fuji-offline@3.5.1").resources)
     result = runner.evaluate(
         "FsF-R1.3-02D",
         {

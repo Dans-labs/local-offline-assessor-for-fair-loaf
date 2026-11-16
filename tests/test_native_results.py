@@ -48,7 +48,7 @@ def test_raw_contains_exact_native_outputs_without_synthetic_checks(native_outpu
     assert "FsF-F1-02MD-2" not in persistence
     assert "FsF-F1-02MD-5" not in persistence
     check = next(item for item in result.tests if item.id == "FsF-F1-02MD-2")
-    assert check.outcome == "indeterminate"
+    assert check.outcome == "not_applicable"
 
 
 def test_blocked_metrics_do_not_receive_invented_native_results(native_outputs):
@@ -98,7 +98,7 @@ def test_native_results_survive_harmonized_conversion_failure(
 
 
 def test_runner_keeps_only_the_final_native_result_of_a_rerun():
-    runner = fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = fuji_checks.Runner(load_profile("fuji-offline@3.5.1").resources)
     first = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT"]})
     last = runner.evaluate("FsF-R1.1-01M", {})
 
@@ -108,7 +108,7 @@ def test_runner_keeps_only_the_final_native_result_of_a_rerun():
 
 
 def test_captured_native_results_are_detached_from_mutable_results():
-    runner = fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = fuji_checks.Runner(load_profile("fuji-offline@3.5.1").resources)
     result = runner.evaluate("FsF-R1.1-01M", {"license": ["MIT"]})
     original = deepcopy(result.native)
 
@@ -132,7 +132,7 @@ def test_captured_native_results_are_detached_from_mutable_results():
     ],
 )
 def test_raw_accepts_other_assessor_json_shapes(payload):
-    profile = load_profile("fusji-offline@3.5.1").info.model_copy(
+    profile = load_profile("fuji-offline@3.5.1").info.model_copy(
         update={"id": "example-profile", "adapter": "example"}
     )
     result = AssessmentResult(
@@ -154,7 +154,7 @@ def test_raw_accepts_other_assessor_json_shapes(payload):
 
 def test_raw_defaults_to_none_when_an_adapter_has_no_native_payload():
     result = AssessmentResult(
-        profile=load_profile("fusji-offline@3.5.1").info,
+        profile=load_profile("fuji-offline@3.5.1").info,
         provenance=Provenance(
             engine_version="0.1.0",
             processor_version="1.0.0",

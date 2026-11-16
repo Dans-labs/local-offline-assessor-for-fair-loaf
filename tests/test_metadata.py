@@ -15,7 +15,7 @@ from fair_offline_assessor._metadata import expand_metadata
 
 @pytest.fixture
 def profile():
-    return load_profile("fusji-offline@3.5.1")
+    return load_profile("fuji-offline@3.5.1")
 
 
 def test_bundled_context_aliases_expand_without_network(profile):

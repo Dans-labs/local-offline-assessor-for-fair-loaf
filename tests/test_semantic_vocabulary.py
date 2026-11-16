@@ -22,7 +22,7 @@ def test_semantic_vocabularies_use_registered_nondefault_namespaces(
 ):
     request = AssessmentInput(metadata={"@id": "urn:data", term: value})
     original = request.model_copy(deep=True)
-    result = assess(request, profile="fusji-offline@3.5.1")
+    result = assess(request, profile="fuji-offline@3.5.1")
     metric = next(item for item in result.metrics if item.id == "FsF-I2-01M")
     check = next(item for item in result.tests if item.metric == metric.id)
     assert check.outcome == outcome
@@ -38,7 +38,7 @@ def test_semantic_vocabularies_use_registered_nondefault_namespaces(
 
 
 def test_semantic_vocabulary_keeps_native_status_and_exclusions():
-    runner = Runner(load_profile("fusji-offline@3.5.1").resources)
+    runner = Runner(load_profile("fuji-offline@3.5.1").resources)
     fields = {
         "namespaces": [
             "http://www.w3.org/ns/prov#",

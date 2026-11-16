@@ -1,5 +1,6 @@
 from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
+from collections import defaultdict
 
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
@@ -184,6 +185,128 @@ class MetricResult(Finding):
     principles: tuple[str, ...] = Field(min_length=1)
 
 
+class CriterionSummary(Model):
+    outcome: Outcome
+    score: float | None = None
+
+
+# Aggregate F-UJI metric outcomes into FAIR criterion summaries.
+#
+# Aggregation rules:
+#
+#   Combined outcomes                   Aggregated outcome
+#   -----------------------------------------------------
+#   pass + pass                         pass
+#   fail + fail                         fail
+#   pass + fail                         partial
+#   pass + indeterminate                partial
+#   fail + indeterminate                indeterminate
+#   indeterminate + indeterminate       indeterminate
+#   fail + not_applicable               fail
+#   pass + not_applicable               pass
+#   not_applicable + not_applicable     not_applicable
+#
+# Additional rules:
+# - "not_applicable" metrics are excluded from scoring.
+# - Tests with reason_code="unsupported_check" are treated as
+#   "not_applicable", regardless of their recorded outcome.
+# - "partial" requires at least one positively scored metric.
+# - "fail" + "indeterminate" remains "indeterminate" because
+#   there is no positive evidence and the assessment is incomplete.
+# - Scores are percentages (0–100) calculated from applicable metrics.
+# - The score is None when the criterion cannot be fully evaluated.
+# - A "partial" outcome may therefore have a None score when some
+#   metrics pass but others remain indeterminate.
+# - F-UJI's original metric scores and weights are preserved.
+def build_summary(
+    metrics: tuple[MetricResult, ...],
+    tests: tuple[CheckResult, ...],
+) -> dict[str, CriterionSummary]:
+
+    # Group tests by their parent metric.
+    tests_by_metric = defaultdict(list)
+
+    for test in tests:
+        tests_by_metric[test.metric].append(test)
+
+    def effective_outcome(metric: MetricResult) -> str:
+        """Determine applicability using the underlying tests."""
+
+        if metric.outcome == "error":
+            return "error"
+
+        metric_tests = tests_by_metric.get(metric.id, [])
+
+        if metric_tests and all(
+            t.outcome == "not_applicable" or t.reason_code == "unsupported_check"
+            for t in metric_tests
+        ):
+            return "not_applicable"
+
+        return metric.outcome
+
+    # Group metrics by FAIR criterion.
+    grouped = defaultdict(list)
+
+    for metric in metrics:
+        for criterion in metric.principles:
+            grouped[criterion].append(metric)
+
+    summary = {}
+
+    for criterion, items in grouped.items():
+        # Exclude metrics that cannot be evaluated offline.
+        applicable = [m for m in items if effective_outcome(m) != "not_applicable"]
+
+        if not applicable:
+            outcome, percent = "not_applicable", None
+
+        elif any(effective_outcome(m) == "error" for m in applicable):
+            outcome, percent = "error", None
+
+        else:
+            # Use only conclusively scored metrics.
+            evaluated = [
+                m
+                for m in applicable
+                if m.outcome in {"pass", "fail", "partial"}
+                and m.score is not None
+                and m.score.complete
+                and m.score.maximum > 0
+            ]
+
+            incomplete = len(evaluated) != len(applicable)
+
+            earned = sum(m.score.observed_earned for m in evaluated)
+            maximum = sum(m.score.maximum for m in evaluated)
+
+            if incomplete:
+                # Partial requires positive evidence.
+                # Fail + indeterminate is indeterminate.
+                outcome = "partial" if earned > 0 else "indeterminate"
+                percent = None
+
+            elif maximum == 0:
+                outcome, percent = "indeterminate", None
+
+            else:
+                percent = round(100 * earned / maximum, 2)
+
+                if earned == maximum:
+                    outcome = "pass"
+                elif earned == 0:
+                    outcome = "fail"
+                else:
+                    outcome = "partial"
+
+        summary[criterion] = CriterionSummary(
+            outcome=outcome,
+            score=percent,
+        )
+
+    return summary
+
+
 class Coverage(Model):
     evaluated: int = Field(default=0, ge=0)
     indeterminate: int = Field(default=0, ge=0)
@@ -218,6 +341,7 @@ class Provenance(Model):
 class AssessmentResult(Model):
     schema_version: Literal[1] = 1
     status: Literal["completed", "completed_with_errors"] = "completed"
+    summary: dict[str, CriterionSummary] = Field(default_factory=dict)
     profile: ProfileInfo
     provenance: Provenance
     tests: tuple[CheckResult, ...]
@@ -251,10 +375,15 @@ class AssessmentResult(Model):
             or any(metric.outcome == "error" for metric in self.metrics)
             else "completed"
         )
+        summary = build_summary(self.metrics, self.tests)
         if "coverage" in self.model_fields_set and self.coverage != coverage:
             raise ValueError("Coverage differs from the reported checks")
         if "status" in self.model_fields_set and self.status != status:
             raise ValueError("Status differs from the reported errors")
+        if "summary" in self.model_fields_set and self.summary != summary:
+            raise ValueError("Summary differs from metric results")
+
+        object.__setattr__(self, "summary", summary)
         object.__setattr__(self, "coverage", coverage)
         object.__setattr__(self, "status", status)
         return self

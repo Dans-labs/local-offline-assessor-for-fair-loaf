@@ -7,7 +7,7 @@ from fair_offline_assessor.assessors.fuji.metadata import prepare_metadata
 
 @pytest.fixture(scope="module")
 def profile():
-    return load_profile("fusji-offline@3.5.1")
+    return load_profile("fuji-offline@3.5.1")
 
 
 def test_native_core_mapping_reaches_the_existing_fuji_evaluator(profile):

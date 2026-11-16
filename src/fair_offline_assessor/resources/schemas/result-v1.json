@@ -1,39 +1,12 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "CheckResult": {
       "additionalProperties": false,
       "properties": {
-        "evidence": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/EvidenceRef"
-          },
-          "title": "Evidence",
-          "type": "array"
-        },
         "id": {
           "minLength": 1,
           "title": "Id",
-          "type": "string"
-        },
-        "level": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MaturityLevel"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "message": {
-          "title": "Message",
-          "type": "string"
-        },
-        "metric": {
-          "minLength": 1,
-          "title": "Metric",
           "type": "string"
         },
         "outcome": {
@@ -48,10 +21,6 @@
           "title": "Outcome",
           "type": "string"
         },
-        "reason_code": {
-          "title": "Reason Code",
-          "type": "string"
-        },
         "score": {
           "anyOf": [
             {
@@ -62,6 +31,38 @@
             }
           ],
           "default": null
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MaturityLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "metric": {
+          "minLength": 1,
+          "title": "Metric",
+          "type": "string"
+        },
+        "reason_code": {
+          "title": "Reason Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "title": "Evidence",
+          "type": "array"
         }
       },
       "required": [
@@ -77,12 +78,6 @@
     "Coverage": {
       "additionalProperties": false,
       "properties": {
-        "errors": {
-          "default": 0,
-          "minimum": 0,
-          "title": "Errors",
-          "type": "integer"
-        },
         "evaluated": {
           "default": 0,
           "minimum": 0,
@@ -93,6 +88,12 @@
           "default": 0,
           "minimum": 0,
           "title": "Indeterminate",
+          "type": "integer"
+        },
+        "errors": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Errors",
           "type": "integer"
         },
         "not_applicable": {
@@ -111,11 +112,49 @@
       "title": "Coverage",
       "type": "object"
     },
+    "CriterionSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "enum": [
+            "pass",
+            "partial",
+            "fail",
+            "indeterminate",
+            "not_applicable",
+            "error"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "CriterionSummary",
+      "type": "object"
+    },
     "Diagnostic": {
       "additionalProperties": false,
       "properties": {
         "code": {
           "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
           "type": "string"
         },
         "location": {
@@ -129,10 +168,6 @@
           ],
           "default": null,
           "title": "Location"
-        },
-        "message": {
-          "title": "Message",
-          "type": "string"
         }
       },
       "required": [
@@ -145,6 +180,10 @@
     "EvidenceRef": {
       "additionalProperties": false,
       "properties": {
+        "resource": {
+          "title": "Resource",
+          "type": "string"
+        },
         "digest": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Digest",
@@ -152,10 +191,6 @@
         },
         "location": {
           "title": "Location",
-          "type": "string"
-        },
-        "resource": {
-          "title": "Resource",
           "type": "string"
         },
         "subject": {
@@ -215,17 +250,6 @@
           "title": "Id",
           "type": "string"
         },
-        "level": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/MaturityLevel"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
         "outcome": {
           "enum": [
             "pass",
@@ -238,14 +262,6 @@
           "title": "Outcome",
           "type": "string"
         },
-        "principles": {
-          "items": {
-            "type": "string"
-          },
-          "minItems": 1,
-          "title": "Principles",
-          "type": "array"
-        },
         "score": {
           "anyOf": [
             {
@@ -256,6 +272,25 @@
             }
           ],
           "default": null
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MaturityLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "principles": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Principles",
+          "type": "array"
         }
       },
       "required": [
@@ -269,9 +304,27 @@
     "ProfileInfo": {
       "additionalProperties": false,
       "properties": {
+        "id": {
+          "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
         "adapter": {
           "pattern": "^[a-z][a-z0-9._-]*$",
           "title": "Adapter",
+          "type": "string"
+        },
+        "engine_requires": {
+          "minLength": 1,
+          "title": "Engine Requires",
           "type": "string"
         },
         "adapter_version": {
@@ -281,24 +334,6 @@
         "digest": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Digest",
-          "type": "string"
-        },
-        "engine_requires": {
-          "minLength": 1,
-          "title": "Engine Requires",
-          "type": "string"
-        },
-        "id": {
-          "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
-          "title": "Id",
-          "type": "string"
-        },
-        "title": {
-          "title": "Title",
-          "type": "string"
-        },
-        "version": {
-          "title": "Version",
           "type": "string"
         }
       },
@@ -321,13 +356,13 @@
           "title": "Engine Version",
           "type": "string"
         },
+        "processor_version": {
+          "title": "Processor Version",
+          "type": "string"
+        },
         "input_digest": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Input Digest",
-          "type": "string"
-        },
-        "processor_version": {
-          "title": "Processor Version",
           "type": "string"
         },
         "resources": {
@@ -350,9 +385,23 @@
     "ResourceRef": {
       "additionalProperties": false,
       "properties": {
-        "digest": {
-          "pattern": "^[0-9a-f]{64}$",
-          "title": "Digest",
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "context",
+            "mapping",
+            "reference"
+          ],
+          "title": "Kind",
           "type": "string"
         },
         "format": {
@@ -365,23 +414,9 @@
           "title": "Format",
           "type": "string"
         },
-        "id": {
-          "minLength": 1,
-          "title": "Id",
-          "type": "string"
-        },
-        "kind": {
-          "enum": [
-            "context",
-            "mapping",
-            "reference"
-          ],
-          "title": "Kind",
-          "type": "string"
-        },
-        "version": {
-          "minLength": 1,
-          "title": "Version",
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
           "type": "string"
         }
       },
@@ -397,19 +432,19 @@
     "Score": {
       "additionalProperties": false,
       "properties": {
-        "complete": {
-          "title": "Complete",
-          "type": "boolean"
+        "observed_earned": {
+          "minimum": 0,
+          "title": "Observed Earned",
+          "type": "number"
         },
         "maximum": {
           "minimum": 0,
           "title": "Maximum",
           "type": "number"
         },
-        "observed_earned": {
-          "minimum": 0,
-          "title": "Observed Earned",
-          "type": "number"
+        "complete": {
+          "title": "Complete",
+          "type": "boolean"
         },
         "percent": {
           "anyOf": [
@@ -435,37 +470,8 @@
       "type": "object"
     }
   },
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
-    "coverage": {
-      "$ref": "#/$defs/Coverage"
-    },
-    "diagnostics": {
-      "default": [],
-      "items": {
-        "$ref": "#/$defs/Diagnostic"
-      },
-      "title": "Diagnostics",
-      "type": "array"
-    },
-    "metrics": {
-      "items": {
-        "$ref": "#/$defs/MetricResult"
-      },
-      "title": "Metrics",
-      "type": "array"
-    },
-    "profile": {
-      "$ref": "#/$defs/ProfileInfo"
-    },
-    "provenance": {
-      "$ref": "#/$defs/Provenance"
-    },
-    "raw": {
-      "$ref": "#/$defs/JsonValue",
-      "default": null
-    },
     "schema_version": {
       "const": 1,
       "default": 1,
@@ -481,12 +487,47 @@
       "title": "Status",
       "type": "string"
     },
+    "summary": {
+      "additionalProperties": {
+        "$ref": "#/$defs/CriterionSummary"
+      },
+      "title": "Summary",
+      "type": "object"
+    },
+    "profile": {
+      "$ref": "#/$defs/ProfileInfo"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
     "tests": {
       "items": {
         "$ref": "#/$defs/CheckResult"
       },
       "title": "Tests",
       "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricResult"
+      },
+      "title": "Metrics",
+      "type": "array"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    },
+    "diagnostics": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Diagnostic"
+      },
+      "title": "Diagnostics",
+      "type": "array"
+    },
+    "raw": {
+      "$ref": "#/$defs/JsonValue",
+      "default": null
     }
   },
   "required": [

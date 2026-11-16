@@ -27,7 +27,7 @@ def metadata():
 
 @pytest.fixture
 def runner():
-    return fuji_checks.Runner(load_profile("fusji-offline@3.5.1").resources)
+    return fuji_checks.Runner(load_profile("fuji-offline@3.5.1").resources)
 
 
 @pytest.mark.parametrize(
@@ -98,7 +98,7 @@ def test_assessments_do_not_share_mutable_state(runner):
 
 
 def test_other_metric_definitions_are_rejected():
-    resources = dict(load_profile("fusji-offline@3.5.1").resources)
+    resources = dict(load_profile("fuji-offline@3.5.1").resources)
     resources["fuji:metrics"] += b"\n"
     with pytest.raises(ProfileError) as error:
         fuji_checks.Runner(resources)
@@ -123,7 +123,7 @@ def forbid_network(event, args):
 sys.addaudithook(forbid_network)
 from fair_offline_assessor import AssessmentInput, assess, load_profile
 from fair_offline_assessor.assessors.fuji.checks import Runner
-runner = Runner(load_profile('fusji-offline@3.5.1').resources)
+runner = Runner(load_profile('fuji-offline@3.5.1').resources)
 core = runner.evaluate('FsF-F2-01M', {})
 assert core.metric.score.observed_earned == 0
 assert not any(name.startswith('fuji_server') for name in sys.modules)
@@ -142,7 +142,7 @@ result = assess(AssessmentInput(metadata={
         'https://w3id.org/example', 'hdl:12345/example', 'unrecognised',
         '550e8400-e29b-41d4-a716-446655440000', 'd41d8cd98f00b204e9800998ecf8427e'
     )]
-}, metadata_url='https://doi.org/10.5072/example'), profile='fusji-offline@3.5.1')
+}, metadata_url='https://doi.org/10.5072/example'), profile='fuji-offline@3.5.1')
 assert result.status == 'completed'
 outcomes = {check.id: check.outcome for check in result.tests}
 assert outcomes['FsF-F1-02MD-1'] == 'pass'
@@ -173,7 +173,7 @@ def test_licence_catalogue_keeps_native_lookup_without_changing_presence_score(
 
 
 def test_native_access_mapping_and_evaluator_mutations_are_isolated(runner):
-    profile = load_profile("fusji-offline@3.5.1")
+    profile = load_profile("fuji-offline@3.5.1")
     inputs = [
         {"isAccessibleForFree": True},
         {"isAccessibleForFree": False},
