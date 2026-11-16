@@ -281,12 +281,15 @@ REFERENCES = (
 )
 
 
-
 @lru_cache(maxsize=2)
 def _parsed_catalogues(contents: tuple[bytes, ...]):
     """Parse pinned reference catalogues at most once per process."""
     return {
-        ref.id: (json.loads(raw) if ref.format == "json" else yaml.load(raw, Loader=yaml.CSafeLoader))
+        ref.id: (
+            json.loads(raw)
+            if ref.format == "json"
+            else yaml.load(raw, Loader=yaml.CSafeLoader)
+        )
         for ref, raw in zip(REFERENCES, contents, strict=True)
     }
 
@@ -569,7 +572,11 @@ def _evaluate(
                 CheckResult(
                     id=check_id,
                     metric=identifier,
-                    outcome="indeterminate",
+                    outcome=(
+                        "not_applicable"
+                        if check_id in unsupported_checks
+                        else "indeterminate"
+                    ),
                     reason_code="unsupported_check"
                     if check_id in unsupported_checks
                     else issue.code
