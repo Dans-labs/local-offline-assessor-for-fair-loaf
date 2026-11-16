@@ -6,7 +6,7 @@ from fair_offline_assessor.assessors.fuji.metadata import prepare_metadata
 
 @pytest.fixture(scope="module")
 def profile():
-    return load_profile("fusji-offline@3.5.1")
+    return load_profile("fuji-offline@3.5.1")
 
 
 @pytest.mark.parametrize(

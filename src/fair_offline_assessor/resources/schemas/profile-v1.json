@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "ResourceSelection": {
       "additionalProperties": false,
@@ -22,16 +23,24 @@
       "type": "object"
     }
   },
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "id": {
+      "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
     "adapter": {
       "pattern": "^[a-z][a-z0-9._-]*$",
       "title": "Adapter",
-      "type": "string"
-    },
-    "adapter_version": {
-      "title": "Adapter Version",
       "type": "string"
     },
     "engine_requires": {
@@ -39,18 +48,14 @@
       "title": "Engine Requires",
       "type": "string"
     },
-    "id": {
-      "pattern": "^(?:[a-z][a-z0-9._-]*:)?[a-z][a-z0-9._-]*$",
-      "title": "Id",
+    "adapter_version": {
+      "title": "Adapter Version",
       "type": "string"
     },
-    "limitations": {
-      "default": [],
-      "items": {
-        "type": "string"
-      },
-      "title": "Limitations",
-      "type": "array"
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
     },
     "resources": {
       "items": {
@@ -59,18 +64,13 @@
       "title": "Resources",
       "type": "array"
     },
-    "schema_version": {
-      "const": 1,
-      "title": "Schema Version",
-      "type": "integer"
-    },
-    "title": {
-      "title": "Title",
-      "type": "string"
-    },
-    "version": {
-      "title": "Version",
-      "type": "string"
+    "limitations": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
     }
   },
   "required": [

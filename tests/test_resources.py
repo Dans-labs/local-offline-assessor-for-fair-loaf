@@ -35,7 +35,7 @@ def read_resources():
 
 
 def test_bundled_fuji_profile_loads_pinned_definitions():
-    selection = "fusji-offline@3.5.1"
+    selection = "fuji-offline@3.5.1"
     assert selection in {f"{info.id}@{info.version}" for info in list_profiles()}
     loaded = load_profile(selection)
     assert loaded.info in list_profiles()

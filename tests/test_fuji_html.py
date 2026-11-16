@@ -19,7 +19,7 @@ from fair_offline_assessor.assessors.fuji.html import collect_html
 
 @pytest.fixture(scope="module")
 def profile():
-    return load_profile("fusji-offline@3.5.1")
+    return load_profile("fuji-offline@3.5.1")
 
 
 @pytest.fixture
