@@ -1,11 +1,11 @@
 [
   {
-    "id": "fusji-offline",
+    "id": "fuji-offline",
     "version": "3.5.1",
     "title": "F-UJI offline",
     "adapter": "fuji",
     "engine_requires": ">=0.1,<0.3",
     "adapter_version": "1.0.0",
-    "digest": "759633c3088020662273420145fcd352f4ddc2e75379563f5e754dd11c990125"
+    "digest": "ce621ec17dbed70074d4e75c15a6c3a4c573783242b4b6c312e817fa28b273ed"
   }
 ]

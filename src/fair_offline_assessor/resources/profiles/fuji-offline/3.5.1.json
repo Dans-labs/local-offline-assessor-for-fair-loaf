@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "id": "fusji-offline",
+  "id": "fuji-offline",
   "version": "3.5.1",
   "title": "F-UJI offline",
   "adapter": "fuji",
